@@ -1,9 +1,7 @@
 package service
 
 import (
-	"encoding/json"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -216,128 +214,6 @@ func TestOutboundSync_ExtractOutboundEndpoints(t *testing.T) {
 	}
 }
 
-func TestOutboundSync_ExtractOutboundKeys(t *testing.T) {
-	tests := []struct {
-		name string
-		ob   map[string]any
-		want []string
-	}{
-		{
-			name: "vless key",
-			ob: map[string]any{
-				"protocol": "VLess",
-				"settings": map[string]any{
-					"address": "VLESS.EXAMPLE.COM",
-					"port":    float64(443),
-				},
-			},
-			want: []string{"vless://vless.example.com:443"},
-		},
-		{
-			name: "wireguard key",
-			ob: map[string]any{
-				"protocol": "wireguard",
-				"settings": map[string]any{
-					"peers": []any{
-						map[string]any{"endpoint": "162.159.192.1:2408"},
-					},
-				},
-			},
-			want: []string{"wireguard://162.159.192.1:2408"},
-		},
-		{
-			name: "freedom returns nil",
-			ob: map[string]any{
-				"protocol": "freedom",
-			},
-			want: nil,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ExtractOutboundKeys(tt.ob)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("ExtractOutboundKeys() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestOutboundSync_MergeProxyOutboundsIntoTemplate(t *testing.T) {
-	baseTemplate := `{
-  "log": {"loglevel": "warning"},
-  "outbounds": [
-    {"protocol": "freedom", "tag": "direct"},
-    {"protocol": "blackhole", "tag": "blocked"},
-    {
-      "protocol": "vless",
-      "tag": "proxy-vless",
-      "settings": {
-        "vnext": [{"address": "existing.example.com", "port": 443}]
-      }
-    }
-  ]
-}`
-
-	incoming := []map[string]any{
-		// Duplicate: already exists in template
-		{
-			"protocol": "vless",
-			"tag":      "dup-vless",
-			"settings": map[string]any{
-				"address": "EXISTING.EXAMPLE.COM",
-				"port":    float64(443),
-			},
-		},
-		// New outbound 1
-		{
-			"protocol": "trojan",
-			"tag":      "new-trojan",
-			"settings": map[string]any{
-				"servers": []any{
-					map[string]any{"address": "new-trojan.com", "port": float64(443)},
-				},
-			},
-		},
-		// Duplicate of new outbound 1 in same batch
-		{
-			"protocol": "trojan",
-			"tag":      "dup-batch-trojan",
-			"settings": map[string]any{
-				"address": "new-trojan.com",
-				"port":    float64(443),
-			},
-		},
-		// Non-proxy outbound: should be ignored
-		{
-			"protocol": "freedom",
-			"tag":      "custom-freedom",
-		},
-	}
-
-	updated, count, err := MergeProxyOutboundsIntoTemplate(baseTemplate, incoming)
-	if err != nil {
-		t.Fatalf("MergeProxyOutboundsIntoTemplate failed: %v", err)
-	}
-	if count != 1 {
-		t.Fatalf("addedCount = %d, want 1", count)
-	}
-
-	var parsed map[string]any
-	if err := json.Unmarshal([]byte(updated), &parsed); err != nil {
-		t.Fatalf("updated template is not valid JSON: %v", err)
-	}
-
-	outbounds := parsed["outbounds"].([]any)
-	if len(outbounds) != 4 {
-		t.Fatalf("outbounds count = %d, want 4 (2 system + 1 existing proxy + 1 new proxy)", len(outbounds))
-	}
-	if !strings.Contains(updated, "new-trojan") {
-		t.Fatalf("updated template missing new-trojan outbound")
-	}
-}
-
 func TestOutboundSync_ReplaceProxyOutboundsInTemplate(t *testing.T) {
 	baseTemplate := `{
   "outbounds": [
@@ -412,63 +288,5 @@ func TestOutboundSync_GetProxyOutboundsFromTemplate(t *testing.T) {
 	}
 	if proxies[0]["tag"] != "proxy-1" || proxies[1]["tag"] != "proxy-2" {
 		t.Fatalf("unexpected proxies: %+v", proxies)
-	}
-}
-
-func TestOutboundSync_MergeProxyOutboundsUniqueTags(t *testing.T) {
-	baseTemplate := `{
-  "outbounds": [
-    {"protocol": "freedom", "tag": "direct"},
-    {"protocol": "vless", "tag": "proxy-1", "settings": {"address": "p1.com", "port": 443}}
-  ]
-}`
-
-	incoming := []map[string]any{
-		// Collides with existing template tag "proxy-1"
-		{
-			"protocol": "trojan",
-			"tag":      "proxy-1",
-			"settings": map[string]any{"address": "trojan.com", "port": float64(443)},
-		},
-		// Empty tag: should default to protocol "vmess"
-		{
-			"protocol": "vmess",
-			"settings": map[string]any{"address": "vmess.com", "port": float64(443)},
-		},
-		// "custom" tag
-		{
-			"protocol": "socks",
-			"tag":      "custom",
-			"settings": map[string]any{"address": "socks1.com", "port": float64(1080)},
-		},
-		// Collides with preceding incoming item in the same batch
-		{
-			"protocol": "socks",
-			"tag":      "custom",
-			"settings": map[string]any{"address": "socks2.com", "port": float64(1080)},
-		},
-	}
-
-	updated, count, err := MergeProxyOutboundsIntoTemplate(baseTemplate, incoming)
-	if err != nil {
-		t.Fatalf("MergeProxyOutboundsIntoTemplate failed: %v", err)
-	}
-	if count != 4 {
-		t.Fatalf("addedCount = %d, want 4", count)
-	}
-
-	proxies, err := GetProxyOutboundsFromTemplate(updated)
-	if err != nil {
-		t.Fatalf("GetProxyOutboundsFromTemplate failed: %v", err)
-	}
-	if len(proxies) != 5 {
-		t.Fatalf("total proxies = %d, want 5 (1 existing + 4 merged)", len(proxies))
-	}
-
-	expectedTags := []string{"proxy-1", "proxy-1-2", "vmess", "custom", "custom-2"}
-	for i, exp := range expectedTags {
-		if proxies[i]["tag"] != exp {
-			t.Errorf("proxy[%d] tag = %v, want %v", i, proxies[i]["tag"], exp)
-		}
 	}
 }

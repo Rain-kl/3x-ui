@@ -374,8 +374,11 @@ func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSy
 			if masterTemplate, tErr := j.settingService.GetXrayConfigTemplate(); tErr == nil {
 				if masterProxyOutbounds, oErr := service.GetProxyOutboundsFromTemplate(masterTemplate); oErr == nil {
 					if pushErr := rt.PushProxyOutbounds(reconcileCtx, masterProxyOutbounds); pushErr != nil {
-						// Old or official nodes without outbounds endpoint return 404; ignore to avoid stuck dirty
-						if !strings.Contains(pushErr.Error(), "HTTP 404") {
+						// Old or official nodes without the endpoint answer 404 — not
+						// worth a warning every cycle; still clear dirty below.
+						if strings.Contains(pushErr.Error(), "HTTP 404") {
+							logger.Debugf("node traffic sync: node %s has no outbounds endpoint (old build)", n.Name)
+						} else {
 							reconcileErr = pushErr
 						}
 					}

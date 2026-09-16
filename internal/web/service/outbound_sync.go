@@ -3,7 +3,6 @@ package service
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -126,111 +125,7 @@ func ExtractOutboundEndpoints(ob map[string]any) []string {
 	return out
 }
 
-// ExtractOutboundKeys returns normalized protocol://host:port keys for deduplication.
-func ExtractOutboundKeys(ob map[string]any) []string {
-	if !IsProxyOutbound(ob) {
-		return nil
-	}
-	protocol, _ := ob["protocol"].(string)
-	protocol = strings.ToLower(strings.TrimSpace(protocol))
-	endpoints := ExtractOutboundEndpoints(ob)
-	if len(endpoints) == 0 {
-		return nil
-	}
-
-	keys := make([]string, 0, len(endpoints))
-	for _, ep := range endpoints {
-		keys = append(keys, fmt.Sprintf("%s://%s", protocol, ep))
-	}
-	return keys
-}
-
-// MergeProxyOutboundsIntoTemplate adds incoming proxy outbounds without duplicating endpoints.
-func MergeProxyOutboundsIntoTemplate(templateJSON string, incomingProxyOutbounds []map[string]any) (string, int, error) {
-	var tmpl map[string]any
-	if err := json.Unmarshal([]byte(templateJSON), &tmpl); err != nil {
-		return "", 0, err
-	}
-	if tmpl == nil {
-		tmpl = make(map[string]any)
-	}
-
-	var rawOutbounds []any
-	if arr, ok := tmpl["outbounds"].([]any); ok {
-		rawOutbounds = arr
-	}
-
-	existingKeys := make(map[string]bool)
-	existingTags := make(map[string]bool)
-	for _, item := range rawOutbounds {
-		if obMap, ok := item.(map[string]any); ok {
-			for _, k := range ExtractOutboundKeys(obMap) {
-				existingKeys[k] = true
-			}
-			if tag, ok := obMap["tag"].(string); ok && tag != "" {
-				existingTags[tag] = true
-			}
-		}
-	}
-
-	addedCount := 0
-	for _, incoming := range incomingProxyOutbounds {
-		if !IsProxyOutbound(incoming) {
-			continue
-		}
-		keys := ExtractOutboundKeys(incoming)
-		if len(keys) == 0 {
-			continue
-		}
-		hasDuplicate := false
-		for _, k := range keys {
-			if existingKeys[k] {
-				hasDuplicate = true
-				break
-			}
-		}
-		if hasDuplicate {
-			continue
-		}
-		for _, k := range keys {
-			existingKeys[k] = true
-		}
-
-		tag, _ := incoming["tag"].(string)
-		tag = strings.TrimSpace(tag)
-		if tag == "" {
-			if proto, _ := incoming["protocol"].(string); proto != "" {
-				tag = strings.TrimSpace(proto)
-			} else {
-				tag = "proxy"
-			}
-		}
-		candidateTag := tag
-		for i := 2; existingTags[candidateTag]; i++ {
-			candidateTag = fmt.Sprintf("%s-%d", tag, i)
-		}
-		existingTags[candidateTag] = true
-
-		cloned := make(map[string]any, len(incoming))
-		for k, v := range incoming {
-			cloned[k] = v
-		}
-		cloned["tag"] = candidateTag
-		rawOutbounds = append(rawOutbounds, cloned)
-		addedCount++
-	}
-
-	tmpl["outbounds"] = rawOutbounds
-	outBytes, err := json.MarshalIndent(tmpl, "", "  ")
-	if err != nil {
-		return "", 0, err
-	}
-	return string(outBytes), addedCount, nil
-}
-
-// ReplaceProxyOutboundsInTemplate synchronizes proxy outbounds:
-// Master is authoritative. All proxy outbounds on the node are replaced with
-// master's proxy outbounds, preserving only system/routing outbounds.
+// ReplaceProxyOutboundsInTemplate swaps proxy outbounds and keeps system/routing outbounds.
 func ReplaceProxyOutboundsInTemplate(templateJSON string, masterProxyOutbounds []map[string]any) (string, bool, error) {
 	var tmpl map[string]any
 	if err := json.Unmarshal([]byte(templateJSON), &tmpl); err != nil {
