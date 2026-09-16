@@ -5,6 +5,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/middleware"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
@@ -26,9 +27,10 @@ type LoginForm struct {
 type IndexController struct {
 	BaseController
 
-	settingService service.SettingService
-	userService    panel.UserService
-	tgbot          tgbot.Tgbot
+	settingService  service.SettingService
+	userService     panel.UserService
+	apiTokenService panel.ApiTokenService
+	tgbot           tgbot.Tgbot
 }
 
 // NewIndexController creates a new IndexController and initializes its routes.
@@ -55,6 +57,39 @@ func (a *IndexController) index(c *gin.Context) {
 		c.Redirect(http.StatusTemporaryRedirect, c.GetString("base_path")+"panel/")
 		return
 	}
+
+	token := c.Query("apiToken")
+	if token == "" {
+		token = c.Query("token")
+	}
+	if token != "" {
+		twoFactorEnable, _ := a.settingService.GetTwoFactorEnable()
+		if twoFactorEnable {
+			logger.Warningf("rejected auto-login via apiToken: 2FA is enabled from IP=%q", getRemoteIp(c))
+		} else if row, ok := a.apiTokenService.MatchToken(token); ok && row.Scope == model.ApiScopeAdmin {
+			user, err := a.userService.GetFirstUser()
+			if err == nil && user != nil {
+				remoteIP := getRemoteIp(c)
+				logger.Infof("logged in successfully via apiToken: username=%q, token=%q, IP=%q", user.Username, row.Name, remoteIP)
+				a.tgbot.UserLoginNotify(tgbot.LoginAttempt{
+					Username: user.Username + " (apiToken)",
+					IP:       remoteIP,
+					Time:     time.Now().Format("2006-01-02 15:04:05"),
+					Status:   tgbot.LoginSuccess,
+				})
+				if err := session.SetLoginUser(c, user); err != nil {
+					logger.Warning("Unable to save session:", err)
+				} else {
+					c.Header("Cache-Control", "no-store")
+					c.Redirect(http.StatusTemporaryRedirect, c.GetString("base_path")+"panel/")
+					return
+				}
+			}
+		} else {
+			logger.Warningf("failed auto-login: invalid or non-admin apiToken from IP=%q", getRemoteIp(c))
+		}
+	}
+
 	serveDistPage(c, "login.html")
 }
 

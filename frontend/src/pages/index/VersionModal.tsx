@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Collapse, Modal, Radio, Spin, Tag, Tooltip } from 'antd';
+import { Alert, Button, Collapse, Modal, Select, Space, Spin, Switch, Tag, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 
 import { HttpUtil } from '@/utils';
@@ -36,6 +36,8 @@ export default function VersionModal({ open, status, onClose, onBusy }: VersionM
   const [activeKey, setActiveKey] = useState<string | string[]>('1');
   const [versions, setVersions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<string>('');
+  const [isLocked, setIsLocked] = useState<boolean>(false);
 
   const fetchVersions = useCallback(async () => {
     try {
@@ -49,14 +51,23 @@ export default function VersionModal({ open, status, onClose, onBusy }: VersionM
   const [wasOpen, setWasOpen] = useState(false);
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setLoading(true);
+    if (open) {
+      setLoading(true);
+      const curVer = status?.xray?.version
+        ? status.xray.version.startsWith('v')
+          ? status.xray.version
+          : `v${status.xray.version}`
+        : '';
+      setSelectedVersion(curVer);
+      setIsLocked(!!status?.xray?.versionLock);
+    }
   }
 
   useEffect(() => {
     if (open) void fetchVersions();
   }, [open, fetchVersions]);
 
-  function switchXrayVersion(version: string) {
+  function switchXrayVersion(version: string, lock: boolean) {
     modal.confirm({
       title: t('pages.index.xraySwitchVersionDialog'),
       content: t('pages.index.xraySwitchVersionDialogDesc').replace('#version#', version),
@@ -66,7 +77,9 @@ export default function VersionModal({ open, status, onClose, onBusy }: VersionM
         onClose();
         onBusy({ busy: true, tip: t('pages.index.dontRefresh') });
         try {
-          await HttpUtil.post(`/panel/api/server/installXray/${version}`);
+          await HttpUtil.post(`/panel/api/server/installXray/${encodeURIComponent(version)}`, {
+            lock,
+          });
         } finally {
           onBusy({ busy: false });
         }
@@ -100,6 +113,17 @@ export default function VersionModal({ open, status, onClose, onBusy }: VersionM
 
   const activeKeyStr = Array.isArray(activeKey) ? activeKey[0] : activeKey;
 
+  const currentVersionStr = status?.xray?.version
+    ? status.xray.version.startsWith('v')
+      ? status.xray.version
+      : `v${status.xray.version}`
+    : '';
+
+  const versionOptions = versions.map((v) => ({ label: v, value: v }));
+  if (selectedVersion && !versions.includes(selectedVersion)) {
+    versionOptions.unshift({ label: `${selectedVersion} (自定义)`, value: selectedVersion });
+  }
+
   return (
     <Modal open={open} title={t('pages.index.xrayUpdates')} footer={null} onCancel={onClose}>
       {modalContextHolder}
@@ -113,25 +137,68 @@ export default function VersionModal({ open, status, onClose, onBusy }: VersionM
               key: '1',
               label: 'Xray',
               children: (
-                <>
-                  <Alert
-                    type="warning"
-                    className="mb-12"
-                    title={t('pages.index.xraySwitchClickDesk')}
-                    showIcon
-                  />
-                  <div className="version-list">
-                    {versions.map((version, index) => (
-                      <div key={version} className="version-list-item">
-                        <Tag color={index % 2 === 0 ? 'purple' : 'green'}>{version}</Tag>
-                        <Radio
-                          checked={version === `v${status?.xray?.version}`}
-                          onClick={() => switchXrayVersion(version)}
-                        />
-                      </div>
-                    ))}
+                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                  <Alert type="warning" title={t('pages.index.xraySwitchClickDesk')} showIcon />
+                  <div>
+                    <div style={{ marginBottom: 6, fontWeight: 500 }}>
+                      选择或输入版本：
+                      {currentVersionStr && (
+                        <span
+                          style={{
+                            fontWeight: 'normal',
+                            color: 'var(--ant-color-text-secondary)',
+                            marginLeft: 8,
+                          }}
+                        >
+                          (当前版本: {currentVersionStr})
+                        </span>
+                      )}
+                    </div>
+                    <Select
+                      showSearch
+                      style={{ width: '100%' }}
+                      placeholder="请选择或手动输入版本号 (例: v26.7.28)"
+                      value={selectedVersion || undefined}
+                      onChange={setSelectedVersion}
+                      onSearch={(val) => {
+                        if (val && !versions.includes(val)) {
+                          setSelectedVersion(val);
+                        }
+                      }}
+                      options={versionOptions}
+                      filterOption={(input, option) =>
+                        (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      }
+                    />
                   </div>
-                </>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 14px',
+                      background: 'var(--ant-color-fill-quaternary)',
+                      borderRadius: 6,
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 500 }}>是否锁定版本</div>
+                      <div style={{ fontSize: 12, color: 'var(--ant-color-text-secondary)' }}>
+                        开启后，更新 3X-UI 面板时不会自动升级 Xray 核心
+                      </div>
+                    </div>
+                    <Switch checked={isLocked} onChange={setIsLocked} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                    <Button
+                      type="primary"
+                      disabled={!selectedVersion}
+                      onClick={() => switchXrayVersion(selectedVersion, isLocked)}
+                    >
+                      确定修改版本
+                    </Button>
+                  </div>
+                </Space>
               ),
             },
             {

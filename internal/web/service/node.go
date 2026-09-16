@@ -973,6 +973,31 @@ func (s *NodeService) UpdatePanels(ids []int, dev bool) ([]NodeUpdateResult, err
 	return results, nil
 }
 
+// RestartNode dispatches a restartPanel command to the target remote node.
+func (s *NodeService) RestartNode(id int) error {
+	n, err := s.GetById(id)
+	if err != nil || n == nil {
+		return errors.New("node not found")
+	}
+	if !n.Enable {
+		return errors.New("node is disabled")
+	}
+	if n.Status != "online" {
+		return errors.New("node is offline")
+	}
+	mgr := runtime.GetManager()
+	if mgr == nil {
+		return errors.New("runtime manager unavailable")
+	}
+	remote, err := mgr.RemoteFor(n)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return remote.RestartPanel(ctx)
+}
+
 func (s *NodeService) UpdateHeartbeat(id int, p HeartbeatPatch) error {
 	db := database.GetDB()
 	updates := map[string]any{
@@ -1046,6 +1071,32 @@ func (s *NodeService) MarkNodeDirtyTx(tx *gorm.DB, id int) error {
 	}
 	return tx.Model(model.Node{}).
 		Where("id = ?", id).
+		Updates(map[string]any{
+			"config_dirty":    true,
+			"config_dirty_at": time.Now().UnixMilli(),
+		}).Error
+}
+
+// MarkAllNodesDirtyTx marks all enabled nodes as requiring a config reconcile.
+func (s *NodeService) MarkAllNodesDirtyTx(tx *gorm.DB) error {
+	if tx == nil {
+		tx = database.GetDB()
+	}
+	return tx.Model(model.Node{}).
+		Where("enable = ?", true).
+		Updates(map[string]any{
+			"config_dirty":    true,
+			"config_dirty_at": time.Now().UnixMilli(),
+		}).Error
+}
+
+// MarkOtherNodesDirtyTx marks all enabled nodes except the given ID as dirty.
+func (s *NodeService) MarkOtherNodesDirtyTx(tx *gorm.DB, exceptNodeID int) error {
+	if tx == nil {
+		tx = database.GetDB()
+	}
+	return tx.Model(model.Node{}).
+		Where("id <> ? AND enable = ?", exceptNodeID, true).
 		Updates(map[string]any{
 			"config_dirty":    true,
 			"config_dirty_at": time.Now().UnixMilli(),

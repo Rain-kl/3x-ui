@@ -18,10 +18,15 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/locale"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 )
 
 func newNodeCredentialTestEngine(t *testing.T) *gin.Engine {
 	t.Helper()
+	prev := runtime.GetManager()
+	mgr := runtime.NewManager(runtime.LocalDeps{APIPort: func() int { return 0 }, SetNeedRestart: func() {}})
+	runtime.SetManager(mgr)
+	t.Cleanup(func() { runtime.SetManager(prev) })
 	gin.SetMode(gin.TestMode)
 	dbDir := t.TempDir()
 	t.Setenv("XUI_DB_FOLDER", dbDir)
@@ -237,5 +242,123 @@ func TestNodeControllerUpdateBlankApiTokenKeepsStoredToken(t *testing.T) {
 	}
 	if stored.Name != "stored-node-renamed" {
 		t.Fatalf("stored name = %q, want stored-node-renamed", stored.Name)
+	}
+}
+
+func TestNodeControllerLoginUrl(t *testing.T) {
+	engine := newNodeCredentialTestEngine(t)
+	db := database.GetDB()
+	if err := db.Create(&model.Node{
+		Name:     "target-node",
+		Scheme:   "https",
+		Address:  "target.example.com",
+		Port:     2053,
+		BasePath: "/custom/",
+		ApiToken: "secret-token-123",
+		Enable:   true,
+	}).Error; err != nil {
+		t.Fatalf("seed node: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/panel/api/nodes/loginUrl/1", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("loginUrl status = %d, body = %s", w.Code, w.Body.String())
+	}
+	expected := "https://target.example.com:2053/custom/?apiToken=secret-token-123"
+	if !strings.Contains(w.Body.String(), expected) {
+		t.Fatalf("loginUrl = %s, want to contain %s", w.Body.String(), expected)
+	}
+
+	// Test IPv6 address formatting
+	if err := db.Create(&model.Node{
+		Name:     "ipv6-node",
+		Scheme:   "http",
+		Address:  "2001:db8::1",
+		Port:     8080,
+		BasePath: "api",
+		ApiToken: "token-ipv6",
+		Enable:   true,
+	}).Error; err != nil {
+		t.Fatalf("seed ipv6 node: %v", err)
+	}
+
+	w2 := httptest.NewRecorder()
+	engine.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/panel/api/nodes/loginUrl/2", nil))
+	if w2.Code != http.StatusOK {
+		t.Fatalf("loginUrl status = %d, body = %s", w2.Code, w2.Body.String())
+	}
+	expectedIpv6 := "http://[2001:db8::1]:8080/api?apiToken=token-ipv6"
+	if !strings.Contains(w2.Body.String(), expectedIpv6) {
+		t.Fatalf("loginUrl = %s, want to contain %s", w2.Body.String(), expectedIpv6)
+	}
+}
+
+func TestNodeControllerRestart(t *testing.T) {
+	fakeRestartCalled := false
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/setting/restartPanel") {
+			fakeRestartCalled = true
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"success":true,"msg":"restarted"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer fakeServer.Close()
+
+	engine := newNodeCredentialTestEngine(t)
+	db := database.GetDB()
+
+	host, portStr, _ := net.SplitHostPort(strings.TrimPrefix(fakeServer.URL, "http://"))
+	port, _ := strconv.Atoi(portStr)
+
+	node := &model.Node{
+		Name:                "restart-node",
+		Scheme:              "http",
+		Address:             host,
+		Port:                port,
+		BasePath:            "/",
+		ApiToken:            "test-token",
+		Enable:              true,
+		Status:              "online",
+		AllowPrivateAddress: true,
+	}
+	if err := db.Create(node).Error; err != nil {
+		t.Fatalf("seed node: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	engine.ServeHTTP(w, httptest.NewRequest(http.MethodPost, "/panel/api/nodes/restart/"+strconv.Itoa(node.Id), nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("restart status = %d, body = %s", w.Code, w.Body.String())
+	}
+	if !fakeRestartCalled {
+		t.Fatal("expected remote restartPanel endpoint to be called")
+	}
+
+	// Offline node should fail
+	nodeOffline := &model.Node{
+		Name:     "offline-node",
+		Scheme:   "http",
+		Address:  host,
+		Port:     port,
+		BasePath: "/",
+		ApiToken: "test-token",
+		Enable:   true,
+		Status:   "offline",
+	}
+	if err := db.Create(nodeOffline).Error; err != nil {
+		t.Fatalf("seed offline node: %v", err)
+	}
+	w2 := httptest.NewRecorder()
+	engine.ServeHTTP(w2, httptest.NewRequest(http.MethodPost, "/panel/api/nodes/restart/"+strconv.Itoa(nodeOffline.Id), nil))
+	var res struct {
+		Success bool   `json:"success"`
+		Msg     string `json:"msg"`
+	}
+	_ = json.Unmarshal(w2.Body.Bytes(), &res)
+	if res.Success {
+		t.Fatal("expected restart to fail for offline node")
 	}
 }

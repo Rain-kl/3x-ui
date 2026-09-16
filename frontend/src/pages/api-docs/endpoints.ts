@@ -961,6 +961,47 @@ export const sections: readonly Section[] = [
           },
         },
       },
+      {
+        method: 'GET',
+        path: '/panel/api/server/outbounds',
+        summary:
+          'Fetch proxy outbounds configured in the template config on this node for cross-node outbound synchronization.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    {\n      "protocol": "vmess",\n      "tag": "proxy-1",\n      "settings": {}\n    }\n  ]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/server/outbounds',
+        summary:
+          'Replace proxy outbounds in the template config on this node and apply changes to Xray.',
+        requestSchema: {
+          type: 'array',
+          items: {
+            type: 'object',
+          },
+        },
+        response: '{\n  "success": true,\n  "msg": "success"\n}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/server/routing',
+        summary: 'Fetch routing rules configured in the template config on this node.',
+        response:
+          '{\n  "success": true,\n  "obj": [\n    {\n      "type": "field",\n      "outboundTag": "direct",\n      "domain": ["geosite:cn"]\n    }\n  ]\n}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/server/routing',
+        summary:
+          'Replace routing rules in the template config on this node and apply changes to Xray.',
+        requestSchema: {
+          type: 'array',
+          items: {
+            type: 'object',
+          },
+        },
+        response: '{\n  "success": true,\n  "msg": "success"\n}',
+      },
     ],
   },
 
@@ -1640,6 +1681,14 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'GET',
+        path: '/panel/api/nodes/loginUrl/:id',
+        summary: 'Fetch the auto-login URL containing apiToken for a node.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Node ID.' }],
+        response:
+          '{\n  "success": true,\n  "obj": "https://node.example.com:2053/?apiToken=abc"\n}',
+      },
+      {
+        method: 'GET',
         path: '/panel/api/nodes/webCert/:id',
         summary:
           'Fetch a node\'s own web TLS certificate/key file paths (proxied to the node). Used by the inbound form\'s "Set Cert from Panel" so a node-assigned inbound gets paths that exist on the node, not the central panel.',
@@ -1705,6 +1754,12 @@ export const sections: readonly Section[] = [
         method: 'POST',
         path: '/panel/api/nodes/probe/:id',
         summary: 'Probe an existing node, updating its cached health state.',
+        params: [{ name: 'id', in: 'path', type: 'number', desc: 'Node ID.' }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/nodes/restart/:id',
+        summary: 'Restart panel and Xray core on an online remote node.',
         params: [{ name: 'id', in: 'path', type: 'number', desc: 'Node ID.' }],
       },
       {

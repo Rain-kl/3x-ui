@@ -1,7 +1,14 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"testing"
 
 	"gorm.io/gorm"
@@ -322,5 +329,175 @@ func TestNodeService_UpdateMarksNodeDirty(t *testing.T) {
 	}
 	if got.Address != "10.0.0.2" || got.Port != 2097 {
 		t.Fatalf("node row not updated: address=%q port=%d", got.Address, got.Port)
+	}
+}
+
+// TestNodeDirty_MarkAllNodesDirtyTx verifies all enabled nodes are marked dirty.
+func TestNodeDirty_MarkAllNodesDirtyTx(t *testing.T) {
+	setupConflictDB(t)
+	db := database.GetDB()
+
+	nodes := []*model.Node{
+		{Name: "n1", Enable: true, ConfigDirty: false, ConfigDirtyAt: 0},
+		{Name: "n2", Enable: true, ConfigDirty: false, ConfigDirtyAt: 0},
+		{Name: "n3", Enable: true, ConfigDirty: false, ConfigDirtyAt: 0},
+	}
+	for _, n := range nodes {
+		if err := db.Create(n).Error; err != nil {
+			t.Fatalf("create node %s: %v", n.Name, err)
+		}
+	}
+	if err := db.Model(nodes[2]).Update("enable", false).Error; err != nil {
+		t.Fatalf("disable node 3: %v", err)
+	}
+
+	svc := &NodeService{}
+	if err := svc.MarkAllNodesDirtyTx(nil); err != nil {
+		t.Fatalf("MarkAllNodesDirtyTx: %v", err)
+	}
+
+	var results []model.Node
+	if err := db.Order("id asc").Find(&results).Error; err != nil {
+		t.Fatalf("query nodes: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("expected 3 nodes, got %d", len(results))
+	}
+
+	if !results[0].ConfigDirty || results[0].ConfigDirtyAt <= 0 {
+		t.Errorf("node 1 should be dirty with timestamp, got dirty=%v, at=%d", results[0].ConfigDirty, results[0].ConfigDirtyAt)
+	}
+	if !results[1].ConfigDirty || results[1].ConfigDirtyAt <= 0 {
+		t.Errorf("node 2 should be dirty with timestamp, got dirty=%v, at=%d", results[1].ConfigDirty, results[1].ConfigDirtyAt)
+	}
+	if results[2].ConfigDirty || results[2].ConfigDirtyAt != 0 {
+		t.Errorf("node 3 (disabled) should not be dirty, got dirty=%v, at=%d", results[2].ConfigDirty, results[2].ConfigDirtyAt)
+	}
+}
+
+// TestNodeDirty_MarkOtherNodesDirtyTx verifies all other enabled nodes are marked dirty.
+func TestNodeDirty_MarkOtherNodesDirtyTx(t *testing.T) {
+	setupConflictDB(t)
+	db := database.GetDB()
+
+	nodes := []*model.Node{
+		{Name: "n1", Enable: true, ConfigDirty: false, ConfigDirtyAt: 0},
+		{Name: "n2", Enable: true, ConfigDirty: false, ConfigDirtyAt: 0},
+		{Name: "n3", Enable: true, ConfigDirty: false, ConfigDirtyAt: 0},
+		{Name: "n4", Enable: true, ConfigDirty: false, ConfigDirtyAt: 0},
+	}
+	for _, n := range nodes {
+		if err := db.Create(n).Error; err != nil {
+			t.Fatalf("create node %s: %v", n.Name, err)
+		}
+	}
+	if err := db.Model(nodes[3]).Update("enable", false).Error; err != nil {
+		t.Fatalf("disable node 4: %v", err)
+	}
+
+	svc := &NodeService{}
+	if err := svc.MarkOtherNodesDirtyTx(nil, nodes[1].Id); err != nil {
+		t.Fatalf("MarkOtherNodesDirtyTx: %v", err)
+	}
+
+	var results []model.Node
+	if err := db.Order("id asc").Find(&results).Error; err != nil {
+		t.Fatalf("query nodes: %v", err)
+	}
+
+	if !results[0].ConfigDirty || results[0].ConfigDirtyAt <= 0 {
+		t.Errorf("node 1 should be dirty, got dirty=%v, at=%d", results[0].ConfigDirty, results[0].ConfigDirtyAt)
+	}
+	if results[1].ConfigDirty || results[1].ConfigDirtyAt != 0 {
+		t.Errorf("node 2 (excepted) should not be dirty, got dirty=%v, at=%d", results[1].ConfigDirty, results[1].ConfigDirtyAt)
+	}
+	if !results[2].ConfigDirty || results[2].ConfigDirtyAt <= 0 {
+		t.Errorf("node 3 should be dirty, got dirty=%v, at=%d", results[2].ConfigDirty, results[2].ConfigDirtyAt)
+	}
+	if results[3].ConfigDirty || results[3].ConfigDirtyAt != 0 {
+		t.Errorf("node 4 (disabled) should not be dirty, got dirty=%v, at=%d", results[3].ConfigDirty, results[3].ConfigDirtyAt)
+	}
+}
+
+// TestNodeDirty_RemoteProxyOutbounds verifies Remote fetch and push proxy outbounds methods.
+func TestNodeDirty_RemoteProxyOutbounds(t *testing.T) {
+	var postedBody []map[string]any
+	var getMode string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if req.URL.Path != "/panel/api/server/outbounds" {
+			http.NotFound(w, req)
+			return
+		}
+		switch req.Method {
+		case http.MethodGet:
+			if getMode == "empty" {
+				_, _ = w.Write([]byte(`{"success":true,"obj":null}`))
+			} else {
+				_, _ = w.Write([]byte(`{"success":true,"obj":[{"tag":"out-1","protocol":"shadowsocks"}]}`))
+			}
+		case http.MethodPost:
+			body, err := io.ReadAll(req.Body)
+			if err != nil {
+				t.Fatalf("read post body: %v", err)
+			}
+			if err := json.Unmarshal(body, &postedBody); err != nil {
+				t.Fatalf("unmarshal post body: %v", err)
+			}
+			_, _ = w.Write([]byte(`{"success":true}`))
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	}))
+	defer srv.Close()
+
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("parse srv url: %v", err)
+	}
+	port, _ := strconv.Atoi(u.Port())
+	node := &model.Node{
+		Id:                  1,
+		Name:                "test-node",
+		Scheme:              "http",
+		Address:             u.Hostname(),
+		Port:                port,
+		BasePath:            "/",
+		ApiToken:            "dummy-token",
+		Enable:              true,
+		AllowPrivateAddress: true,
+	}
+
+	r := runtime.NewRemote(node, nil)
+	ctx := context.Background()
+
+	// Normal fetch.
+	getMode = "normal"
+	outbounds, err := r.FetchProxyOutbounds(ctx)
+	if err != nil {
+		t.Fatalf("FetchProxyOutbounds: %v", err)
+	}
+	if len(outbounds) != 1 || outbounds[0]["tag"] != "out-1" {
+		t.Fatalf("unexpected outbounds: %+v", outbounds)
+	}
+
+	// Empty fetch.
+	getMode = "empty"
+	emptyOutbounds, err := r.FetchProxyOutbounds(ctx)
+	if err != nil {
+		t.Fatalf("FetchProxyOutbounds (empty): %v", err)
+	}
+	if emptyOutbounds != nil {
+		t.Fatalf("expected nil outbounds, got %+v", emptyOutbounds)
+	}
+
+	// Push.
+	toPush := []map[string]any{{"tag": "pushed-tag", "protocol": "vless"}}
+	if err := r.PushProxyOutbounds(ctx, toPush); err != nil {
+		t.Fatalf("PushProxyOutbounds: %v", err)
+	}
+	if len(postedBody) != 1 || postedBody[0]["tag"] != "pushed-tag" {
+		t.Fatalf("unexpected posted body: %+v", postedBody)
 	}
 }

@@ -34,6 +34,7 @@ interface RoutingColumnsParams {
   moveDown: (idx: number) => void;
   confirmDelete: (idx: number) => void;
   toggleRule: (idx: number, enabled: boolean) => void;
+  remarkByTag?: Record<string, string>;
 }
 
 export function useRoutingColumns({
@@ -47,10 +48,15 @@ export function useRoutingColumns({
   moveDown,
   confirmDelete,
   toggleRule,
+  remarkByTag: customRemarkByTag,
 }: RoutingColumnsParams): ColumnsType<RuleRow> {
   const { t } = useTranslation();
   const { data: inboundOptions } = useInboundOptions();
-  const remarkByTag = useMemo(() => buildRemarkByTag(inboundOptions || []), [inboundOptions]);
+  const defaultRemarkByTag = useMemo(
+    () => buildRemarkByTag(inboundOptions || []),
+    [inboundOptions],
+  );
+  const remarkByTag = customRemarkByTag || defaultRemarkByTag;
   return useMemo(
     () => [
       {

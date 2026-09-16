@@ -1,13 +1,14 @@
 # ========================================================
 # Stage: Frontend (Vite)
 # ========================================================
-FROM --platform=$BUILDPLATFORM node:22-alpine AS frontend
+FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend
 WORKDIR /src/frontend
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+RUN corepack enable
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 COPY internal/web/translation /src/internal/web/translation
-RUN npm run build
+RUN pnpm run build
 
 # ========================================================
 # Stage: Builder

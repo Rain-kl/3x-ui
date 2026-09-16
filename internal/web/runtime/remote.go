@@ -642,6 +642,12 @@ func (r *Remote) RestartXray(ctx context.Context) error {
 	return err
 }
 
+// RestartPanel requests the remote node to restart its panel service and Xray core.
+func (r *Remote) RestartPanel(ctx context.Context) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/setting/restartPanel", nil)
+	return err
+}
+
 // UpdatePanel asks the node to run its own official self-updater (update.sh)
 // and restart onto the latest release. The node returns as soon as the job is
 // launched; the new version surfaces on the next heartbeat. When dev is true the
@@ -944,4 +950,48 @@ func (r *Remote) FetchClientIpsByGuid(ctx context.Context) (map[string]map[strin
 		}
 	}
 	return out, nil
+}
+
+// FetchProxyOutbounds fetches proxy outbounds from the remote node.
+func (r *Remote) FetchProxyOutbounds(ctx context.Context) ([]map[string]any, error) {
+	env, err := r.do(ctx, http.MethodGet, "panel/api/server/outbounds", nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(env.Obj) == 0 || string(bytes.TrimSpace(env.Obj)) == "null" {
+		return nil, nil
+	}
+	var outbounds []map[string]any
+	if err := json.Unmarshal(env.Obj, &outbounds); err != nil {
+		return nil, fmt.Errorf("decode proxy outbounds: %w", err)
+	}
+	return outbounds, nil
+}
+
+// PushProxyOutbounds pushes proxy outbounds to the remote node.
+func (r *Remote) PushProxyOutbounds(ctx context.Context, outbounds []map[string]any) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/server/outbounds", outbounds)
+	return err
+}
+
+// FetchRoutingRules fetches routing rules from the remote node.
+func (r *Remote) FetchRoutingRules(ctx context.Context) ([]map[string]any, error) {
+	env, err := r.do(ctx, http.MethodGet, "panel/api/server/routing", nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(env.Obj) == 0 || string(bytes.TrimSpace(env.Obj)) == "null" {
+		return nil, nil
+	}
+	var rules []map[string]any
+	if err := json.Unmarshal(env.Obj, &rules); err != nil {
+		return nil, fmt.Errorf("decode routing rules: %w", err)
+	}
+	return rules, nil
+}
+
+// PushRoutingRules pushes routing rules to the remote node.
+func (r *Remote) PushRoutingRules(ctx context.Context, rules []map[string]any) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/server/routing", rules)
+	return err
 }

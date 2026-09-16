@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
@@ -26,11 +27,7 @@ const (
 )
 
 func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
-	// The frontend round-trips the whole getXraySetting response back
-	// through the textarea, so if it has ever received a wrapped
-	// payload (see UnwrapXrayTemplateConfig) it sends that same wrapper
-	// back here. Strip it before validation/storage, otherwise we save
-	// garbage the next read can't recover from without this same call.
+	// Strip textarea response wrappers so nested payloads cannot persist.
 	newXraySettings = UnwrapXrayTemplateConfig(newXraySettings)
 	if err := s.CheckXrayConfig(newXraySettings); err != nil {
 		return err
@@ -44,7 +41,26 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 	if spelled, changed, err := database.RewriteDNSOutboundQTypeZero(newXraySettings); err == nil && changed {
 		newXraySettings = spelled
 	}
-	return s.saveSetting("xrayTemplateConfig", newXraySettings)
+
+	oldTemplate, _ := s.GetXrayConfigTemplate()
+	oldProxyObs, _ := GetProxyOutboundsFromTemplate(oldTemplate)
+	newProxyObs, _ := GetProxyOutboundsFromTemplate(newXraySettings)
+	var outboundsChanged bool
+	if len(oldProxyObs) == 0 && len(newProxyObs) == 0 {
+		outboundsChanged = false
+	} else {
+		oldBytes, _ := json.Marshal(oldProxyObs)
+		newBytes, _ := json.Marshal(newProxyObs)
+		outboundsChanged = !bytes.Equal(oldBytes, newBytes)
+	}
+
+	if err := s.saveSetting("xrayTemplateConfig", newXraySettings); err != nil {
+		return err
+	}
+	if outboundsChanged && database.GetDB() != nil {
+		_ = (&NodeService{}).MarkAllNodesDirtyTx(nil)
+	}
+	return nil
 }
 
 func (s *XraySettingService) CheckXrayConfig(XrayTemplateConfig string) error {

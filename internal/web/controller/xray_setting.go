@@ -10,6 +10,7 @@ import (
 
 	piaprotocol "github.com/mhsanaei/3x-ui/v3/internal/pia"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service/integration"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service/outbound"
@@ -76,6 +77,60 @@ func (a *XraySettingController) initRouter(g *gin.RouterGroup) {
 
 // getXraySetting retrieves the Xray configuration template, inbound tags, and outbound test URL.
 func (a *XraySettingController) getXraySetting(c *gin.Context) {
+	nodeIDStr := c.Query("nodeId")
+	if nodeIDStr == "" {
+		nodeIDStr = c.PostForm("nodeId")
+	}
+	var nodeID *int
+	if nodeIDStr != "" {
+		if id, err := strconv.Atoi(nodeIDStr); err == nil && id > 0 {
+			nodeID = &id
+		}
+	}
+
+	if nodeID != nil {
+		mgr := runtime.GetManager()
+		if mgr == nil {
+			jsonMsg(c, "runtime manager not available", errors.New("runtime manager not available"))
+			return
+		}
+		rem, err := mgr.RemoteByID(*nodeID)
+		if err != nil {
+			jsonMsg(c, I18nWeb(c, "pages.settings.toasts.getSettings"), err)
+			return
+		}
+		rules, err := rem.FetchRoutingRules(c.Request.Context())
+		if err != nil {
+			jsonMsg(c, I18nWeb(c, "pages.settings.toasts.getSettings"), err)
+			return
+		}
+		inboundTags, _ := a.InboundService.GetInboundTagsByNode(nodeID)
+		clientReverseTags, _ := a.InboundService.GetClientReverseTagsByNode(nodeID)
+		if clientReverseTags == "" {
+			clientReverseTags = "[]"
+		}
+		nodeXraySetting := map[string]any{
+			"routing": map[string]any{
+				"rules": rules,
+			},
+		}
+		settingBytes, _ := json.Marshal(nodeXraySetting)
+		xrayResponse := map[string]any{
+			"xraySetting":       json.RawMessage(settingBytes),
+			"inboundTags":       json.RawMessage(inboundTags),
+			"clientReverseTags": json.RawMessage(clientReverseTags),
+			"outboundTestUrl":   "https://www.google.com/generate_204",
+			"geodataSources":    service.StandardGeodataSources(),
+		}
+		result, err := json.Marshal(xrayResponse)
+		if err != nil {
+			jsonMsg(c, I18nWeb(c, "pages.settings.toasts.getSettings"), err)
+			return
+		}
+		jsonObj(c, string(result), nil)
+		return
+	}
+
 	xraySetting, err := a.SettingService.GetXrayConfigTemplate()
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.getSettings"), err)
@@ -141,12 +196,62 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 // the running core right away — through the gRPC API when only inbounds,
 // outbounds or routing rules changed, with a process restart otherwise.
 func (a *XraySettingController) updateSetting(c *gin.Context) {
+	nodeIDStr := c.PostForm("nodeId")
+	if nodeIDStr == "" {
+		nodeIDStr = c.Query("nodeId")
+	}
 	xraySetting := c.PostForm("xraySetting")
+	outboundTestUrl := c.PostForm("outboundTestUrl")
+
+	if nodeIDStr == "" && xraySetting == "" {
+		var req struct {
+			NodeID          *int   `json:"nodeId"`
+			XraySetting     string `json:"xraySetting"`
+			OutboundTestUrl string `json:"outboundTestUrl"`
+		}
+		if err := c.ShouldBindJSON(&req); err == nil {
+			if req.NodeID != nil && *req.NodeID > 0 {
+				nodeIDStr = strconv.Itoa(*req.NodeID)
+			}
+			if req.XraySetting != "" {
+				xraySetting = req.XraySetting
+			}
+			if req.OutboundTestUrl != "" {
+				outboundTestUrl = req.OutboundTestUrl
+			}
+		}
+	}
+
+	if nodeIDStr != "" {
+		if id, err := strconv.Atoi(nodeIDStr); err == nil && id > 0 {
+			mgr := runtime.GetManager()
+			if mgr == nil {
+				jsonMsg(c, "runtime manager not available", errors.New("runtime manager not available"))
+				return
+			}
+			rem, err := mgr.RemoteByID(id)
+			if err != nil {
+				jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
+				return
+			}
+			rules, err := service.GetRoutingRulesFromTemplate(xraySetting)
+			if err != nil {
+				jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
+				return
+			}
+			if err := rem.PushRoutingRules(c.Request.Context(), rules); err != nil {
+				jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
+				return
+			}
+			jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), nil)
+			return
+		}
+	}
+
 	if err := a.XraySettingService.SaveXraySetting(xraySetting); err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return
 	}
-	outboundTestUrl := c.PostForm("outboundTestUrl")
 	if outboundTestUrl == "" {
 		outboundTestUrl = "https://www.google.com/generate_204"
 	}

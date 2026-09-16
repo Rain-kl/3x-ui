@@ -7614,6 +7614,91 @@
         }
       }
     },
+    "/panel/api/server/outbounds": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Fetch proxy outbounds configured in the template config on this node for cross-node outbound synchronization.",
+        "operationId": "get_panel_api_server_outbounds",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "protocol": "vmess",
+                      "tag": "proxy-1",
+                      "settings": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Replace proxy outbounds in the template config on this node and apply changes to Xray.",
+        "operationId": "post_panel_api_server_outbounds",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "msg": "success"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/clients/list": {
       "get": {
         "tags": [
@@ -10586,6 +10671,51 @@
         }
       }
     },
+    "/panel/api/nodes/loginUrl/{id}": {
+      "get": {
+        "tags": [
+          "Nodes"
+        ],
+        "summary": "Fetch the auto-login URL containing apiToken for a node.",
+        "operationId": "get_panel_api_nodes_loginUrl_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Node ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": "https://node.example.com:2053/?apiToken=abc"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/nodes/webCert/{id}": {
       "get": {
         "tags": [
@@ -11074,6 +11204,47 @@
         ],
         "summary": "Probe an existing node, updating its cached health state.",
         "operationId": "post_panel_api_nodes_probe_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Node ID.",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/nodes/restart/{id}": {
+      "post": {
+        "tags": [
+          "Nodes"
+        ],
+        "summary": "Restart panel and Xray core on an online remote node.",
+        "operationId": "post_panel_api_nodes_restart_id",
         "parameters": [
           {
             "name": "id",

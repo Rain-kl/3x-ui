@@ -2169,9 +2169,20 @@ func (s *InboundService) updateClientTraffics(tx *gorm.DB, oldInbound *model.Inb
 }
 
 func (s *InboundService) GetInboundTags() (string, error) {
+	return s.GetInboundTagsByNode(nil)
+}
+
+// GetInboundTagsByNode returns inbound tags scoped to a specific node (nil for master/local).
+func (s *InboundService) GetInboundTagsByNode(nodeID *int) (string, error) {
 	db := database.GetDB()
 	var inboundTags []string
-	err := db.Model(model.Inbound{}).Select("tag").Find(&inboundTags).Error
+	query := db.Model(model.Inbound{}).Select("tag")
+	if nodeID == nil {
+		query = query.Where("node_id IS NULL")
+	} else {
+		query = query.Where("node_id = ?", *nodeID)
+	}
+	err := query.Find(&inboundTags).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", err
 	}
@@ -2180,9 +2191,20 @@ func (s *InboundService) GetInboundTags() (string, error) {
 }
 
 func (s *InboundService) GetClientReverseTags() (string, error) {
+	return s.GetClientReverseTagsByNode(nil)
+}
+
+// GetClientReverseTagsByNode returns reverse tags scoped to a specific node.
+func (s *InboundService) GetClientReverseTagsByNode(nodeID *int) (string, error) {
 	db := database.GetDB()
 	var inbounds []model.Inbound
-	err := db.Model(model.Inbound{}).Select("settings").Where("protocol = ?", "vless").Find(&inbounds).Error
+	query := db.Model(model.Inbound{}).Select("settings").Where("protocol = ?", "vless")
+	if nodeID == nil {
+		query = query.Where("node_id IS NULL")
+	} else {
+		query = query.Where("node_id = ?", *nodeID)
+	}
+	err := query.Find(&inbounds).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "[]", err
 	}

@@ -15,6 +15,7 @@ import {
   InfoCircleOutlined,
   MoreOutlined,
   PlusOutlined,
+  ReloadOutlined,
   RightOutlined,
   SafetyCertificateOutlined,
   TeamOutlined,
@@ -25,6 +26,7 @@ import NodeHistoryPanel from './NodeHistoryPanel';
 import type { NodeRecord } from '@/api/queries/useNodesQuery';
 import { isPanelUpdateAvailable } from '@/lib/panel-version';
 import { activateOnKey } from '@/utils/a11y';
+import { HttpUtil } from '@/utils';
 import './NodeList.css';
 
 interface NodeListProps {
@@ -41,6 +43,7 @@ interface NodeListProps {
   onProbe: (node: NodeRecord) => void;
   onToggleEnable: (node: NodeRecord, next: boolean) => void;
   onUpdateNode: (node: NodeRecord) => void;
+  onRestartNode?: (node: NodeRecord) => void;
   onUpdateSelected: () => void;
 }
 
@@ -177,6 +180,7 @@ export default function NodeList({
   onProbe,
   onToggleEnable,
   onUpdateNode,
+  onRestartNode,
   onUpdateSelected,
 }: NodeListProps) {
   const { t } = useTranslation();
@@ -239,6 +243,33 @@ export default function NodeList({
     });
   }
 
+  const handleOpenNode = async (record: NodeRecord, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    const defaultUrl = `${record.scheme}://${record.address}:${record.port}${record.basePath || '/'}`;
+    if (record.transitive || !record.hasApiToken || !record.id) {
+      window.open(defaultUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const newWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    try {
+      const msg = await HttpUtil.get<string>(`/panel/api/nodes/loginUrl/${record.id}`);
+      const targetUrl = msg?.success && msg.obj ? msg.obj : defaultUrl;
+      if (newWindow) {
+        newWindow.location.href = targetUrl;
+      } else {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      if (newWindow) {
+        newWindow.location.href = defaultUrl;
+      } else {
+        window.open(defaultUrl, '_blank', 'noopener,noreferrer');
+      }
+    }
+  };
+
   const columns = useMemo<ColumnsType<NodeRow>>(
     () => [
       {
@@ -277,6 +308,18 @@ export default function NodeList({
                     icon={<CloudDownloadOutlined />}
                     aria-label={t('pages.nodes.updatePanel')}
                     onClick={() => onUpdateNode(record)}
+                  />
+                </Tooltip>
+              )}
+              {onRestartNode && isUpdateEligible(record) && (
+                <Tooltip title={t('pages.settings.restartPanel')}>
+                  <Button
+                    type="text"
+                    size="small"
+                    style={{ fontSize: 16 }}
+                    icon={<ReloadOutlined />}
+                    aria-label={t('pages.settings.restartPanel')}
+                    onClick={() => onRestartNode(record)}
                   />
                 </Tooltip>
               )}
@@ -374,6 +417,7 @@ export default function NodeList({
             target="_blank"
             rel="noopener noreferrer"
             className={showAddress ? 'address-visible' : 'address-hidden'}
+            onClick={(e) => handleOpenNode(record, e)}
           >
             {record.url}
           </a>
@@ -531,6 +575,7 @@ export default function NodeList({
       onEdit,
       onDelete,
       onUpdateNode,
+      onRestartNode,
       nameByGuid,
     ],
   );
@@ -682,6 +727,19 @@ export default function NodeList({
                                     },
                                   ]
                                 : []),
+                              ...(onRestartNode && isUpdateEligible(record)
+                                ? [
+                                    {
+                                      key: 'restart',
+                                      label: (
+                                        <>
+                                          <ReloadOutlined /> {t('pages.settings.restartPanel')}
+                                        </>
+                                      ),
+                                      onClick: () => onRestartNode(record),
+                                    },
+                                  ]
+                                : []),
                               {
                                 key: 'edit',
                                 label: (
@@ -749,6 +807,7 @@ export default function NodeList({
                     target="_blank"
                     rel="noopener noreferrer"
                     className={showAddress ? 'address-visible' : 'address-hidden'}
+                    onClick={(e) => handleOpenNode(statsNode, e)}
                   >
                     {statsNode.url}
                   </a>

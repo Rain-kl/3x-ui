@@ -37,6 +37,7 @@ interface RuleFormModalProps {
   inboundTags: string[];
   outboundTags: string[];
   balancerTags: string[];
+  remarkByTag?: Record<string, string>;
   onClose: () => void;
   onConfirm: (rule: Record<string, unknown>) => void;
 }
@@ -76,6 +77,7 @@ export default function RuleFormModal({
   inboundTags,
   outboundTags,
   balancerTags,
+  remarkByTag: customRemarkByTag,
   onClose,
   onConfirm,
 }: RuleFormModalProps) {
@@ -84,7 +86,11 @@ export default function RuleFormModal({
   const isEdit = rule != null;
 
   const { data: inboundOptions } = useInboundOptions();
-  const remarkByTag = useMemo(() => buildRemarkByTag(inboundOptions || []), [inboundOptions]);
+  const defaultRemarkByTag = useMemo(
+    () => buildRemarkByTag(inboundOptions || []),
+    [inboundOptions],
+  );
+  const remarkByTag = customRemarkByTag || defaultRemarkByTag;
   const {
     data: clientEmails = [],
     isFetching: clientsLoading,

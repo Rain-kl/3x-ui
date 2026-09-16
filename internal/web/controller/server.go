@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -27,6 +28,8 @@ type ServerController struct {
 
 	serverService      service.ServerService
 	settingService     service.SettingService
+	xraySettingService service.XraySettingService
+	xrayService        service.XrayService
 	panelService       panel.PanelService
 	xrayMetricsService service.XrayMetricsService
 }
@@ -64,6 +67,8 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.GET("/getNewVlessEnc", a.getNewVlessEnc)
 	g.GET("/clientIps", a.getClientIps)
 	g.GET("/fail2banStatus", a.getFail2banStatus)
+	g.GET("/outbounds", a.getOutbounds)
+	g.GET("/routing", a.getRouting)
 
 	g.POST("/stopXrayService", a.stopXrayService)
 	g.POST("/restartXrayService", a.restartXrayService)
@@ -82,6 +87,8 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.POST("/scanRealityTarget", a.scanRealityTarget)
 	g.POST("/scanRealityTargets", a.scanRealityTargets)
 	g.POST("/clientIps", a.setClientIps)
+	g.POST("/outbounds", a.setOutbounds)
+	g.POST("/routing", a.setRouting)
 }
 
 // startTask registers the @2s ticker that refreshes server status, samples
@@ -205,6 +212,11 @@ func (a *ServerController) getPanelUpdateInfo(c *gin.Context) {
 // installXray installs or updates Xray to the specified version.
 func (a *ServerController) installXray(c *gin.Context) {
 	version := c.Param("version")
+	if lockStr := c.PostForm("lock"); lockStr != "" {
+		if lockVal, err := strconv.ParseBool(lockStr); err == nil {
+			_ = a.settingService.SetXrayVersionLock(lockVal)
+		}
+	}
 	err := a.serverService.UpdateXray(version)
 	jsonMsg(c, I18nWeb(c, "pages.index.xraySwitchVersionPopover"), err)
 }
@@ -542,4 +554,106 @@ func (a *ServerController) setClientIps(c *gin.Context) {
 	}
 	err := (&service.InboundService{}).MergeInboundClientIps(ips)
 	jsonMsg(c, "Client IPs merged", err)
+}
+
+// getOutbounds returns proxy outbounds extracted from the current Xray template config.
+func (a *ServerController) getOutbounds(c *gin.Context) {
+	template, err := a.settingService.GetXrayConfigTemplate()
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+	outbounds, err := service.GetProxyOutboundsFromTemplate(template)
+	jsonObj(c, outbounds, err)
+}
+
+// setOutbounds replaces proxy outbounds in the template config and restarts Xray if running.
+func (a *ServerController) setOutbounds(c *gin.Context) {
+	var proxyOutbounds []map[string]any
+	if formVal := c.PostForm("outbounds"); formVal != "" {
+		if err := json.Unmarshal([]byte(formVal), &proxyOutbounds); err != nil {
+			jsonMsg(c, "invalid outbounds", err)
+			return
+		}
+	} else if err := c.ShouldBindJSON(&proxyOutbounds); err != nil {
+		jsonMsg(c, "invalid outbounds", err)
+		return
+	}
+
+	template, err := a.settingService.GetXrayConfigTemplate()
+	if err != nil {
+		jsonMsg(c, "failed to get xray template", err)
+		return
+	}
+
+	updated, changed, err := service.ReplaceProxyOutboundsInTemplate(template, proxyOutbounds)
+	if err != nil {
+		jsonMsg(c, "failed to replace outbounds", err)
+		return
+	}
+
+	if changed {
+		if err := a.xraySettingService.SaveXraySetting(updated); err != nil {
+			jsonMsg(c, "failed to save xray template", err)
+			return
+		}
+		if a.xrayService.IsXrayRunning() {
+			if err := a.serverService.RestartXrayService(); err != nil {
+				logger.Warning("restart xray after outbounds sync failed:", err)
+			}
+		}
+	}
+
+	jsonMsg(c, "success", nil)
+}
+
+// getRouting returns routing rules extracted from the current Xray template config.
+func (a *ServerController) getRouting(c *gin.Context) {
+	template, err := a.settingService.GetXrayConfigTemplate()
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+	rules, err := service.GetRoutingRulesFromTemplate(template)
+	jsonObj(c, rules, err)
+}
+
+// setRouting replaces routing rules in the template config and restarts Xray if running.
+func (a *ServerController) setRouting(c *gin.Context) {
+	var rules []map[string]any
+	if formVal := c.PostForm("rules"); formVal != "" {
+		if err := json.Unmarshal([]byte(formVal), &rules); err != nil {
+			jsonMsg(c, "invalid routing rules", err)
+			return
+		}
+	} else if err := c.ShouldBindJSON(&rules); err != nil {
+		jsonMsg(c, "invalid routing rules", err)
+		return
+	}
+
+	template, err := a.settingService.GetXrayConfigTemplate()
+	if err != nil {
+		jsonMsg(c, "failed to get xray template", err)
+		return
+	}
+
+	updated, changed, err := service.ReplaceRoutingRulesInTemplate(template, rules)
+	if err != nil {
+		jsonMsg(c, "failed to replace routing rules", err)
+		return
+	}
+
+	if changed {
+		if err := a.xraySettingService.SaveXraySetting(updated); err != nil {
+			jsonMsg(c, "failed to save xray template", err)
+			return
+		}
+		if a.xrayService.IsXrayRunning() {
+			if err := a.serverService.RestartXrayService(); err != nil {
+				logger.Warning("restart xray after routing sync failed:", err)
+			}
+		}
+	}
+
+	jsonMsg(c, "success", nil)
 }

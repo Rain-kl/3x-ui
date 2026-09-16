@@ -89,6 +89,7 @@ export function useNodeMutations() {
     remove: (id: number) => removeMut.mutateAsync(id),
     setEnable: (id: number, enable: boolean) => setEnableMut.mutateAsync({ id, enable }),
     probe: (id: number) => probeMut.mutateAsync(id),
+    restartNode: (id: number) => HttpUtil.post(`/panel/api/nodes/restart/${id}`),
     updatePanels: (ids: number[], dev: boolean): Promise<Msg<NodeUpdateResult[]>> =>
       updatePanelsMut.mutateAsync({ ids, dev }),
     testConnection: async (payload: Partial<NodeRecord>): Promise<Msg<ProbeResult>> => {

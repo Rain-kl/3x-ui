@@ -89,7 +89,7 @@ func TestAnalystContextNamesRealPaths(t *testing.T) {
 	// REVIEW.md briefs the review job the way issue-analyst-context.md briefs
 	// the analyst, so both get their paths pinned.
 	// internal/web/dist and frontend/node_modules are build output: absent from a
-	// fresh clone, created by `make dist-stub` and `npm ci`.
+	// fresh clone, created by `make dist-stub` and `pnpm install`.
 	generated := map[string]bool{
 		"internal/web/dist/":      true,
 		"frontend/node_modules":   true,

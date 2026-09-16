@@ -20,7 +20,7 @@ dist-stub:
 
 .PHONY: gen
 gen: ## Regenerate Zod schemas + OpenAPI from Go sources
-	cd $(FRONTEND) && npm run gen
+	cd $(FRONTEND) && pnpm run gen
 
 .PHONY: gen-check
 gen-check: gen ## Fail if generated files are stale
@@ -32,18 +32,18 @@ lint-go: dist-stub ## golangci-lint on Go sources
 
 .PHONY: lint-fe
 lint-fe: ## oxlint on frontend sources
-	cd $(FRONTEND) && npm run lint
+	cd $(FRONTEND) && pnpm run lint
 
 .PHONY: lint
 lint: lint-go lint-fe ## All linters
 
 .PHONY: format-check
 format-check: ## oxfmt in check mode on frontend sources
-	cd $(FRONTEND) && npm run format:check
+	cd $(FRONTEND) && pnpm run format:check
 
 .PHONY: typecheck
 typecheck: ## tsc --noEmit
-	cd $(FRONTEND) && npm run typecheck
+	cd $(FRONTEND) && pnpm run typecheck
 
 .PHONY: msw-worker-check
 msw-worker-check: ## Verify the tracked worker matches the installed MSW runtime
@@ -60,7 +60,7 @@ race: dist-stub ## Go tests with the race detector (needs a C compiler)
 
 .PHONY: test-fe
 test-fe: ## Frontend tests (vitest)
-	cd $(FRONTEND) && npm test
+	cd $(FRONTEND) && pnpm test
 
 .PHONY: test
 test: test-go test-fe ## All tests
@@ -71,7 +71,7 @@ vulncheck: dist-stub ## govulncheck
 
 .PHONY: build-fe
 build-fe: ## Build the Vite bundles into internal/web/dist
-	cd $(FRONTEND) && npm run build
+	cd $(FRONTEND) && pnpm run build
 
 .PHONY: build
 build: build-fe ## Build the frontend then the Go binary
@@ -79,7 +79,7 @@ build: build-fe ## Build the frontend then the Go binary
 
 .PHONY: build-storybook
 build-storybook: ## Build the static Storybook (compile-checks all stories)
-	cd $(FRONTEND) && npm run build-storybook
+	cd $(FRONTEND) && pnpm run build-storybook
 
 # The PR gate. Matches ci.yml: codegen freshness, both linters, the formatter,
 # typecheck, both test suites, a full build, and the Storybook compile-check.

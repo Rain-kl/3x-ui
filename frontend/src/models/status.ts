@@ -59,6 +59,7 @@ export interface XrayInfo {
   errorMsg: string;
   version: string;
   color: string;
+  versionLock?: boolean;
 }
 
 export interface AmneziaWGInfo {

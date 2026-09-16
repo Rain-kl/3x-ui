@@ -33,6 +33,7 @@ interface RuleCardListProps {
   moveDown: (idx: number) => void;
   confirmDelete: (idx: number) => void;
   toggleRule: (idx: number, enabled: boolean) => void;
+  remarkByTag?: Record<string, string>;
 }
 
 export default function RuleCardList({
@@ -45,10 +46,15 @@ export default function RuleCardList({
   moveDown,
   confirmDelete,
   toggleRule,
+  remarkByTag: customRemarkByTag,
 }: RuleCardListProps) {
   const { t } = useTranslation();
   const { data: inboundOptions } = useInboundOptions();
-  const remarkByTag = useMemo(() => buildRemarkByTag(inboundOptions || []), [inboundOptions]);
+  const defaultRemarkByTag = useMemo(
+    () => buildRemarkByTag(inboundOptions || []),
+    [inboundOptions],
+  );
+  const remarkByTag = customRemarkByTag || defaultRemarkByTag;
   return (
     <div className="rule-list">
       {rows.length === 0 ? (

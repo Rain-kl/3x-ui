@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
@@ -29,6 +32,7 @@ func NewNodeController(g *gin.RouterGroup) *NodeController {
 func (a *NodeController) initRouter(g *gin.RouterGroup) {
 	g.GET("/list", a.list)
 	g.GET("/get/:id", a.get)
+	g.GET("/loginUrl/:id", a.loginUrl)
 	g.GET("/webCert/:id", a.webCert)
 
 	g.POST("/add", a.add)
@@ -40,6 +44,7 @@ func (a *NodeController) initRouter(g *gin.RouterGroup) {
 	g.POST("/certFingerprint", a.certFingerprint)
 	g.POST("/inbounds", a.inbounds)
 	g.POST("/probe/:id", a.probe)
+	g.POST("/restart/:id", a.restart)
 	g.POST("/updatePanel", a.updatePanel)
 	g.GET("/history/:id/:metric/:bucket", a.history)
 	g.POST("/mtls/ca", a.mtlsCa)
@@ -108,6 +113,33 @@ func (a *NodeController) get(c *gin.Context) {
 		return
 	}
 	jsonObj(c, n, nil)
+}
+
+func (a *NodeController) loginUrl(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return
+	}
+	n, err := a.nodeService.GetById(id)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.nodes.toasts.obtain"), err)
+		return
+	}
+	basePath := n.BasePath
+	if !strings.HasPrefix(basePath, "/") {
+		basePath = "/" + basePath
+	}
+	hostPort := net.JoinHostPort(n.Address, strconv.Itoa(n.Port))
+	target := fmt.Sprintf("%s://%s%s", n.Scheme, hostPort, basePath)
+	if n.ApiToken != "" {
+		separator := "?"
+		if strings.Contains(target, "?") {
+			separator = "&"
+		}
+		target += separator + "apiToken=" + url.QueryEscape(n.ApiToken)
+	}
+	jsonObj(c, target, nil)
 }
 
 // webCert returns the node's own web TLS certificate/key file paths so the
@@ -330,6 +362,16 @@ func (a *NodeController) probe(c *gin.Context) {
 		return
 	}
 	jsonObj(c, patch.ToUI(probeErr == nil), nil)
+}
+
+func (a *NodeController) restart(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "get"), err)
+		return
+	}
+	err = a.nodeService.RestartNode(id)
+	jsonMsg(c, I18nWeb(c, "pages.settings.restartPanelSuccess"), err)
 }
 
 func (a *NodeController) updatePanel(c *gin.Context) {

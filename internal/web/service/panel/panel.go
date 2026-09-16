@@ -40,7 +40,7 @@ type PanelUpdateInfo struct {
 }
 
 const (
-	panelUpdaterURL      = "https://raw.githubusercontent.com/MHSanaei/3x-ui/main/update.sh"
+	panelUpdaterURL      = "https://raw.githubusercontent.com/Rain-kl/3x-ui/main/update.sh"
 	maxPanelUpdaterBytes = 2 << 20
 	// devReleaseTag is the fixed-tag rolling pre-release the CI force-moves to the
 	// newest main commit; the dev update channel installs from it.
@@ -248,6 +248,11 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 	updateScript := fmt.Sprintf("set -e; trap 'rm -f %s' EXIT; %s %s", shellQuote(scriptPath), shellQuote(bash), shellQuote(scriptPath))
 	runIDEnv := "XUI_UPDATE_RUN_ID=" + strconv.FormatInt(runID, 10)
 	statusFileEnv := "XUI_UPDATE_STATUS_FILE=" + statusFile
+	lockXray := "false"
+	if locked, err := (&service.SettingService{}).GetXrayVersionLock(); err == nil && locked {
+		lockXray = "true"
+	}
+	lockEnv := "XUI_LOCK_XRAY=" + lockXray
 	proxyEnv := updateProxyEnvVars()
 
 	if systemdRun, err := exec.LookPath("systemd-run"); err == nil {
@@ -259,6 +264,7 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 			"--setenv", "XUI_UPDATE_TAG=" + updateTag,
 			"--setenv", runIDEnv,
 			"--setenv", statusFileEnv,
+			"--setenv", lockEnv,
 		}
 		for _, kv := range proxyEnv {
 			args = append(args, "--setenv", kv)
@@ -288,6 +294,7 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 		"XUI_UPDATE_TAG="+updateTag,
 		runIDEnv,
 		statusFileEnv,
+		lockEnv,
 	)
 	setDetachedProcess(cmd)
 	if err := cmd.Start(); err != nil {
@@ -430,9 +437,9 @@ func fetchLatestPanelVersion() (string, error) {
 // fetchPanelRelease fetches a release from GitHub. An empty tag resolves the
 // latest stable release; a non-empty tag (e.g. dev-latest) resolves that tag.
 func fetchPanelRelease(tag string) (*service.Release, error) {
-	url := "https://api.github.com/repos/MHSanaei/3x-ui/releases/latest"
+	url := "https://api.github.com/repos/Rain-kl/3x-ui/releases/latest"
 	if tag != "" {
-		url = "https://api.github.com/repos/MHSanaei/3x-ui/releases/tags/" + tag
+		url = "https://api.github.com/repos/Rain-kl/3x-ui/releases/tags/" + tag
 	}
 	client := (&service.SettingService{}).NewProxiedHTTPClient(10 * time.Second)
 	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Dropdown, Modal, Space, Table, Tabs, message } from 'antd';
+import { Button, Dropdown, Modal, Select, Space, Table, Tabs, message } from 'antd';
 import {
   AimOutlined,
   ControlOutlined,
@@ -8,6 +8,7 @@ import {
   ImportOutlined,
   MoreOutlined,
   PlusOutlined,
+  SaveOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 
@@ -21,10 +22,12 @@ import RuleFormModal from './RuleFormModal';
 import type { RoutingRule } from './RuleFormModal';
 import RuleCardList from './RuleCardList';
 import { useRoutingColumns } from './useRoutingColumns';
-import { arrJoin, originalRuleIndex } from './helpers';
+import { arrJoin, buildRemarkByTag, originalRuleIndex } from './helpers';
 import type { RuleRow } from './types';
 import type { XraySettingsValue, SetTemplate } from '@/hooks/useXraySetting';
-import type { RuleObject } from '@/schemas/routing';
+import { useNodesQuery } from '@/api/queries/useNodesQuery';
+import { useInboundOptions } from '@/api/queries/useInboundOptions';
+import { HttpUtil } from '@/utils';
 import './RoutingTab.css';
 
 interface RoutingTabProps {
@@ -39,7 +42,6 @@ interface RoutingTabProps {
 export default function RoutingTab({
   templateSettings,
   setTemplateSettings,
-  inboundTags,
   clientReverseTags,
   subscriptionOutboundTags,
   isMobile,
@@ -51,6 +53,54 @@ export default function RoutingTab({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<number>(0);
+  const [remoteRules, setRemoteRules] = useState<RoutingRule[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const [remoteSaving, setRemoteSaving] = useState(false);
+
+  const { nodes: nodesList = [] } = useNodesQuery();
+  const { data: allInboundOptions = [] } = useInboundOptions();
+
+  const nodeInboundOptions = useMemo(() => {
+    return allInboundOptions.filter((ib) =>
+      selectedNodeId === 0 ? ib.nodeId == null : ib.nodeId === selectedNodeId,
+    );
+  }, [allInboundOptions, selectedNodeId]);
+
+  const remarkByTag = useMemo(() => buildRemarkByTag(nodeInboundOptions), [nodeInboundOptions]);
+
+  const fetchRemoteRules = useCallback(
+    async (nodeId: number) => {
+      if (nodeId <= 0) return;
+      setRemoteLoading(true);
+      try {
+        const resp = await HttpUtil.get<{
+          xraySetting?: { routing?: { rules?: RoutingRule[] } };
+        }>(`/panel/api/xray/?nodeId=${nodeId}`, undefined, { silent: true });
+        if (resp?.success && resp.obj?.xraySetting?.routing?.rules) {
+          setRemoteRules(resp.obj.xraySetting.routing.rules);
+        } else {
+          setRemoteRules([]);
+        }
+      } catch {
+        message.error(t('somethingWentWrong'));
+      } finally {
+        setRemoteLoading(false);
+      }
+    },
+    [t],
+  );
+
+  const handleNodeChange = useCallback(
+    (val: number) => {
+      setSelectedNodeId(val);
+      if (val > 0) {
+        void fetchRemoteRules(val);
+      }
+    },
+    [fetchRemoteRules],
+  );
+
   const dragRef = useRef<{
     from: number | null;
     to: number | null;
@@ -63,16 +113,19 @@ export default function RoutingTab({
     moved: false,
   });
 
-  const rules = useMemo(
-    () => (templateSettings?.routing?.rules || []) as RoutingRule[],
-    [templateSettings?.routing?.rules],
-  );
-  const rulesRef = useRef(rules);
+  const activeRules = useMemo(() => {
+    if (selectedNodeId > 0) {
+      return remoteRules;
+    }
+    return (templateSettings?.routing?.rules || []) as RoutingRule[];
+  }, [selectedNodeId, remoteRules, templateSettings?.routing?.rules]);
+
+  const rulesRef = useRef(activeRules);
   const rowsRef = useRef<RuleRow[]>([]);
 
   const rows: RuleRow[] = useMemo(
     () =>
-      rules
+      activeRules
         .map((rule, idx) => {
           const r: RuleRow = { key: idx };
           r.enabled = rule.enabled !== false;
@@ -95,28 +148,61 @@ export default function RoutingTab({
           return r;
         })
         .filter((r) => {
-          const inboundTags = (rules[r.key]?.inboundTag || []) as string[];
+          const inboundTags = (activeRules[r.key]?.inboundTag || []) as string[];
           return !inboundTags.some(isBalancerLoopbackTag);
         }),
-    [rules],
+    [activeRules],
   );
 
   useEffect(() => {
-    rulesRef.current = rules;
+    rulesRef.current = activeRules;
     rowsRef.current = rows;
   });
 
   const mutate = useCallback(
-    (mutator: (next: XraySettingsValue) => void) => {
-      setTemplateSettings((prev) => {
-        if (!prev) return prev;
-        const clone = JSON.parse(JSON.stringify(prev)) as XraySettingsValue;
-        mutator(clone);
-        return clone;
-      });
+    (mutator: (nextRules: RoutingRule[]) => void) => {
+      if (selectedNodeId > 0) {
+        setRemoteRules((prev) => {
+          const clone = JSON.parse(JSON.stringify(prev)) as RoutingRule[];
+          mutator(clone);
+          return clone;
+        });
+      } else {
+        setTemplateSettings((prev) => {
+          if (!prev) return prev;
+          const clone = JSON.parse(JSON.stringify(prev)) as XraySettingsValue;
+          if (!clone.routing) clone.routing = { rules: [] };
+          if (!Array.isArray(clone.routing.rules)) clone.routing.rules = [];
+          mutator(clone.routing.rules as RoutingRule[]);
+          return clone;
+        });
+      }
     },
-    [setTemplateSettings],
+    [selectedNodeId, setTemplateSettings],
   );
+
+  const saveRemoteRules = useCallback(async () => {
+    if (selectedNodeId <= 0) return;
+    setRemoteSaving(true);
+    try {
+      const payload = {
+        nodeId: selectedNodeId,
+        xraySetting: JSON.stringify({
+          routing: {
+            rules: remoteRules,
+          },
+        }),
+      };
+      const resp = await HttpUtil.post('/panel/api/xray/update', payload);
+      if (resp?.success) {
+        message.success(t('pages.settings.toasts.modifySettings'));
+      }
+    } catch {
+      message.error(t('somethingWentWrong'));
+    } finally {
+      setRemoteSaving(false);
+    }
+  }, [selectedNodeId, remoteRules, t]);
 
   const inboundTagOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -126,22 +212,25 @@ export default function RoutingTab({
       seen.add(tag);
       out.push(tag);
     };
-    for (const ib of (templateSettings?.inbounds as Array<{ tag?: string }>) || []) push(ib?.tag);
-    for (const tag of inboundTags || []) push(tag);
-    for (const ob of templateSettings?.outbounds || []) {
-      const obx = ob as {
-        reverse?: { tag?: string };
-        settings?: { reverse?: { tag?: string }; inboundTag?: string };
-      };
-      push(obx?.reverse?.tag || obx?.settings?.reverse?.tag || obx?.settings?.inboundTag);
+    for (const ib of nodeInboundOptions) {
+      if (ib.tag) push(ib.tag);
     }
-    push((templateSettings?.dns as { tag?: string } | undefined)?.tag);
-    for (const s of (templateSettings?.dns as { servers?: Array<{ tag?: string }> } | undefined)
-      ?.servers || []) {
-      if (typeof s === 'object' && s?.tag) push(s.tag);
+    if (selectedNodeId === 0) {
+      for (const ob of templateSettings?.outbounds || []) {
+        const obx = ob as {
+          reverse?: { tag?: string };
+          settings?: { reverse?: { tag?: string }; inboundTag?: string };
+        };
+        push(obx?.reverse?.tag || obx?.settings?.reverse?.tag || obx?.settings?.inboundTag);
+      }
+      push((templateSettings?.dns as { tag?: string } | undefined)?.tag);
+      for (const s of (templateSettings?.dns as { servers?: Array<{ tag?: string }> } | undefined)
+        ?.servers || []) {
+        if (typeof s === 'object' && s?.tag) push(s.tag);
+      }
     }
     return out;
-  }, [templateSettings, inboundTags]);
+  }, [nodeInboundOptions, selectedNodeId, templateSettings]);
 
   const outboundTagOptions = useMemo(() => {
     const out = new Set<string>(['']);
@@ -170,7 +259,7 @@ export default function RoutingTab({
   const [exportContent, setExportContent] = useState('');
 
   function exportRules() {
-    setExportContent(JSON.stringify(rules, null, 2));
+    setExportContent(JSON.stringify(activeRules, null, 2));
     setExportOpen(true);
   }
 
@@ -194,10 +283,8 @@ export default function RoutingTab({
       message.error(t('pages.xray.importInvalidJson'));
       return;
     }
-    mutate((tt) => {
-      if (!tt.routing) tt.routing = { rules: [] };
-      if (!Array.isArray(tt.routing.rules)) tt.routing.rules = [];
-      tt.routing.rules.push(...(list as RuleObject[]));
+    mutate((listRules) => {
+      listRules.push(...(list as RoutingRule[]));
     });
     setImportOpen(false);
   }
@@ -218,12 +305,10 @@ export default function RoutingTab({
       setRuleModalOpen(false);
       return;
     }
-    mutate((tt) => {
-      if (!tt.routing) tt.routing = { rules: [] };
-      if (!Array.isArray(tt.routing.rules)) tt.routing.rules = [];
-      const typed = rule as unknown as RuleObject;
-      if (editingIndex == null) tt.routing.rules.push(typed);
-      else tt.routing.rules[editingIndex] = typed;
+    mutate((listRules) => {
+      const typed = rule as unknown as RoutingRule;
+      if (editingIndex == null) listRules.push(typed);
+      else listRules[editingIndex] = typed;
     });
     setRuleModalOpen(false);
   }
@@ -236,8 +321,8 @@ export default function RoutingTab({
       okType: 'danger',
       cancelText: t('cancel'),
       onOk: () =>
-        mutate((tt) => {
-          tt.routing?.rules?.splice(target, 1);
+        mutate((listRules) => {
+          listRules.splice(target, 1);
         }),
     });
   }
@@ -246,28 +331,25 @@ export default function RoutingTab({
     if (idx <= 0) return;
     const target = originalRuleIndex(rowsRef.current, idx);
     const prev = originalRuleIndex(rowsRef.current, idx - 1);
-    mutate((tt) => {
-      const list = tt.routing?.rules;
-      if (!list || !list[target] || !list[prev]) return;
-      [list[prev], list[target]] = [list[target], list[prev]];
+    mutate((listRules) => {
+      if (!listRules[target] || !listRules[prev]) return;
+      [listRules[prev], listRules[target]] = [listRules[target], listRules[prev]];
     });
   }
   function moveDown(idx: number) {
     if (idx >= rowsRef.current.length - 1) return;
     const target = originalRuleIndex(rowsRef.current, idx);
     const next = originalRuleIndex(rowsRef.current, idx + 1);
-    mutate((tt) => {
-      const list = tt.routing?.rules;
-      if (!list || !list[target] || !list[next]) return;
-      [list[next], list[target]] = [list[target], list[next]];
+    mutate((listRules) => {
+      if (!listRules[target] || !listRules[next]) return;
+      [listRules[next], listRules[target]] = [listRules[target], listRules[next]];
     });
   }
   function toggleRule(idx: number, enabled: boolean) {
     const target = originalRuleIndex(rowsRef.current, idx);
-    mutate((tt) => {
-      const list = tt.routing?.rules;
-      if (!list || !list[target]) return;
-      list[target].enabled = enabled;
+    mutate((listRules) => {
+      if (!listRules[target]) return;
+      listRules[target].enabled = enabled;
     });
   }
 
@@ -310,11 +392,9 @@ export default function RoutingTab({
       if (!moved || from == null || to == null || from === to) return;
       const fromOrig = originalRuleIndex(rowsRef.current, from);
       const toOrig = originalRuleIndex(rowsRef.current, to);
-      mutate((tt) => {
-        const list = tt.routing?.rules;
-        if (!list) return;
-        const [movedItem] = list.splice(fromOrig, 1);
-        list.splice(toOrig, 0, movedItem);
+      mutate((listRules) => {
+        const [movedItem] = listRules.splice(fromOrig, 1);
+        listRules.splice(toOrig, 0, movedItem);
       });
     };
 
@@ -337,12 +417,24 @@ export default function RoutingTab({
     moveDown,
     confirmDelete,
     toggleRule,
+    remarkByTag,
   });
 
   const tableScrollX = desktopColumns.reduce((sum, c) => {
     const col = c as { width?: number; hidden?: boolean };
     return col.hidden ? sum : sum + (typeof col.width === 'number' ? col.width : 0);
   }, 0);
+
+  const nodeOptions = useMemo(() => {
+    const items = [{ label: t('pages.inbounds.localPanel'), value: 0 }];
+    for (const node of nodesList) {
+      items.push({
+        label: `${node.name || t('pages.inbounds.node')} (${node.address})`,
+        value: node.id,
+      });
+    }
+    return items;
+  }, [nodesList, t]);
 
   return (
     <>
@@ -366,9 +458,25 @@ export default function RoutingTab({
             children: (
               <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                 <Space wrap>
+                  <Select
+                    style={{ minWidth: 160 }}
+                    value={selectedNodeId}
+                    onChange={handleNodeChange}
+                    options={nodeOptions}
+                  />
                   <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
                     {t('pages.xray.Routings')}
                   </Button>
+                  {selectedNodeId > 0 && (
+                    <Button
+                      type="primary"
+                      icon={<SaveOutlined />}
+                      loading={remoteSaving}
+                      onClick={saveRemoteRules}
+                    >
+                      {t('save')}
+                    </Button>
+                  )}
                   <Dropdown
                     trigger={['click']}
                     menu={{
@@ -383,7 +491,7 @@ export default function RoutingTab({
                           key: 'export',
                           icon: <ExportOutlined />,
                           label: t('pages.xray.exportRules'),
-                          disabled: rules.length === 0,
+                          disabled: activeRules.length === 0,
                           onClick: exportRules,
                         },
                       ],
@@ -404,11 +512,13 @@ export default function RoutingTab({
                     moveDown={moveDown}
                     confirmDelete={confirmDelete}
                     toggleRule={toggleRule}
+                    remarkByTag={remarkByTag}
                   />
                 ) : (
                   <Table
                     columns={desktopColumns}
                     dataSource={rows}
+                    loading={remoteLoading}
                     rowKey={(r) => r.key}
                     pagination={false}
                     scroll={{ x: tableScrollX }}
@@ -444,6 +554,7 @@ export default function RoutingTab({
         inboundTags={inboundTagOptions}
         outboundTags={outboundTagOptions}
         balancerTags={balancerTagOptions}
+        remarkByTag={remarkByTag}
         onClose={() => setRuleModalOpen(false)}
         onConfirm={onRuleConfirm}
       />

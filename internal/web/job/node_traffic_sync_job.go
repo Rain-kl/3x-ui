@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
@@ -24,6 +25,7 @@ const (
 	nodeClientIpSyncInterval      = 10 * time.Second
 	nodeClientIpSyncTimeout       = 6 * time.Second
 	nodeGlobalPushInterval        = 30 * time.Second
+	nodeOutboundSyncInterval      = 30 * time.Second
 	// nodeInboundSpeedWindowMs is the poll window node-inbound speed deltas are
 	// normalized to; it MUST match the dashboard's TRAFFIC_POLL_INTERVAL_S (5s),
 	// the fixed divisor the frontend applies to turn a delta into a rate.
@@ -37,16 +39,20 @@ type inboundSample struct {
 }
 
 type NodeTrafficSyncJob struct {
-	nodeService    service.NodeService
-	inboundService service.InboundService
-	settingService service.SettingService
-	xrayService    service.XrayService
-	running        sync.Mutex
-	structural     atomicBool
-	ipSyncMu       sync.Mutex
-	lastIpSync     int64
-	globalPushMu   sync.Mutex
-	lastGlobalPush int64
+	nodeService        service.NodeService
+	inboundService     service.InboundService
+	settingService     service.SettingService
+	xrayService        service.XrayService
+	xraySettingService service.XraySettingService
+	running            sync.Mutex
+	structural         atomicBool
+	ipSyncMu           sync.Mutex
+	lastIpSync         int64
+	globalPushMu       sync.Mutex
+	lastGlobalPush     int64
+	outboundSyncMu     sync.Mutex
+	lastOutboundSync   int64
+	outboundAdoptMu    sync.Mutex
 	// noGuidIpEndpoint tracks nodes (by id) whose client-IP attribution endpoint
 	// returned 404, so an old-build node is noted once instead of every cycle.
 	noGuidIpEndpoint sync.Map
@@ -111,6 +117,14 @@ func (j *NodeTrafficSyncJob) Run() {
 	}
 	j.ipSyncMu.Unlock()
 
+	doOutboundSync := false
+	j.outboundSyncMu.Lock()
+	if now := time.Now().Unix(); now-j.lastOutboundSync >= int64(nodeOutboundSyncInterval/time.Second) {
+		doOutboundSync = true
+		j.lastOutboundSync = now
+	}
+	j.outboundSyncMu.Unlock()
+
 	sem := make(chan struct{}, nodeTrafficSyncConcurrency)
 	var wg sync.WaitGroup
 	var activeMu sync.Mutex
@@ -125,7 +139,7 @@ func (j *NodeTrafficSyncJob) Run() {
 		common.GoRecover("node-traffic-sync:"+n.Name, func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			if emails := j.syncOne(mgr, n, doIpSync); len(emails) > 0 {
+			if emails := j.syncOne(mgr, n, doIpSync, doOutboundSync); len(emails) > 0 {
 				activeMu.Lock()
 				activeEmails = append(activeEmails, emails...)
 				activeMu.Unlock()
@@ -359,7 +373,7 @@ func (j *NodeTrafficSyncJob) maybePushGlobals(mgr *runtime.Manager, nodes []*mod
 // syncOne pulls one node's traffic snapshot and merges it. It returns the
 // emails online on that node this tick, feeding the delta broadcast above the
 // snapshot threshold; nil on any failure path.
-func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSync bool) []string {
+func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSync bool, doOutboundSync bool) []string {
 	rt, err := mgr.RemoteFor(n)
 	if err != nil {
 		logger.Warningf("node traffic sync: remote lookup failed for %s: %v", n.Name, err)
@@ -370,6 +384,15 @@ func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSy
 	if n.ConfigDirty {
 		reconcileCtx, reconcileCancel := context.WithTimeout(context.Background(), nodeReconcileTimeout)
 		reconcileErr := j.inboundService.ReconcileNode(reconcileCtx, rt, n)
+		if reconcileErr == nil {
+			if masterTemplate, tErr := j.settingService.GetXrayConfigTemplate(); tErr == nil {
+				if masterProxyOutbounds, oErr := service.GetProxyOutboundsFromTemplate(masterTemplate); oErr == nil {
+					if pushErr := rt.PushProxyOutbounds(reconcileCtx, masterProxyOutbounds); pushErr != nil {
+						reconcileErr = pushErr
+					}
+				}
+			}
+		}
 		reconcileCancel()
 		if reconcileErr != nil {
 			// The dirty flag stays set so reconcile retries next tick, but traffic
@@ -395,6 +418,34 @@ func (j *NodeTrafficSyncJob) syncOne(mgr *runtime.Manager, n *model.Node, doIpSy
 		logger.Warningf("node traffic sync: fetch from %s failed: %v", n.Name, err)
 		j.inboundService.ClearNodeOnlineClients(n.Id)
 		return nil
+	}
+
+	if doOutboundSync && (!n.ConfigDirty || justPushed) {
+		if workerProxyObs, err := rt.FetchProxyOutbounds(ctx); err == nil && len(workerProxyObs) > 0 {
+			j.outboundAdoptMu.Lock()
+			masterTemplate, _ := j.settingService.GetXrayConfigTemplate()
+			updatedTemplate, addedCount, err := service.MergeProxyOutboundsIntoTemplate(masterTemplate, workerProxyObs)
+			if err == nil && addedCount > 0 {
+				if saveErr := j.xraySettingService.SaveXraySetting(updatedTemplate); saveErr != nil {
+					logger.Warningf("node traffic sync: save adopted outbounds from %s failed: %v", n.Name, saveErr)
+				} else {
+					_ = j.nodeService.MarkOtherNodesDirtyTx(nil, n.Id)
+					if !n.ConfigDirty || justPushed {
+						_ = database.GetDB().Model(&model.Node{}).Where("id = ?", n.Id).Updates(map[string]any{
+							"config_dirty":    false,
+							"config_dirty_at": 0,
+						}).Error
+					}
+					if j.xrayService.IsXrayRunning() {
+						if err := j.xrayService.RestartXray(false); err != nil {
+							logger.Warning("node traffic sync: restart xray after outbound adoption failed:", err)
+							j.xrayService.SetToNeedRestart()
+						}
+					}
+				}
+			}
+			j.outboundAdoptMu.Unlock()
+		}
 	}
 	snap.ManagedAliases = rt.AdoptedInboundAliases()
 	syncCanAdopt := syncCanAdoptInbounds(n, snap.ManagedAliases)

@@ -31,6 +31,9 @@ _openapi:
       title: Fetch a single node by ID.
       url: '#fetch-a-single-node-by-id'
     - depth: 2
+      title: Fetch the auto-login URL containing apiToken for a node.
+      url: '#fetch-the-auto-login-url-containing-apitoken-for-a-node'
+    - depth: 2
       title: Fetch a node's own web TLS certificate/key file paths (proxied to the
         node). Used by the inbound form's "Set Cert from Panel" so a
         node-assigned inbound gets paths that exist on the node, not the central
@@ -100,6 +103,8 @@ _openapi:
         id: validate-the-stored-master-mtls-client-credential-and-invalidate-cached-transports-each-transport-closes-its-old-idle-pool-and-rebuilds-with-the-rotated-certificate-before-its-next-request
       - content: Fetch a single node by ID.
         id: fetch-a-single-node-by-id
+      - content: Fetch the auto-login URL containing apiToken for a node.
+        id: fetch-the-auto-login-url-containing-apitoken-for-a-node
       - content: Fetch a node's own web TLS certificate/key file paths (proxied to the
           node). Used by the inbound form's "Set Cert from Panel" so a
           node-assigned inbound gets paths that exist on the node, not the
@@ -151,7 +156,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/nodes/list","method":"get"},{"path":"/panel/api/nodes/mtls/ca","method":"post"},{"path":"/panel/api/nodes/mtls/trustCA","method":"post"},{"path":"/panel/api/nodes/mtls/reloadClient","method":"post"},{"path":"/panel/api/nodes/get/{id}","method":"get"},{"path":"/panel/api/nodes/webCert/{id}","method":"get"},{"path":"/panel/api/nodes/add","method":"post"},{"path":"/panel/api/nodes/update/{id}","method":"post"},{"path":"/panel/api/nodes/del/{id}","method":"post"},{"path":"/panel/api/nodes/setEnable/{id}","method":"post"},{"path":"/panel/api/nodes/test","method":"post"},{"path":"/panel/api/nodes/certFingerprint","method":"post"},{"path":"/panel/api/nodes/inbounds","method":"post"},{"path":"/panel/api/nodes/probe/{id}","method":"post"},{"path":"/panel/api/nodes/updatePanel","method":"post"},{"path":"/panel/api/nodes/history/{id}/{metric}/{bucket}","method":"get"}]} showTitle />
+      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/nodes/list","method":"get"},{"path":"/panel/api/nodes/mtls/ca","method":"post"},{"path":"/panel/api/nodes/mtls/trustCA","method":"post"},{"path":"/panel/api/nodes/mtls/reloadClient","method":"post"},{"path":"/panel/api/nodes/get/{id}","method":"get"},{"path":"/panel/api/nodes/loginUrl/{id}","method":"get"},{"path":"/panel/api/nodes/webCert/{id}","method":"get"},{"path":"/panel/api/nodes/add","method":"post"},{"path":"/panel/api/nodes/update/{id}","method":"post"},{"path":"/panel/api/nodes/del/{id}","method":"post"},{"path":"/panel/api/nodes/setEnable/{id}","method":"post"},{"path":"/panel/api/nodes/test","method":"post"},{"path":"/panel/api/nodes/certFingerprint","method":"post"},{"path":"/panel/api/nodes/inbounds","method":"post"},{"path":"/panel/api/nodes/probe/{id}","method":"post"},{"path":"/panel/api/nodes/updatePanel","method":"post"},{"path":"/panel/api/nodes/history/{id}/{metric}/{bucket}","method":"get"}]} showTitle />
     </>
   );
 }

@@ -141,6 +141,18 @@ func (m *Manager) RemoteFor(node *model.Node) (*Remote, error) {
 	return rt, nil
 }
 
+// RemoteByID returns a Remote instance for the specified node ID.
+func (m *Manager) RemoteByID(nodeID int) (*Remote, error) {
+	n, err := loadNode(nodeID)
+	if err != nil {
+		return nil, err
+	}
+	if !n.Enable {
+		return nil, errors.New("node " + n.Name + " is disabled")
+	}
+	return m.RemoteFor(n)
+}
+
 func cloneRemoteNode(n *model.Node) *model.Node {
 	if n == nil {
 		return nil

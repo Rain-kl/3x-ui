@@ -91,9 +91,10 @@ type Status struct {
 		Write uint64 `json:"write"`
 	} `json:"diskTraffic"`
 	Xray struct {
-		State    ProcessState `json:"state"`
-		ErrorMsg string       `json:"errorMsg"`
-		Version  string       `json:"version"`
+		State       ProcessState `json:"state"`
+		ErrorMsg    string       `json:"errorMsg"`
+		Version     string       `json:"version"`
+		VersionLock bool         `json:"versionLock"`
 	} `json:"xray"`
 	// AmneziaWG gates the overview's AmneziaWG log view: Configured stays true
 	// while an inbound exists but its embedded interface isn't up yet, which
@@ -640,6 +641,7 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 		status.Xray.ErrorMsg = s.xrayService.GetXrayResult()
 	}
 	status.Xray.Version = s.xrayService.GetXrayVersion()
+	status.Xray.VersionLock, _ = s.settingService.GetXrayVersionLock()
 
 	var amneziawgCount int64
 	if err := database.GetDB().Model(model.Inbound{}).
@@ -1024,13 +1026,15 @@ func parseXrayDigestSHA256(dgst []byte) (string, error) {
 	return "", fmt.Errorf("xray checksum: no SHA2-256 entry in digest")
 }
 
+var xrayVersionRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
+
 func (s *ServerService) UpdateXray(version string) error {
-	versions, err := s.GetXrayVersions()
-	if err != nil {
-		return err
+	version = strings.TrimSpace(version)
+	if !strings.HasPrefix(version, "v") {
+		version = "v" + version
 	}
-	if !slices.Contains(versions, version) {
-		return fmt.Errorf("xray version %q is not in the fetched release list", version)
+	if !xrayVersionRegex.MatchString(version) {
+		return fmt.Errorf("invalid xray version format %q, expected e.g. v26.7.28", version)
 	}
 
 	// 1. Stop xray before doing anything

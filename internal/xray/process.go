@@ -41,6 +41,11 @@ func GetConfigPath() string {
 	return config.GetBinFolderPath() + "/config.json"
 }
 
+// GetLockFilePath returns the path to the Xray version lock marker file.
+func GetLockFilePath() string {
+	return config.GetBinFolderPath() + "/.xray_locked"
+}
+
 // GetGeositePath returns the path to the geosite data file used by Xray.
 func GetGeositePath() string {
 	return config.GetBinFolderPath() + "/geosite.dat"

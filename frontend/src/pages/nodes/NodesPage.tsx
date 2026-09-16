@@ -87,6 +87,7 @@ export default function NodesPage() {
     fetchFingerprint,
     fetchInbounds,
     probe,
+    restartNode,
     updatePanels,
   } = useNodeMutations();
 
@@ -250,6 +251,26 @@ export default function NodesPage() {
     [modal, t, runUpdate],
   );
 
+  const onRestartNode = useCallback(
+    (node: NodeRecord) => {
+      modal.confirm({
+        title: `${t('pages.settings.restartPanel')} - ${node.name}`,
+        content: t('pages.settings.restartPanelDesc'),
+        okText: t('confirm'),
+        cancelText: t('cancel'),
+        onOk: async () => {
+          const msg = await restartNode(node.id);
+          if (msg?.success) {
+            messageApi.success(msg.msg || t('pages.settings.restartPanelSuccess'));
+          } else {
+            messageApi.error(msg?.msg || t('somethingWentWrong'));
+          }
+        },
+      });
+    },
+    [modal, t, restartNode, messageApi],
+  );
+
   const onUpdateSelected = useCallback(() => {
     const eligible = nodes
       .filter((n) => selectedIds.includes(n.id) && n.enable && n.status === 'online')
@@ -360,6 +381,7 @@ export default function NodesPage() {
                       onProbe={onProbe}
                       onToggleEnable={onToggleEnable}
                       onUpdateNode={onUpdateNode}
+                      onRestartNode={onRestartNode}
                       onUpdateSelected={onUpdateSelected}
                     />
                   </Col>

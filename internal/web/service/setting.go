@@ -171,6 +171,7 @@ var defaultValueMap = map[string]string{
 	"externalTrafficInformURI":    "",
 	"restartXrayOnClientDisable":  "true",
 	"xrayOutboundTestUrl":         "https://www.google.com/generate_204",
+	"xrayVersionLock":             "false",
 	"panelOutbound":               "",
 	"devChannelEnable":            "false",
 
@@ -642,6 +643,25 @@ func (s *SettingService) GetTgLang() (string, error) {
 
 func (s *SettingService) GetTwoFactorEnable() (bool, error) {
 	return s.getBool("twoFactorEnable")
+}
+
+func (s *SettingService) GetXrayVersionLock() (bool, error) {
+	return s.getBool("xrayVersionLock")
+}
+
+func (s *SettingService) SetXrayVersionLock(value bool) error {
+	if err := s.setBool("xrayVersionLock", value); err != nil {
+		return err
+	}
+	lockFile := xray.GetLockFilePath()
+	if value {
+		if f, err := os.OpenFile(lockFile, os.O_CREATE|os.O_WRONLY, 0o644); err == nil {
+			_ = f.Close()
+		}
+	} else {
+		_ = os.Remove(lockFile)
+	}
+	return nil
 }
 
 func (s *SettingService) SetTwoFactorEnable(value bool) error {
