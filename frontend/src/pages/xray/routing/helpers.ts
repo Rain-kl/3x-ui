@@ -112,6 +112,33 @@ export function parseRoutingRulesFromXrayConfigObj(obj: unknown): unknown[] | nu
   return Array.isArray(rules) ? rules : null;
 }
 
+/**
+ * Pull outboundTags out of a `/panel/api/xray/` response `obj`.
+ * Missing or malformed values become [] so the picker stays empty rather
+ * than falling back to the local panel's outbounds.
+ */
+export function parseOutboundTagsFromXrayConfigObj(obj: unknown): string[] {
+  let payload: unknown = obj;
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      return [];
+    }
+  }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return [];
+  let tags: unknown = (payload as { outboundTags?: unknown }).outboundTags;
+  if (typeof tags === 'string') {
+    try {
+      tags = JSON.parse(tags);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(tags)) return [];
+  return tags.filter((t): t is string => typeof t === 'string' && t.trim() !== '');
+}
+
 /** The internal api rule (stats traffic) — its enabled state must stay locked on. */
 export function isApiRule(rule: { outboundTag?: string; inboundTag?: string | string[] }): boolean {
   if (rule.outboundTag !== 'api') return false;

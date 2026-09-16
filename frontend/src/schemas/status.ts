@@ -32,6 +32,7 @@ export const XrayInfoSchema = z
     errorMsg: z.string(),
     version: z.string(),
     color: z.string(),
+    versionLock: z.boolean(),
   })
   .partial();
 

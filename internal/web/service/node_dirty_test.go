@@ -501,3 +501,60 @@ func TestNodeDirty_RemoteProxyOutbounds(t *testing.T) {
 		t.Fatalf("unexpected posted body: %+v", postedBody)
 	}
 }
+
+func TestNodeDirty_RemoteOutboundTags(t *testing.T) {
+	var getMode string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if req.URL.Path != "/panel/api/server/outboundTags" {
+			http.NotFound(w, req)
+			return
+		}
+		if req.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if getMode == "empty" {
+			_, _ = w.Write([]byte(`{"success":true,"obj":[]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"success":true,"obj":["direct","blocked","proxy-1"]}`))
+	}))
+	defer srv.Close()
+
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("parse srv url: %v", err)
+	}
+	port, _ := strconv.Atoi(u.Port())
+	r := runtime.NewRemote(&model.Node{
+		Id:                  1,
+		Name:                "test-node",
+		Scheme:              "http",
+		Address:             u.Hostname(),
+		Port:                port,
+		BasePath:            "/",
+		ApiToken:            "dummy-token",
+		Enable:              true,
+		AllowPrivateAddress: true,
+	}, nil)
+	ctx := context.Background()
+
+	getMode = "normal"
+	tags, err := r.FetchOutboundTags(ctx)
+	if err != nil {
+		t.Fatalf("FetchOutboundTags: %v", err)
+	}
+	if len(tags) != 3 || tags[0] != "direct" || tags[2] != "proxy-1" {
+		t.Fatalf("unexpected tags: %+v", tags)
+	}
+
+	getMode = "empty"
+	empty, err := r.FetchOutboundTags(ctx)
+	if err != nil {
+		t.Fatalf("FetchOutboundTags empty: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Fatalf("expected empty tags, got %+v", empty)
+	}
+}

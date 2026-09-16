@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseRoutingRulesFromXrayConfigObj } from '@/pages/xray/routing/helpers';
+import {
+  parseOutboundTagsFromXrayConfigObj,
+  parseRoutingRulesFromXrayConfigObj,
+} from '@/pages/xray/routing/helpers';
 
 const remoteRules = [
   { type: 'field', outboundTag: 'remote-proxy', domain: ['geosite:google'] },
@@ -47,5 +50,29 @@ describe('parseRoutingRulesFromXrayConfigObj', () => {
     expect(parseRoutingRulesFromXrayConfigObj({})).toBeNull();
     expect(parseRoutingRulesFromXrayConfigObj(null)).toBeNull();
     expect(parseRoutingRulesFromXrayConfigObj({ inboundTags: [] })).toBeNull();
+  });
+});
+
+describe('parseOutboundTagsFromXrayConfigObj', () => {
+  it('extracts outbound tags from the JSON-string xray/ envelope', () => {
+    const obj = JSON.stringify({
+      xraySetting: { routing: { rules: remoteRules } },
+      outboundTags: ['direct', 'blocked', 'worker-proxy'],
+    });
+    expect(parseOutboundTagsFromXrayConfigObj(obj)).toEqual(['direct', 'blocked', 'worker-proxy']);
+  });
+
+  it('parses outboundTags when the field itself is a JSON string', () => {
+    expect(
+      parseOutboundTagsFromXrayConfigObj({
+        outboundTags: '["direct","blocked"]',
+      }),
+    ).toEqual(['direct', 'blocked']);
+  });
+
+  it('returns an empty list when outboundTags is missing or malformed', () => {
+    expect(parseOutboundTagsFromXrayConfigObj(JSON.stringify({ xraySetting: {} }))).toEqual([]);
+    expect(parseOutboundTagsFromXrayConfigObj({ outboundTags: null })).toEqual([]);
+    expect(parseOutboundTagsFromXrayConfigObj('{')).toEqual([]);
   });
 });

@@ -16,7 +16,10 @@ const REMOTE_RULE = {
 };
 
 function localSettings(): XraySettingsValue {
-  return { routing: { rules: [LOCAL_RULE] } } as unknown as XraySettingsValue;
+  return {
+    routing: { rules: [LOCAL_RULE] },
+    outbounds: [{ tag: 'local-only', protocol: 'freedom' }],
+  } as unknown as XraySettingsValue;
 }
 
 function renderTab() {
@@ -70,6 +73,7 @@ describe('RoutingTab remote node rules', () => {
             xraySetting: { routing: { rules: [REMOTE_RULE] } },
             inboundTags: [],
             clientReverseTags: [],
+            outboundTags: ['direct', 'remote-proxy', 'worker-extra'],
           }),
         );
       }
@@ -159,5 +163,46 @@ describe('RoutingTab remote node rules', () => {
       expect(save).toBeTruthy();
       expect((save as HTMLButtonElement).disabled).toBe(true);
     });
+  });
+
+  it('lists the child node outbound tags in the rule editor, not the local ones', async () => {
+    vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
+      if (url.includes('/panel/api/nodes/list')) {
+        return new Msg(true, '', [{ id: 7, name: 'worker', address: '10.0.0.2' }]);
+      }
+      if (url.includes('/panel/api/inbounds/options')) {
+        return new Msg(true, '', []);
+      }
+      return new Msg(true, '', {});
+    });
+    vi.spyOn(HttpUtil, 'post').mockImplementation(async (url: string) => {
+      if (url === '/panel/api/xray/') {
+        return new Msg(
+          true,
+          '',
+          JSON.stringify({
+            xraySetting: { routing: { rules: [REMOTE_RULE] } },
+            inboundTags: [],
+            clientReverseTags: [],
+            outboundTags: ['direct', 'remote-proxy', 'worker-extra'],
+          }),
+        );
+      }
+      return new Msg(true, '');
+    });
+
+    renderTab();
+    await openRulesTab();
+    await selectWorkerNode();
+    await waitFor(() => expect(screen.getByText('remote-proxy')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+    const outbound = await screen.findByLabelText('Outbound tag');
+    fireEvent.mouseDown(outbound);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'worker-extra' })).toBeTruthy();
+    });
+    expect(screen.queryByRole('option', { name: 'local-only' })).toBeNull();
   });
 });

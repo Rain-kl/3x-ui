@@ -56,6 +56,8 @@ describe('NodeList re-render', () => {
       onToggleEnable: noop,
       onUpdateNode: noop,
       onUpdateSelected: noop,
+      onRestartSelected: noop,
+      onDeleteSelected: noop,
     };
     const view = render(<NodeList {...props} />, { wrapper });
     expect(updateChecks.count).toBeGreaterThan(0);

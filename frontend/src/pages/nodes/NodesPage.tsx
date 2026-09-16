@@ -295,6 +295,63 @@ export default function NodesPage() {
     });
   }, [modal, t, nodes, selectedIds, runUpdate, messageApi]);
 
+  const onRestartSelected = useCallback(() => {
+    const eligible = nodes.filter(
+      (n) => selectedIds.includes(n.id) && !n.transitive && n.enable && n.status === 'online',
+    );
+    if (eligible.length === 0) {
+      messageApi.warning(t('pages.nodes.toasts.updateNoneEligible'));
+      return;
+    }
+    modal.confirm({
+      title: t('pages.nodes.bulkRestartConfirmTitle', { count: eligible.length }),
+      content: t('pages.settings.restartPanelDesc'),
+      okText: t('confirm'),
+      cancelText: t('cancel'),
+      onOk: async () => {
+        let ok = 0;
+        let failed = 0;
+        for (const n of eligible) {
+          const msg = await restartNode(n.id);
+          if (msg?.success) ok += 1;
+          else failed += 1;
+        }
+        if (failed === 0) {
+          messageApi.success(t('pages.nodes.toasts.restarted', { count: ok }));
+        } else {
+          messageApi.warning(t('pages.nodes.toasts.restartResult', { ok, failed }));
+        }
+      },
+    });
+  }, [modal, t, nodes, selectedIds, restartNode, messageApi]);
+
+  const onDeleteSelected = useCallback(() => {
+    const targets = nodes.filter((n) => selectedIds.includes(n.id) && !n.transitive && n.id > 0);
+    if (targets.length === 0) return;
+    modal.confirm({
+      title: t('pages.nodes.bulkDeleteConfirmTitle', { count: targets.length }),
+      content: t('pages.nodes.bulkDeleteConfirmContent'),
+      okText: t('delete'),
+      okType: 'danger',
+      cancelText: t('cancel'),
+      onOk: async () => {
+        let ok = 0;
+        let failed = 0;
+        for (const n of targets) {
+          const msg = await remove(n.id);
+          if (msg?.success) ok += 1;
+          else failed += 1;
+        }
+        if (failed === 0) {
+          messageApi.success(t('pages.nodes.toasts.bulkDeleted', { count: ok }));
+        } else {
+          messageApi.warning(t('pages.nodes.toasts.bulkDeletedMixed', { ok, failed }));
+        }
+        setSelectedIds([]);
+      },
+    });
+  }, [modal, t, nodes, selectedIds, remove, messageApi]);
+
   const pageClass = useMemo(() => {
     const classes = ['nodes-page'];
     if (isDark) classes.push('is-dark');
@@ -383,6 +440,8 @@ export default function NodesPage() {
                       onUpdateNode={onUpdateNode}
                       onRestartNode={onRestartNode}
                       onUpdateSelected={onUpdateSelected}
+                      onRestartSelected={onRestartSelected}
+                      onDeleteSelected={onDeleteSelected}
                     />
                   </Col>
                 </Row>

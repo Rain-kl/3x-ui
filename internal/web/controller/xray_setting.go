@@ -75,7 +75,7 @@ func (a *XraySettingController) initRouter(g *gin.RouterGroup) {
 	g.POST("/outbound-subs/parse", a.parseOutboundSubURL) // preview without saving
 }
 
-// getXraySetting retrieves the Xray configuration template, inbound tags, and outbound test URL.
+// getXraySetting retrieves the Xray configuration template, inbound tags, outbound tags, and outbound test URL.
 func (a *XraySettingController) getXraySetting(c *gin.Context) {
 	nodeIDStr := c.Query("nodeId")
 	if nodeIDStr == "" {
@@ -112,6 +112,11 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 		if clientReverseTags == "" {
 			clientReverseTags = "[]"
 		}
+		outboundTags := []string{}
+		if tags, tErr := rem.FetchOutboundTags(c.Request.Context()); tErr == nil {
+			outboundTags = tags
+		}
+		outboundTagsJSON, _ := json.Marshal(outboundTags)
 		nodeXraySetting := map[string]any{
 			"routing": map[string]any{
 				"rules": rules,
@@ -122,6 +127,7 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 			"xraySetting":       json.RawMessage(settingBytes),
 			"inboundTags":       json.RawMessage(inboundTags),
 			"clientReverseTags": json.RawMessage(clientReverseTags),
+			"outboundTags":      json.RawMessage(outboundTagsJSON),
 			"outboundTestUrl":   "https://www.google.com/generate_204",
 			"geodataSources":    service.StandardGeodataSources(),
 		}
@@ -169,10 +175,16 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 	if outboundTestUrl == "" {
 		outboundTestUrl = "https://www.google.com/generate_204"
 	}
+	outboundTags, _ := service.GetOutboundTagsFromTemplate(xraySetting)
+	if outboundTags == nil {
+		outboundTags = []string{}
+	}
+	outboundTagsJSON, _ := json.Marshal(outboundTags)
 	xrayResponse := map[string]any{
 		"xraySetting":       json.RawMessage(xraySetting),
 		"inboundTags":       json.RawMessage(inboundTags),
 		"clientReverseTags": json.RawMessage(clientReverseTags),
+		"outboundTags":      json.RawMessage(outboundTagsJSON),
 		"outboundTestUrl":   outboundTestUrl,
 		"geodataSources":    service.StandardGeodataSources(),
 	}

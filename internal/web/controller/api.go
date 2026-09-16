@@ -117,6 +117,7 @@ var nodeSyncScopeAllow = map[string]map[string]struct{}{
 	"/hosts/list":                  {http.MethodGet: {}},
 	"/setting/restartPanel":        {http.MethodPost: {}},
 	"/server/outbounds":            {http.MethodGet: {}, http.MethodPost: {}},
+	"/server/outboundTags":         {http.MethodGet: {}},
 	"/server/routing":              {http.MethodGet: {}, http.MethodPost: {}},
 }
 

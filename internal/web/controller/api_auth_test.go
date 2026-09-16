@@ -84,6 +84,9 @@ func newAPIAuthTestEngine(t *testing.T) (*gin.Engine, *APIController) {
 	api.POST("/server/outbounds", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"reached": true})
 	})
+	api.GET("/server/outboundTags", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"reached": true})
+	})
 	return engine, a
 }
 
@@ -172,6 +175,7 @@ func TestNodeSyncScopeAllowlistMatchesRemoteInventory(t *testing.T) {
 		"/hosts/list":                  {http.MethodGet: {}},
 		"/setting/restartPanel":        {http.MethodPost: {}},
 		"/server/outbounds":            {http.MethodGet: {}, http.MethodPost: {}},
+		"/server/outboundTags":         {http.MethodGet: {}},
 		"/server/routing":              {http.MethodGet: {}, http.MethodPost: {}},
 	}
 	if !reflect.DeepEqual(nodeSyncScopeAllow, expected) {
@@ -195,6 +199,7 @@ func TestNodeSyncScopeUsesFullPathPatterns(t *testing.T) {
 		{"client IP by guid endpoint", http.MethodPost, "/panel/api/clients/clientIpsByGuid", http.StatusOK},
 		{"server outbounds get", http.MethodGet, "/panel/api/server/outbounds", http.StatusOK},
 		{"server outbounds post", http.MethodPost, "/panel/api/server/outbounds", http.StatusOK},
+		{"server outbound tags get", http.MethodGet, "/panel/api/server/outboundTags", http.StatusOK},
 		{"update panel forbidden", http.MethodPost, "/panel/api/server/updatePanel", http.StatusForbidden},
 	}
 	for _, tc := range cases {

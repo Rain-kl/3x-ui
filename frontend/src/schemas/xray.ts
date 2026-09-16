@@ -50,6 +50,7 @@ export const XrayConfigPayloadSchema = z
     xraySetting: XraySettingsValueSchema,
     inboundTags: z.array(z.string()).optional(),
     clientReverseTags: z.array(z.string()).optional(),
+    outboundTags: z.array(z.string()).optional(),
     outboundTestUrl: z.string().optional(),
     // Subscription outbounds are injected at runtime (not persisted in xraySetting).
     // They are provided here so the UI can display them and use their tags in

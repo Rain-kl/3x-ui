@@ -290,3 +290,31 @@ func TestOutboundSync_GetProxyOutboundsFromTemplate(t *testing.T) {
 		t.Fatalf("unexpected proxies: %+v", proxies)
 	}
 }
+
+func TestOutboundSync_GetOutboundTagsFromTemplate(t *testing.T) {
+	template := `{
+  "outbounds": [
+    {"protocol": "freedom", "tag": "direct"},
+    {"protocol": "blackhole", "tag": "blocked"},
+    {"protocol": "vless", "tag": "proxy-1", "settings": {"address": "p1.com", "port": 443}},
+    {"protocol": "dns"},
+    {"protocol": "freedom", "tag": "direct"}
+  ]
+}`
+	got, err := GetOutboundTagsFromTemplate(template)
+	if err != nil {
+		t.Fatalf("GetOutboundTagsFromTemplate: %v", err)
+	}
+	want := []string{"direct", "blocked", "proxy-1"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("tags = %v, want %v", got, want)
+	}
+
+	empty, err := GetOutboundTagsFromTemplate(`{"outbounds":[]}`)
+	if err != nil {
+		t.Fatalf("empty template: %v", err)
+	}
+	if len(empty) != 0 {
+		t.Fatalf("empty tags = %v, want []", empty)
+	}
+}

@@ -974,6 +974,25 @@ func (r *Remote) PushProxyOutbounds(ctx context.Context, outbounds []map[string]
 	return err
 }
 
+// FetchOutboundTags fetches all outbound tags (including system) from the remote node.
+func (r *Remote) FetchOutboundTags(ctx context.Context) ([]string, error) {
+	env, err := r.do(ctx, http.MethodGet, "panel/api/server/outboundTags", nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(env.Obj) == 0 || string(bytes.TrimSpace(env.Obj)) == "null" {
+		return []string{}, nil
+	}
+	var tags []string
+	if err := json.Unmarshal(env.Obj, &tags); err != nil {
+		return nil, fmt.Errorf("decode outbound tags: %w", err)
+	}
+	if tags == nil {
+		return []string{}, nil
+	}
+	return tags, nil
+}
+
 // FetchRoutingRules fetches routing rules from the remote node.
 func (r *Remote) FetchRoutingRules(ctx context.Context) ([]map[string]any, error) {
 	env, err := r.do(ctx, http.MethodGet, "panel/api/server/routing", nil)

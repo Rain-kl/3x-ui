@@ -26,6 +26,7 @@ import {
   arrJoin,
   buildRemarkByTag,
   originalRuleIndex,
+  parseOutboundTagsFromXrayConfigObj,
   parseRoutingRulesFromXrayConfigObj,
 } from './helpers';
 import type { RuleRow } from './types';
@@ -60,6 +61,7 @@ export default function RoutingTab({
   const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<number>(0);
   const [remoteRules, setRemoteRules] = useState<RoutingRule[]>([]);
+  const [remoteOutboundTags, setRemoteOutboundTags] = useState<string[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteSaving, setRemoteSaving] = useState(false);
   const [remoteReady, setRemoteReady] = useState(false);
@@ -81,6 +83,7 @@ export default function RoutingTab({
       setRemoteLoading(true);
       setRemoteReady(false);
       setRemoteRules([]);
+      setRemoteOutboundTags([]);
       try {
         const resp = await HttpUtil.post('/panel/api/xray/', { nodeId }, { silent: true });
         if (!resp?.success) {
@@ -93,6 +96,7 @@ export default function RoutingTab({
           return;
         }
         setRemoteRules(rules as RoutingRule[]);
+        setRemoteOutboundTags(parseOutboundTagsFromXrayConfigObj(resp.obj));
         setRemoteReady(true);
       } catch {
         message.error(t('somethingWentWrong'));
@@ -110,6 +114,7 @@ export default function RoutingTab({
         void fetchRemoteRules(val);
       } else {
         setRemoteRules([]);
+        setRemoteOutboundTags([]);
         setRemoteReady(false);
       }
     },
@@ -249,6 +254,12 @@ export default function RoutingTab({
 
   const outboundTagOptions = useMemo(() => {
     const out = new Set<string>(['']);
+    if (selectedNodeId > 0) {
+      for (const tag of remoteOutboundTags) {
+        if (tag) out.add(tag);
+      }
+      return [...out];
+    }
     for (const ob of templateSettings?.outbounds || []) {
       if (ob?.tag) out.add(ob.tag);
     }
@@ -259,7 +270,13 @@ export default function RoutingTab({
       if (tag) out.add(tag);
     }
     return [...out];
-  }, [templateSettings?.outbounds, clientReverseTags, subscriptionOutboundTags]);
+  }, [
+    selectedNodeId,
+    remoteOutboundTags,
+    templateSettings?.outbounds,
+    clientReverseTags,
+    subscriptionOutboundTags,
+  ]);
 
   const balancerTagOptions = useMemo(() => {
     const out: string[] = [''];

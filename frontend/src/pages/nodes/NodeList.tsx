@@ -1,7 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Badge, Button, Card, Dropdown, Modal, Space, Switch, Table, Tag, Tooltip } from 'antd';
-import type { BadgeProps } from 'antd';
+import {
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Dropdown,
+  Modal,
+  Space,
+  Switch,
+  Table,
+  Tag,
+  Tooltip,
+} from 'antd';
+import type { BadgeProps, MenuProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   ApartmentOutlined,
@@ -45,10 +57,72 @@ interface NodeListProps {
   onUpdateNode: (node: NodeRecord) => void;
   onRestartNode?: (node: NodeRecord) => void;
   onUpdateSelected: () => void;
+  onRestartSelected: () => void;
+  onDeleteSelected: () => void;
 }
 
 function isUpdateEligible(n: NodeRecord): boolean {
   return !!n.enable && n.status === 'online';
+}
+
+function buildNodeRowMenu({
+  record,
+  t,
+  onProbe,
+  onRestartNode,
+  onEdit,
+  onDelete,
+  includeUpdate,
+  onUpdateNode,
+}: {
+  record: NodeRecord;
+  t: (key: string) => string;
+  onProbe: (node: NodeRecord) => void;
+  onRestartNode?: (node: NodeRecord) => void;
+  onEdit: (node: NodeRecord) => void;
+  onDelete: (node: NodeRecord) => void;
+  includeUpdate?: boolean;
+  onUpdateNode?: (node: NodeRecord) => void;
+}): MenuProps['items'] {
+  const items: MenuProps['items'] = [
+    {
+      key: 'probe',
+      icon: <ThunderboltOutlined />,
+      label: t('pages.nodes.probe'),
+      onClick: () => onProbe(record),
+    },
+  ];
+  if (includeUpdate && isUpdateEligible(record) && onUpdateNode) {
+    items.push({
+      key: 'update',
+      icon: <CloudDownloadOutlined />,
+      label: t('pages.nodes.updatePanel'),
+      onClick: () => onUpdateNode(record),
+    });
+  }
+  if (onRestartNode && isUpdateEligible(record)) {
+    items.push({
+      key: 'restart',
+      icon: <ReloadOutlined />,
+      label: t('pages.settings.restartPanel'),
+      onClick: () => onRestartNode(record),
+    });
+  }
+  items.push({
+    key: 'edit',
+    icon: <EditOutlined />,
+    label: t('edit'),
+    onClick: () => onEdit(record),
+  });
+  items.push({ type: 'divider' });
+  items.push({
+    key: 'delete',
+    danger: true,
+    icon: <DeleteOutlined />,
+    label: t('delete'),
+    onClick: () => onDelete(record),
+  });
+  return items;
 }
 
 interface NodeRow extends NodeRecord {
@@ -182,6 +256,8 @@ export default function NodeList({
   onUpdateNode,
   onRestartNode,
   onUpdateSelected,
+  onRestartSelected,
+  onDeleteSelected,
 }: NodeListProps) {
   const { t } = useTranslation();
   const relativeTime = useRelativeTime();
@@ -275,7 +351,7 @@ export default function NodeList({
       {
         title: t('pages.nodes.actions'),
         align: 'center',
-        width: 190,
+        width: 100,
         render: (_value, record) =>
           record.transitive ? (
             <Tooltip
@@ -288,17 +364,7 @@ export default function NodeList({
               </Tag>
             </Tooltip>
           ) : (
-            <Space>
-              <Tooltip title={t('pages.nodes.probe')}>
-                <Button
-                  type="text"
-                  size="small"
-                  style={{ fontSize: 16 }}
-                  icon={<ThunderboltOutlined />}
-                  aria-label={t('pages.nodes.probe')}
-                  onClick={() => onProbe(record)}
-                />
-              </Tooltip>
+            <Space size={0} className="action-buttons">
               {isUpdateEligible(record) && (
                 <Tooltip title={t('pages.nodes.updatePanel')}>
                   <Button
@@ -311,39 +377,28 @@ export default function NodeList({
                   />
                 </Tooltip>
               )}
-              {onRestartNode && isUpdateEligible(record) && (
-                <Tooltip title={t('pages.settings.restartPanel')}>
-                  <Button
-                    type="text"
-                    size="small"
-                    style={{ fontSize: 16 }}
-                    icon={<ReloadOutlined />}
-                    aria-label={t('pages.settings.restartPanel')}
-                    onClick={() => onRestartNode(record)}
-                  />
-                </Tooltip>
-              )}
-              <Tooltip title={t('edit')}>
+              <Dropdown
+                trigger={['click']}
+                placement="bottomRight"
+                menu={{
+                  items: buildNodeRowMenu({
+                    record,
+                    t,
+                    onProbe,
+                    onRestartNode,
+                    onEdit,
+                    onDelete,
+                  }),
+                }}
+              >
                 <Button
                   type="text"
                   size="small"
                   style={{ fontSize: 16 }}
-                  icon={<EditOutlined />}
-                  aria-label={t('edit')}
-                  onClick={() => onEdit(record)}
+                  icon={<MoreOutlined />}
+                  aria-label={t('more')}
                 />
-              </Tooltip>
-              <Tooltip title={t('delete')}>
-                <Button
-                  type="text"
-                  size="small"
-                  danger
-                  style={{ fontSize: 16 }}
-                  icon={<DeleteOutlined />}
-                  aria-label={t('delete')}
-                  onClick={() => onDelete(record)}
-                />
-              </Tooltip>
+              </Dropdown>
             </Space>
           ),
       },
@@ -593,13 +648,13 @@ export default function NodeList({
         size="middle"
         rowKey="key"
         rowSelection={
-          dataSource.length > 1
+          dataSource.some((n) => !n.transitive)
             ? {
                 selectedRowKeys: selectedIds,
                 onChange: (keys) =>
                   onSelectionChange(keys.filter((k) => typeof k === 'number') as number[]),
                 getCheckboxProps: (record) => ({
-                  disabled: !!record.transitive || !isUpdateEligible(record),
+                  disabled: !!record.transitive,
                 }),
               }
             : undefined
@@ -631,9 +686,17 @@ export default function NodeList({
           {t('pages.nodes.mtls.title')}
         </Button>
         {selectedIds.length > 0 && (
-          <Button icon={<CloudDownloadOutlined />} onClick={onUpdateSelected}>
-            {t('pages.nodes.updateSelected', { count: selectedIds.length })}
-          </Button>
+          <>
+            <Button icon={<CloudDownloadOutlined />} onClick={onUpdateSelected}>
+              {t('pages.nodes.updateSelected', { count: selectedIds.length })}
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={onRestartSelected}>
+              {t('pages.nodes.restartSelected', { count: selectedIds.length })}
+            </Button>
+            <Button danger icon={<DeleteOutlined />} onClick={onDeleteSelected}>
+              {t('pages.nodes.deleteSelected', { count: selectedIds.length })}
+            </Button>
+          </>
         )}
       </div>
 
@@ -682,6 +745,16 @@ export default function NodeList({
                         aria-label={record.name}
                         onKeyDown={activateOnKey(() => toggleExpanded(record.id))}
                       />
+                      <Checkbox
+                        checked={selectedIds.includes(record.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const next = e.target.checked
+                            ? [...selectedIds, record.id]
+                            : selectedIds.filter((id) => id !== record.id);
+                          onSelectionChange(next);
+                        }}
+                      />
                       <StatusDot status={record.status} xrayState={record.xrayState} />
                       <span className="node-name">{record.name}</span>
                       <div className="card-actions">
@@ -704,62 +777,16 @@ export default function NodeList({
                           trigger={['click']}
                           placement="bottomRight"
                           menu={{
-                            items: [
-                              {
-                                key: 'probe',
-                                label: (
-                                  <>
-                                    <ThunderboltOutlined /> {t('pages.nodes.probe')}
-                                  </>
-                                ),
-                                onClick: () => onProbe(record),
-                              },
-                              ...(isUpdateEligible(record)
-                                ? [
-                                    {
-                                      key: 'update',
-                                      label: (
-                                        <>
-                                          <CloudDownloadOutlined /> {t('pages.nodes.updatePanel')}
-                                        </>
-                                      ),
-                                      onClick: () => onUpdateNode(record),
-                                    },
-                                  ]
-                                : []),
-                              ...(onRestartNode && isUpdateEligible(record)
-                                ? [
-                                    {
-                                      key: 'restart',
-                                      label: (
-                                        <>
-                                          <ReloadOutlined /> {t('pages.settings.restartPanel')}
-                                        </>
-                                      ),
-                                      onClick: () => onRestartNode(record),
-                                    },
-                                  ]
-                                : []),
-                              {
-                                key: 'edit',
-                                label: (
-                                  <>
-                                    <EditOutlined /> {t('edit')}
-                                  </>
-                                ),
-                                onClick: () => onEdit(record),
-                              },
-                              {
-                                key: 'delete',
-                                danger: true,
-                                label: (
-                                  <>
-                                    <DeleteOutlined /> {t('delete')}
-                                  </>
-                                ),
-                                onClick: () => onDelete(record),
-                              },
-                            ],
+                            items: buildNodeRowMenu({
+                              record,
+                              t,
+                              onProbe,
+                              onRestartNode,
+                              onEdit,
+                              onDelete,
+                              includeUpdate: true,
+                              onUpdateNode,
+                            }),
                           }}
                         >
                           <Button

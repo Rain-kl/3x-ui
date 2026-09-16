@@ -68,6 +68,7 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.GET("/clientIps", a.getClientIps)
 	g.GET("/fail2banStatus", a.getFail2banStatus)
 	g.GET("/outbounds", a.getOutbounds)
+	g.GET("/outboundTags", a.getOutboundTags)
 	g.GET("/routing", a.getRouting)
 
 	g.POST("/stopXrayService", a.stopXrayService)
@@ -554,6 +555,17 @@ func (a *ServerController) setClientIps(c *gin.Context) {
 	}
 	err := (&service.InboundService{}).MergeInboundClientIps(ips)
 	jsonMsg(c, "Client IPs merged", err)
+}
+
+// getOutboundTags returns all outbound tags from the current Xray template, including system outbounds.
+func (a *ServerController) getOutboundTags(c *gin.Context) {
+	template, err := a.settingService.GetXrayConfigTemplate()
+	if err != nil {
+		jsonObj(c, nil, err)
+		return
+	}
+	tags, err := service.GetOutboundTagsFromTemplate(template)
+	jsonObj(c, tags, err)
 }
 
 // getOutbounds returns proxy outbounds extracted from the current Xray template config.

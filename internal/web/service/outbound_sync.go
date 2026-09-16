@@ -177,6 +177,38 @@ func ReplaceProxyOutboundsInTemplate(templateJSON string, masterProxyOutbounds [
 	return string(outBytes), changed, nil
 }
 
+// GetOutboundTagsFromTemplate returns outbound tags in template order, skipping
+// empty tags and later duplicates. System outbounds are included.
+func GetOutboundTagsFromTemplate(templateJSON string) ([]string, error) {
+	var tmpl map[string]any
+	if err := json.Unmarshal([]byte(templateJSON), &tmpl); err != nil {
+		return nil, err
+	}
+	tags := make([]string, 0)
+	if tmpl == nil {
+		return tags, nil
+	}
+	rawArr, ok := tmpl["outbounds"].([]any)
+	if !ok {
+		return tags, nil
+	}
+	seen := make(map[string]bool)
+	for _, item := range rawArr {
+		obMap, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		tag, _ := obMap["tag"].(string)
+		tag = strings.TrimSpace(tag)
+		if tag == "" || seen[tag] {
+			continue
+		}
+		seen[tag] = true
+		tags = append(tags, tag)
+	}
+	return tags, nil
+}
+
 // GetProxyOutboundsFromTemplate extracts only proxy outbounds from the template JSON.
 func GetProxyOutboundsFromTemplate(templateJSON string) ([]map[string]any, error) {
 	var tmpl map[string]any
