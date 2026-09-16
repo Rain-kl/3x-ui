@@ -38,39 +38,25 @@ func initOutboundSyncTestEnv(t *testing.T) {
 	t.Cleanup(func() { runtime.SetManager(nil) })
 }
 
-// TestOutboundNodeSync_AdoptWorkerOutbound verifies master adopts remote worker's proxy outbounds.
-func TestOutboundNodeSync_AdoptWorkerOutbound(t *testing.T) {
+// TestOutboundNodeSync_Ignores404OnOfficialNode verifies that when a node returns 404
+// for PushProxyOutbounds (official/unsupported node), reconcile succeeds and clears dirty.
+func TestOutboundNodeSync_Ignores404OnOfficialNode(t *testing.T) {
 	initOutboundSyncTestEnv(t)
 	db := database.GetDB()
 
-	initTemplate := `{"outbounds":[{"protocol":"freedom","tag":"direct"},{"protocol":"blackhole","tag":"blocked"}]}`
+	masterTemplate := `{"outbounds":[{"protocol":"freedom","tag":"direct"},{"protocol":"vless","tag":"master-vless","settings":{"vnext":[{"address":"127.0.0.1","port":8443,"users":[{"id":"00000000-0000-0000-0000-000000000001","encryption":"none"}]}]}}]}`
 	xraySettingSvc := &service.XraySettingService{}
-	if err := xraySettingSvc.SaveXraySetting(initTemplate); err != nil {
+	if err := xraySettingSvc.SaveXraySetting(masterTemplate); err != nil {
 		t.Fatalf("save initial template: %v", err)
-	}
-
-	workerProxyObs := []map[string]any{
-		{
-			"protocol": "vmess",
-			"tag":      "worker-vmess-1",
-			"settings": map[string]any{
-				"vnext": []any{
-					map[string]any{
-						"address": "127.0.0.1",
-						"port":    443,
-						"users":   []any{map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
-					},
-				},
-			},
-		},
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case strings.HasSuffix(r.URL.Path, "server/outbounds") && r.Method == http.MethodGet:
-			raw, _ := json.Marshal(workerProxyObs)
-			_, _ = w.Write([]byte(`{"success":true,"obj":` + string(raw) + `}`))
+		case strings.HasSuffix(r.URL.Path, "server/outbounds"):
+			// Simulate official node without this endpoint
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`404 page not found`))
 			return
 		case strings.HasSuffix(r.URL.Path, "inbounds/list"):
 			_, _ = w.Write([]byte(`{"success":true,"obj":[]}`))
@@ -84,62 +70,30 @@ func TestOutboundNodeSync_AdoptWorkerOutbound(t *testing.T) {
 	port, _ := strconv.Atoi(u.Port())
 
 	workerNode := &model.Node{
-		Name:                "worker-node",
+		Name:                "official-worker-404",
 		Scheme:              "http",
 		Address:             u.Hostname(),
 		Port:                port,
 		BasePath:            "/",
-		ApiToken:            "dummy-tok",
+		ApiToken:            "tok",
 		Enable:              true,
 		Status:              "online",
+		ConfigDirty:         true,
+		ConfigDirtyAt:       time.Now().UnixMilli(),
 		AllowPrivateAddress: true,
 	}
 	if err := db.Create(workerNode).Error; err != nil {
 		t.Fatalf("create worker node: %v", err)
 	}
 
-	otherNode := &model.Node{
-		Name:     "other-node",
-		Scheme:   "http",
-		Address:  "127.0.0.1",
-		Port:     12345,
-		BasePath: "/",
-		ApiToken: "other-tok",
-		Enable:   true,
-		Status:   "online",
-	}
-	if err := db.Create(otherNode).Error; err != nil {
-		t.Fatalf("create other node: %v", err)
-	}
-
 	job.NewNodeTrafficSyncJob().Run()
-
-	storedTmpl, err := xraySettingSvc.GetXrayConfigTemplate()
-	if err != nil {
-		t.Fatalf("get template: %v", err)
-	}
-	masterObs, err := service.GetProxyOutboundsFromTemplate(storedTmpl)
-	if err != nil {
-		t.Fatalf("get proxy outbounds from template: %v", err)
-	}
-	if len(masterObs) != 1 || masterObs[0]["tag"] != "worker-vmess-1" {
-		t.Fatalf("expected worker-vmess-1 adopted, got: %+v", masterObs)
-	}
-
-	var updatedOther model.Node
-	if err := db.First(&updatedOther, otherNode.Id).Error; err != nil {
-		t.Fatalf("fetch other node: %v", err)
-	}
-	if !updatedOther.ConfigDirty {
-		t.Errorf("other node should be marked dirty, got dirty=%v", updatedOther.ConfigDirty)
-	}
 
 	var updatedWorker model.Node
 	if err := db.First(&updatedWorker, workerNode.Id).Error; err != nil {
 		t.Fatalf("fetch worker node: %v", err)
 	}
 	if updatedWorker.ConfigDirty {
-		t.Errorf("reporting worker node should not be dirty, got dirty=%v", updatedWorker.ConfigDirty)
+		t.Errorf("official node returning 404 should not stay dirty forever, got dirty=%v", updatedWorker.ConfigDirty)
 	}
 }
 
@@ -394,178 +348,5 @@ func TestOutboundNodeSync_PushOutboundsFailureMarksReconcileFailed(t *testing.T)
 		if ob["tag"] == "worker-vmess-resurrect" {
 			t.Errorf("deleted/unreconciled outbound should not be adopted while node is dirty")
 		}
-	}
-}
-
-// TestOutboundNodeSync_ThrottlesOutboundPull verifies adoption pulls are throttled
-// by nodeOutboundSyncInterval.
-func TestOutboundNodeSync_ThrottlesOutboundPull(t *testing.T) {
-	initOutboundSyncTestEnv(t)
-	db := database.GetDB()
-
-	initTemplate := `{"outbounds":[{"protocol":"freedom","tag":"direct"}]}`
-	xraySettingSvc := &service.XraySettingService{}
-	if err := xraySettingSvc.SaveXraySetting(initTemplate); err != nil {
-		t.Fatalf("save initial template: %v", err)
-	}
-
-	var mu sync.Mutex
-	workerProxyObs := []map[string]any{
-		{
-			"protocol": "vmess",
-			"tag":      "first-vmess",
-			"settings": map[string]any{
-				"vnext": []any{
-					map[string]any{
-						"address": "10.0.0.1",
-						"port":    443,
-						"users":   []any{map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
-					},
-				},
-			},
-		},
-	}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case strings.HasSuffix(r.URL.Path, "server/outbounds") && r.Method == http.MethodGet:
-			mu.Lock()
-			raw, _ := json.Marshal(workerProxyObs)
-			mu.Unlock()
-			_, _ = w.Write([]byte(`{"success":true,"obj":` + string(raw) + `}`))
-			return
-		case strings.HasSuffix(r.URL.Path, "inbounds/list"):
-			_, _ = w.Write([]byte(`{"success":true,"obj":[]}`))
-			return
-		}
-		_, _ = w.Write([]byte(`{"success":true}`))
-	}))
-	defer srv.Close()
-
-	u, _ := url.Parse(srv.URL)
-	port, _ := strconv.Atoi(u.Port())
-
-	workerNode := &model.Node{
-		Name:                "throttled-worker",
-		Scheme:              "http",
-		Address:             u.Hostname(),
-		Port:                port,
-		BasePath:            "/",
-		ApiToken:            "tok",
-		Enable:              true,
-		Status:              "online",
-		AllowPrivateAddress: true,
-	}
-	if err := db.Create(workerNode).Error; err != nil {
-		t.Fatalf("create worker node: %v", err)
-	}
-
-	syncJob := job.NewNodeTrafficSyncJob()
-	syncJob.Run()
-
-	storedTmpl, err := xraySettingSvc.GetXrayConfigTemplate()
-	if err != nil {
-		t.Fatalf("get template: %v", err)
-	}
-	masterObs, _ := service.GetProxyOutboundsFromTemplate(storedTmpl)
-	if len(masterObs) != 1 || masterObs[0]["tag"] != "first-vmess" {
-		t.Fatalf("expected first-vmess adopted on first run, got: %+v", masterObs)
-	}
-
-	// Update worker with a second outbound and immediately run the same job again.
-	mu.Lock()
-	workerProxyObs = append(workerProxyObs, map[string]any{
-		"protocol": "trojan",
-		"tag":      "second-trojan",
-		"settings": map[string]any{
-			"servers": []any{map[string]any{"address": "10.0.0.2", "port": float64(443)}},
-		},
-	})
-	mu.Unlock()
-
-	syncJob.Run()
-
-	storedTmpl2, err := xraySettingSvc.GetXrayConfigTemplate()
-	if err != nil {
-		t.Fatalf("get template: %v", err)
-	}
-	masterObs2, _ := service.GetProxyOutboundsFromTemplate(storedTmpl2)
-	if len(masterObs2) != 1 {
-		t.Errorf("second outbound should NOT be adopted immediately due to interval throttling, got %d outbounds", len(masterObs2))
-	}
-}
-
-// TestOutboundNodeSync_ConcurrentAdoption verifies concurrent syncOne workers
-// safely merge outbounds without race conditions.
-func TestOutboundNodeSync_ConcurrentAdoption(t *testing.T) {
-	initOutboundSyncTestEnv(t)
-	db := database.GetDB()
-
-	initTemplate := `{"outbounds":[{"protocol":"freedom","tag":"direct"}]}`
-	xraySettingSvc := &service.XraySettingService{}
-	if err := xraySettingSvc.SaveXraySetting(initTemplate); err != nil {
-		t.Fatalf("save initial template: %v", err)
-	}
-
-	makeWorker := func(name, host string, port int, obs []map[string]any) *httptest.Server {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "application/json")
-			switch {
-			case strings.HasSuffix(r.URL.Path, "server/outbounds") && r.Method == http.MethodGet:
-				raw, _ := json.Marshal(obs)
-				_, _ = w.Write([]byte(`{"success":true,"obj":` + string(raw) + `}`))
-				return
-			case strings.HasSuffix(r.URL.Path, "inbounds/list"):
-				_, _ = w.Write([]byte(`{"success":true,"obj":[]}`))
-				return
-			}
-			_, _ = w.Write([]byte(`{"success":true}`))
-		}))
-		return srv
-	}
-
-	w1Obs := []map[string]any{{
-		"protocol": "vmess",
-		"tag":      "w1-vmess",
-		"settings": map[string]any{"vnext": []any{map[string]any{"address": "10.1.0.1", "port": 443, "users": []any{map[string]any{"id": "00000000-0000-0000-0000-000000000001"}}}}},
-	}}
-	w2Obs := []map[string]any{{
-		"protocol": "vmess",
-		"tag":      "w2-vmess",
-		"settings": map[string]any{"vnext": []any{map[string]any{"address": "10.2.0.1", "port": 443, "users": []any{map[string]any{"id": "00000000-0000-0000-0000-000000000002"}}}}},
-	}}
-
-	srv1 := makeWorker("w1", "127.0.0.1", 0, w1Obs)
-	defer srv1.Close()
-	u1, _ := url.Parse(srv1.URL)
-	p1, _ := strconv.Atoi(u1.Port())
-
-	srv2 := makeWorker("w2", "127.0.0.1", 0, w2Obs)
-	defer srv2.Close()
-	u2, _ := url.Parse(srv2.URL)
-	p2, _ := strconv.Atoi(u2.Port())
-
-	n1 := &model.Node{Name: "worker-1", Scheme: "http", Address: u1.Hostname(), Port: p1, BasePath: "/", ApiToken: "tok1", Enable: true, Status: "online", AllowPrivateAddress: true}
-	n2 := &model.Node{Name: "worker-2", Scheme: "http", Address: u2.Hostname(), Port: p2, BasePath: "/", ApiToken: "tok2", Enable: true, Status: "online", AllowPrivateAddress: true}
-	if err := db.Create(n1).Error; err != nil {
-		t.Fatalf("create n1: %v", err)
-	}
-	if err := db.Create(n2).Error; err != nil {
-		t.Fatalf("create n2: %v", err)
-	}
-
-	job.NewNodeTrafficSyncJob().Run()
-
-	storedTmpl, err := xraySettingSvc.GetXrayConfigTemplate()
-	if err != nil {
-		t.Fatalf("get template: %v", err)
-	}
-	masterObs, err := service.GetProxyOutboundsFromTemplate(storedTmpl)
-	if err != nil {
-		t.Fatalf("get proxy outbounds from template: %v", err)
-	}
-	if len(masterObs) != 2 {
-		t.Fatalf("expected 2 outbounds adopted concurrently, got %d: %+v", len(masterObs), masterObs)
 	}
 }

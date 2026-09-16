@@ -105,6 +105,9 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 			return
 		}
 		inboundTags, _ := a.InboundService.GetInboundTagsByNode(nodeID)
+		if inboundTags == "" {
+			inboundTags = "[]"
+		}
 		clientReverseTags, _ := a.InboundService.GetClientReverseTagsByNode(nodeID)
 		if clientReverseTags == "" {
 			clientReverseTags = "[]"

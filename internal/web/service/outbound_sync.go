@@ -228,7 +228,9 @@ func MergeProxyOutboundsIntoTemplate(templateJSON string, incomingProxyOutbounds
 	return string(outBytes), addedCount, nil
 }
 
-// ReplaceProxyOutboundsInTemplate replaces proxy outbounds while preserving system outbounds.
+// ReplaceProxyOutboundsInTemplate synchronizes proxy outbounds:
+// Master is authoritative. All proxy outbounds on the node are replaced with
+// master's proxy outbounds, preserving only system/routing outbounds.
 func ReplaceProxyOutboundsInTemplate(templateJSON string, masterProxyOutbounds []map[string]any) (string, bool, error) {
 	var tmpl map[string]any
 	if err := json.Unmarshal([]byte(templateJSON), &tmpl); err != nil {
@@ -239,12 +241,12 @@ func ReplaceProxyOutboundsInTemplate(templateJSON string, masterProxyOutbounds [
 	}
 
 	var systemOutbounds []any
-	var oldProxyOutbounds []map[string]any
+	var existingProxyOutbounds []map[string]any
 	if rawArr, ok := tmpl["outbounds"].([]any); ok {
 		for _, item := range rawArr {
 			if obMap, ok := item.(map[string]any); ok {
 				if IsProxyOutbound(obMap) {
-					oldProxyOutbounds = append(oldProxyOutbounds, obMap)
+					existingProxyOutbounds = append(existingProxyOutbounds, obMap)
 				} else {
 					systemOutbounds = append(systemOutbounds, item)
 				}
@@ -254,25 +256,21 @@ func ReplaceProxyOutboundsInTemplate(templateJSON string, masterProxyOutbounds [
 		}
 	}
 
-	var filteredMaster []map[string]any
+	var validMaster []map[string]any
 	for _, ob := range masterProxyOutbounds {
 		if IsProxyOutbound(ob) {
-			filteredMaster = append(filteredMaster, ob)
+			validMaster = append(validMaster, ob)
 		}
 	}
 
 	var changed bool
-	if len(oldProxyOutbounds) == 0 && len(filteredMaster) == 0 {
-		changed = false
-	} else {
-		oldBytes, _ := json.Marshal(oldProxyOutbounds)
-		newBytes, _ := json.Marshal(filteredMaster)
-		changed = !bytes.Equal(oldBytes, newBytes)
-	}
+	oldBytes, _ := json.Marshal(existingProxyOutbounds)
+	newBytes, _ := json.Marshal(validMaster)
+	changed = !bytes.Equal(oldBytes, newBytes)
 
-	newOutbounds := make([]any, 0, len(systemOutbounds)+len(filteredMaster))
+	newOutbounds := make([]any, 0, len(systemOutbounds)+len(validMaster))
 	newOutbounds = append(newOutbounds, systemOutbounds...)
-	for _, ob := range filteredMaster {
+	for _, ob := range validMaster {
 		newOutbounds = append(newOutbounds, ob)
 	}
 	tmpl["outbounds"] = newOutbounds

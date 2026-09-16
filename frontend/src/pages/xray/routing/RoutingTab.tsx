@@ -22,7 +22,12 @@ import RuleFormModal from './RuleFormModal';
 import type { RoutingRule } from './RuleFormModal';
 import RuleCardList from './RuleCardList';
 import { useRoutingColumns } from './useRoutingColumns';
-import { arrJoin, buildRemarkByTag, originalRuleIndex } from './helpers';
+import {
+  arrJoin,
+  buildRemarkByTag,
+  originalRuleIndex,
+  parseRoutingRulesFromXrayConfigObj,
+} from './helpers';
 import type { RuleRow } from './types';
 import type { XraySettingsValue, SetTemplate } from '@/hooks/useXraySetting';
 import { useNodesQuery } from '@/api/queries/useNodesQuery';
@@ -57,6 +62,7 @@ export default function RoutingTab({
   const [remoteRules, setRemoteRules] = useState<RoutingRule[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteSaving, setRemoteSaving] = useState(false);
+  const [remoteReady, setRemoteReady] = useState(false);
 
   const { nodes: nodesList = [] } = useNodesQuery();
   const { data: allInboundOptions = [] } = useInboundOptions();
@@ -73,15 +79,21 @@ export default function RoutingTab({
     async (nodeId: number) => {
       if (nodeId <= 0) return;
       setRemoteLoading(true);
+      setRemoteReady(false);
+      setRemoteRules([]);
       try {
-        const resp = await HttpUtil.post<{
-          xraySetting?: { routing?: { rules?: RoutingRule[] } };
-        }>('/panel/api/xray/', { nodeId }, { silent: true });
-        if (resp?.success && resp.obj?.xraySetting?.routing?.rules) {
-          setRemoteRules(resp.obj.xraySetting.routing.rules);
-        } else {
-          setRemoteRules([]);
+        const resp = await HttpUtil.post('/panel/api/xray/', { nodeId }, { silent: true });
+        if (!resp?.success) {
+          message.error(resp?.msg || t('somethingWentWrong'));
+          return;
         }
+        const rules = parseRoutingRulesFromXrayConfigObj(resp.obj);
+        if (rules == null) {
+          message.error(t('somethingWentWrong'));
+          return;
+        }
+        setRemoteRules(rules as RoutingRule[]);
+        setRemoteReady(true);
       } catch {
         message.error(t('somethingWentWrong'));
       } finally {
@@ -96,6 +108,9 @@ export default function RoutingTab({
       setSelectedNodeId(val);
       if (val > 0) {
         void fetchRemoteRules(val);
+      } else {
+        setRemoteRules([]);
+        setRemoteReady(false);
       }
     },
     [fetchRemoteRules],
@@ -182,7 +197,7 @@ export default function RoutingTab({
   );
 
   const saveRemoteRules = useCallback(async () => {
-    if (selectedNodeId <= 0) return;
+    if (selectedNodeId <= 0 || !remoteReady) return;
     setRemoteSaving(true);
     try {
       const payload = {
@@ -202,7 +217,7 @@ export default function RoutingTab({
     } finally {
       setRemoteSaving(false);
     }
-  }, [selectedNodeId, remoteRules, t]);
+  }, [selectedNodeId, remoteReady, remoteRules, t]);
 
   const inboundTagOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -459,6 +474,7 @@ export default function RoutingTab({
               <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                 <Space wrap>
                   <Select
+                    aria-label={t('pages.inbounds.node')}
                     style={{ minWidth: 160 }}
                     value={selectedNodeId}
                     onChange={handleNodeChange}
@@ -472,6 +488,7 @@ export default function RoutingTab({
                       type="primary"
                       icon={<SaveOutlined />}
                       loading={remoteSaving}
+                      disabled={!remoteReady}
                       onClick={saveRemoteRules}
                     >
                       {t('save')}

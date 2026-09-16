@@ -81,6 +81,37 @@ export function inboundTagChipPreview(
   return chipPreviewParts(formatInboundTagList(tags, remarkByTag));
 }
 
+/**
+ * Pull routing.rules out of a `/panel/api/xray/` response `obj`.
+ * The handler wraps the payload as a JSON string (and may nest
+ * `xraySetting` as a string too). Returns null when the envelope cannot
+ * be read, so a caller must not treat that as "the node has no rules"
+ * and save an empty list over the real config.
+ */
+export function parseRoutingRulesFromXrayConfigObj(obj: unknown): unknown[] | null {
+  let payload: unknown = obj;
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      return null;
+    }
+  }
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
+  let setting = (payload as { xraySetting?: unknown }).xraySetting;
+  if (typeof setting === 'string') {
+    try {
+      setting = JSON.parse(setting);
+    } catch {
+      return null;
+    }
+  }
+  if (!setting || typeof setting !== 'object' || Array.isArray(setting)) return null;
+  const rules = (setting as { routing?: { rules?: unknown } }).routing?.rules;
+  if (rules == null) return [];
+  return Array.isArray(rules) ? rules : null;
+}
+
 /** The internal api rule (stats traffic) — its enabled state must stay locked on. */
 export function isApiRule(rule: { outboundTag?: string; inboundTag?: string | string[] }): boolean {
   if (rule.outboundTag !== 'api') return false;
