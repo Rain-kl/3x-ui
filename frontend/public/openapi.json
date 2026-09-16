@@ -13104,6 +13104,25 @@
         ],
         "summary": "Return the Xray config template (JSON string), available inbound tags, client reverse tags, and the configured outbound test URL in one response.",
         "operationId": "post_panel_api_xray",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nodeId": {
+                    "type": "integer",
+                    "description": "Optional node ID. When provided, returns the routing rules and inbound tags for that specific remote node."
+                  }
+                },
+                "required": [
+                  "nodeId"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful response",

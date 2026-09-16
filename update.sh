@@ -1011,6 +1011,9 @@ update_x-ui() {
     else
         tag_version=$(${curl_bin} -Ls "https://api.github.com/repos/Rain-kl/3x-ui/releases/latest" 2> /dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$tag_version" ]]; then
+            tag_version=$(${curl_bin} -Ls "https://api.github.com/repos/Rain-kl/3x-ui/releases/tags/dev-latest" 2> /dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        fi
+        if [[ ! -n "$tag_version" ]]; then
             _fail "ERROR: Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later"
         fi
     fi

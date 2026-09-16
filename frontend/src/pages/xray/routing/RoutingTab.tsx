@@ -74,9 +74,9 @@ export default function RoutingTab({
       if (nodeId <= 0) return;
       setRemoteLoading(true);
       try {
-        const resp = await HttpUtil.get<{
+        const resp = await HttpUtil.post<{
           xraySetting?: { routing?: { rules?: RoutingRule[] } };
-        }>(`/panel/api/xray/?nodeId=${nodeId}`, undefined, { silent: true });
+        }>('/panel/api/xray/', { nodeId }, { silent: true });
         if (resp?.success && resp.obj?.xraySetting?.routing?.rules) {
           setRemoteRules(resp.obj.xraySetting.routing.rules);
         } else {

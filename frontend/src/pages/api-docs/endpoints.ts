@@ -2082,6 +2082,14 @@ export const sections: readonly Section[] = [
         path: '/panel/api/xray/',
         summary:
           'Return the Xray config template (JSON string), available inbound tags, client reverse tags, and the configured outbound test URL in one response.',
+        params: [
+          {
+            name: 'nodeId',
+            in: 'body (form)',
+            type: 'integer',
+            desc: 'Optional node ID. When provided, returns the routing rules and inbound tags for that specific remote node.',
+          },
+        ],
         response:
           '{\n  "success": true,\n  "obj": {\n    "xraySetting": "{...raw xray config...}",\n    "inboundTags": "[\\"in-443-tcp\\"]",\n    "clientReverseTags": "[]",\n    "outboundTestUrl": "https://www.google.com/generate_204"\n  }\n}',
       },

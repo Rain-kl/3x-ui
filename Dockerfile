@@ -4,7 +4,7 @@
 FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend
 WORKDIR /src/frontend
 RUN corepack enable
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 COPY internal/web/translation /src/internal/web/translation
