@@ -113,4 +113,3 @@ func TestGetInboundTagsByNode(t *testing.T) {
 		t.Fatalf("unexpected worker tags: %v", workerTags)
 	}
 }
-
