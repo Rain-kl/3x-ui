@@ -180,6 +180,25 @@ _openapi:
       title: Submit a list of recently active IP timestamps. The panel merges them
         with the existing database to maintain a unified global IP-limit view.
       url: '#submit-a-list-of-recently-active-ip-timestamps-the-panel-merges-them-with-the-existing-database-to-maintain-a-unified-global-ip-limit-view'
+    - depth: 2
+      title: Fetch proxy outbounds configured in the template config on this node for
+        cross-node outbound synchronization.
+      url: '#fetch-proxy-outbounds-configured-in-the-template-config-on-this-node-for-cross-node-outbound-synchronization'
+    - depth: 2
+      title: Replace proxy outbounds in the template config on this node and apply
+        changes to Xray.
+      url: '#replace-proxy-outbounds-in-the-template-config-on-this-node-and-apply-changes-to-xray'
+    - depth: 2
+      title: Fetch all outbound tags from the template config on this node, including
+        system outbounds, for cross-node outbound management.
+      url: '#fetch-all-outbound-tags-from-the-template-config-on-this-node-including-system-outbounds-for-cross-node-outbound-management'
+    - depth: 2
+      title: Fetch routing rules configured in the template config on this node.
+      url: '#fetch-routing-rules-configured-in-the-template-config-on-this-node'
+    - depth: 2
+      title: Replace routing rules in the template config on this node and apply
+        changes to Xray.
+      url: '#replace-routing-rules-in-the-template-config-on-this-node-and-apply-changes-to-xray'
   structuredData:
     headings:
       - content: Serve this API description as an OpenAPI 3 document — the same file
@@ -315,6 +334,20 @@ _openapi:
       - content: Submit a list of recently active IP timestamps. The panel merges them
           with the existing database to maintain a unified global IP-limit view.
         id: submit-a-list-of-recently-active-ip-timestamps-the-panel-merges-them-with-the-existing-database-to-maintain-a-unified-global-ip-limit-view
+      - content: Fetch proxy outbounds configured in the template config on this node
+          for cross-node outbound synchronization.
+        id: fetch-proxy-outbounds-configured-in-the-template-config-on-this-node-for-cross-node-outbound-synchronization
+      - content: Replace proxy outbounds in the template config on this node and apply
+          changes to Xray.
+        id: replace-proxy-outbounds-in-the-template-config-on-this-node-and-apply-changes-to-xray
+      - content: Fetch all outbound tags from the template config on this node,
+          including system outbounds, for cross-node outbound management.
+        id: fetch-all-outbound-tags-from-the-template-config-on-this-node-including-system-outbounds-for-cross-node-outbound-management
+      - content: Fetch routing rules configured in the template config on this node.
+        id: fetch-routing-rules-configured-in-the-template-config-on-this-node
+      - content: Replace routing rules in the template config on this node and apply
+          changes to Xray.
+        id: replace-routing-rules-in-the-template-config-on-this-node-and-apply-changes-to-xray
     contents: []
 ---
 
@@ -327,7 +360,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/openapi.json","method":"get"},{"path":"/panel/api/server/status","method":"get"},{"path":"/panel/api/server/fail2banStatus","method":"get"},{"path":"/panel/api/server/cpuHistory/{bucket}","method":"get"},{"path":"/panel/api/server/history/{metric}/{bucket}","method":"get"},{"path":"/panel/api/server/xrayMetricsState","method":"get"},{"path":"/panel/api/server/xrayMetricsHistory/{metric}/{bucket}","method":"get"},{"path":"/panel/api/server/xrayObservatory","method":"get"},{"path":"/panel/api/server/xrayObservatoryHistory/{tag}/{bucket}","method":"get"},{"path":"/panel/api/server/getXrayVersion","method":"get"},{"path":"/panel/api/server/getPanelUpdateInfo","method":"get"},{"path":"/panel/api/server/getUpdateStatus","method":"get"},{"path":"/panel/api/server/getConfigJson","method":"get"},{"path":"/panel/api/server/getDb","method":"get"},{"path":"/panel/api/server/getMigration","method":"get"},{"path":"/panel/api/server/getNewUUID","method":"get"},{"path":"/panel/api/server/getWebCertFiles","method":"get"},{"path":"/panel/api/server/descendants","method":"get"},{"path":"/panel/api/server/getNewX25519Cert","method":"get"},{"path":"/panel/api/server/getNewmldsa65","method":"get"},{"path":"/panel/api/server/getNewmlkem768","method":"get"},{"path":"/panel/api/server/getNewVlessEnc","method":"get"},{"path":"/panel/api/server/stopXrayService","method":"post"},{"path":"/panel/api/server/restartXrayService","method":"post"},{"path":"/panel/api/server/installXray/{version}","method":"post"},{"path":"/panel/api/server/updatePanel","method":"post"},{"path":"/panel/api/server/setUpdateChannel","method":"post"},{"path":"/panel/api/server/updateGeofile","method":"post"},{"path":"/panel/api/server/updateGeofile/{fileName}","method":"post"},{"path":"/panel/api/server/logs/{count}","method":"post"},{"path":"/panel/api/server/xraylogs/{count}","method":"post"},{"path":"/panel/api/server/amneziawglogs/{count}","method":"post"},{"path":"/panel/api/server/importDB","method":"post"},{"path":"/panel/api/server/getNewEchCert","method":"post"},{"path":"/panel/api/server/getCertHash","method":"post"},{"path":"/panel/api/server/getRemoteCertHash","method":"post"},{"path":"/panel/api/server/scanRealityTarget","method":"post"},{"path":"/panel/api/server/scanRealityTargets","method":"post"},{"path":"/panel/api/server/clientIps","method":"get"},{"path":"/panel/api/server/clientIps","method":"post"}]} showTitle />
+      <Comp document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/openapi.json","method":"get"},{"path":"/panel/api/server/status","method":"get"},{"path":"/panel/api/server/fail2banStatus","method":"get"},{"path":"/panel/api/server/cpuHistory/{bucket}","method":"get"},{"path":"/panel/api/server/history/{metric}/{bucket}","method":"get"},{"path":"/panel/api/server/xrayMetricsState","method":"get"},{"path":"/panel/api/server/xrayMetricsHistory/{metric}/{bucket}","method":"get"},{"path":"/panel/api/server/xrayObservatory","method":"get"},{"path":"/panel/api/server/xrayObservatoryHistory/{tag}/{bucket}","method":"get"},{"path":"/panel/api/server/getXrayVersion","method":"get"},{"path":"/panel/api/server/getPanelUpdateInfo","method":"get"},{"path":"/panel/api/server/getUpdateStatus","method":"get"},{"path":"/panel/api/server/getConfigJson","method":"get"},{"path":"/panel/api/server/getDb","method":"get"},{"path":"/panel/api/server/getMigration","method":"get"},{"path":"/panel/api/server/getNewUUID","method":"get"},{"path":"/panel/api/server/getWebCertFiles","method":"get"},{"path":"/panel/api/server/descendants","method":"get"},{"path":"/panel/api/server/getNewX25519Cert","method":"get"},{"path":"/panel/api/server/getNewmldsa65","method":"get"},{"path":"/panel/api/server/getNewmlkem768","method":"get"},{"path":"/panel/api/server/getNewVlessEnc","method":"get"},{"path":"/panel/api/server/stopXrayService","method":"post"},{"path":"/panel/api/server/restartXrayService","method":"post"},{"path":"/panel/api/server/installXray/{version}","method":"post"},{"path":"/panel/api/server/updatePanel","method":"post"},{"path":"/panel/api/server/setUpdateChannel","method":"post"},{"path":"/panel/api/server/updateGeofile","method":"post"},{"path":"/panel/api/server/updateGeofile/{fileName}","method":"post"},{"path":"/panel/api/server/logs/{count}","method":"post"},{"path":"/panel/api/server/xraylogs/{count}","method":"post"},{"path":"/panel/api/server/amneziawglogs/{count}","method":"post"},{"path":"/panel/api/server/importDB","method":"post"},{"path":"/panel/api/server/getNewEchCert","method":"post"},{"path":"/panel/api/server/getCertHash","method":"post"},{"path":"/panel/api/server/getRemoteCertHash","method":"post"},{"path":"/panel/api/server/scanRealityTarget","method":"post"},{"path":"/panel/api/server/scanRealityTargets","method":"post"},{"path":"/panel/api/server/clientIps","method":"get"},{"path":"/panel/api/server/clientIps","method":"post"},{"path":"/panel/api/server/outbounds","method":"get"},{"path":"/panel/api/server/outbounds","method":"post"},{"path":"/panel/api/server/outboundTags","method":"get"},{"path":"/panel/api/server/routing","method":"get"},{"path":"/panel/api/server/routing","method":"post"}]} showTitle />
     </>
   );
 }

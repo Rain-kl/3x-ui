@@ -7699,6 +7699,131 @@
         }
       }
     },
+    "/panel/api/server/outboundTags": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Fetch all outbound tags from the template config on this node, including system outbounds, for cross-node outbound management.",
+        "operationId": "get_panel_api_server_outboundTags",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    "direct",
+                    "blocked",
+                    "proxy-1"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/server/routing": {
+      "get": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Fetch routing rules configured in the template config on this node.",
+        "operationId": "get_panel_api_server_routing",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "type": "field",
+                      "outboundTag": "direct",
+                      "domain": [
+                        "geosite:cn"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Replace routing rules in the template config on this node and apply changes to Xray.",
+        "operationId": "post_panel_api_server_routing",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "msg": "success"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/clients/list": {
       "get": {
         "tags": [
@@ -13015,8 +13140,27 @@
         "tags": [
           "Xray Settings"
         ],
-        "summary": "Return the Xray config template (JSON string), available inbound tags, client reverse tags, and the configured outbound test URL in one response.",
+        "summary": "Return the Xray config template (JSON string), available inbound tags, outbound tags, client reverse tags, and the configured outbound test URL in one response.",
         "operationId": "post_panel_api_xray",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nodeId": {
+                    "type": "integer",
+                    "description": "Optional node ID. When provided, returns the routing rules, inbound tags, and outbound tags for that specific remote node."
+                  }
+                },
+                "required": [
+                  "nodeId"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful response",
@@ -13040,6 +13184,7 @@
                     "xraySetting": "{...raw xray config...}",
                     "inboundTags": "[\"in-443-tcp\"]",
                     "clientReverseTags": "[]",
+                    "outboundTags": "[\"direct\", \"blocked\"]",
                     "outboundTestUrl": "https://www.google.com/generate_204"
                   }
                 }

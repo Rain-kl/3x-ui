@@ -436,7 +436,11 @@ func ensureXrayAssetLocation() {
 		return
 	}
 	if abs, err := filepath.Abs(config.GetBinFolderPath()); err == nil {
-		os.Setenv("XRAY_LOCATION_ASSET", abs)
+		// Pointing at a missing folder would poison every later geodata read,
+		// so only advertise a location that actually holds (or will hold) assets.
+		if _, err := os.Stat(abs); err == nil {
+			os.Setenv("XRAY_LOCATION_ASSET", abs)
+		}
 	}
 }
 

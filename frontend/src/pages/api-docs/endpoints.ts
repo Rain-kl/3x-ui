@@ -984,6 +984,13 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'GET',
+        path: '/panel/api/server/outboundTags',
+        summary:
+          'Fetch all outbound tags from the template config on this node, including system outbounds, for cross-node outbound management.',
+        response: '{\n  "success": true,\n  "obj": ["direct", "blocked", "proxy-1"]\n}',
+      },
+      {
+        method: 'GET',
         path: '/panel/api/server/routing',
         summary: 'Fetch routing rules configured in the template config on this node.',
         response:
