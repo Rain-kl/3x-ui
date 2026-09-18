@@ -107,6 +107,16 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 		inboundTags, _ := a.InboundService.GetInboundTagsByNode(nodeID)
 		if inboundTags == "" {
 			inboundTags = "[]"
+		} else {
+			var tags []string
+			if err := json.Unmarshal([]byte(inboundTags), &tags); err == nil {
+				for i, tag := range tags {
+					tags[i] = service.StripNodeInboundTagPrefix(*nodeID, tag)
+				}
+				if raw, err := json.Marshal(tags); err == nil {
+					inboundTags = string(raw)
+				}
+			}
 		}
 		clientReverseTags, _ := a.InboundService.GetClientReverseTagsByNode(nodeID)
 		if clientReverseTags == "" {
@@ -254,6 +264,7 @@ func (a *XraySettingController) updateSetting(c *gin.Context) {
 				jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 				return
 			}
+			service.StripNodeInboundTagsFromRoutingRules(id, rules)
 			if err := rem.PushRoutingRules(c.Request.Context(), rules); err != nil {
 				jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 				return

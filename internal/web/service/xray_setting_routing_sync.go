@@ -40,6 +40,41 @@ func writeInboundTags(rule map[string]any, tags []string) {
 	rule["inboundTag"] = tags
 }
 
+// StripNodeInboundTagPrefix removes the central-only n<id>- alias so a tag
+// matches the inbound Xray actually runs on that node.
+func StripNodeInboundTagPrefix(nodeID int, tag string) string {
+	if nodeID <= 0 {
+		return tag
+	}
+	id := nodeID
+	if stripped, ok := strings.CutPrefix(tag, nodeTagPrefix(&id)); ok {
+		return stripped
+	}
+	return tag
+}
+
+// StripNodeInboundTagsFromRoutingRules rewrites inboundTag fields from the
+// central n<id>- form to the node's native tags. Other nodes' prefixes are left
+// alone. nodeID <= 0 is a no-op.
+func StripNodeInboundTagsFromRoutingRules(nodeID int, rules []map[string]any) {
+	if nodeID <= 0 {
+		return
+	}
+	for _, rule := range rules {
+		if rule == nil {
+			continue
+		}
+		tags := readInboundTags(rule["inboundTag"])
+		if len(tags) == 0 {
+			continue
+		}
+		for i, tag := range tags {
+			tags[i] = StripNodeInboundTagPrefix(nodeID, tag)
+		}
+		writeInboundTags(rule, tags)
+	}
+}
+
 func ruleHasNonInboundMatchers(rule map[string]any) bool {
 	for _, key := range routingMatcherKeys {
 		if hasRoutingMatcherValue(rule[key]) {

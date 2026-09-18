@@ -60,7 +60,14 @@ function baseInboundTag(port: number): string {
 }
 
 function nodeTagPrefix(nodeId: number | null | undefined): string {
-  return nodeId == null ? '' : `n${nodeId}-`;
+  return nodeId == null || nodeId <= 0 ? '' : `n${nodeId}-`;
+}
+
+/** Remove the central-only n<id>- alias so a tag matches the node's Xray inbound. */
+export function stripNodeInboundTagPrefix(nodeId: number | null | undefined, tag: string): string {
+  const prefix = nodeTagPrefix(nodeId);
+  if (!prefix || !tag.startsWith(prefix)) return tag;
+  return tag.slice(prefix.length);
 }
 
 export interface InboundTagInput {

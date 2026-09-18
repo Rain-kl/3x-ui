@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
-import { composeInboundTag, isAutoInboundTag, type InboundTagInput } from '@/lib/xray/inbound-tag';
+import {
+  composeInboundTag,
+  isAutoInboundTag,
+  stripNodeInboundTagPrefix,
+  type InboundTagInput,
+} from '@/lib/xray/inbound-tag';
 
 // Parity with web/service/port_conflict.go TestInboundTransports: the L4 suffix
 // the tag encodes must match the Go service so the form preview agrees with the
@@ -79,6 +84,15 @@ describe('composeInboundTag transport suffix parity', () => {
     expect(
       composeInboundTag(base({ nodeId: 1, port: 443, streamSettings: { network: 'tcp' } })),
     ).toBe('n1-in-443-tcp');
+  });
+});
+
+describe('stripNodeInboundTagPrefix', () => {
+  it('strips only this node central alias', () => {
+    expect(stripNodeInboundTagPrefix(13, 'n13-in-443-tcp')).toBe('in-443-tcp');
+    expect(stripNodeInboundTagPrefix(13, 'in-443-tcp')).toBe('in-443-tcp');
+    expect(stripNodeInboundTagPrefix(13, 'n99-in-443-tcp')).toBe('n99-in-443-tcp');
+    expect(stripNodeInboundTagPrefix(0, 'n13-in-443-tcp')).toBe('n13-in-443-tcp');
   });
 });
 

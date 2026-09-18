@@ -28,7 +28,9 @@ import {
   originalRuleIndex,
   parseOutboundTagsFromXrayConfigObj,
   parseRoutingRulesFromXrayConfigObj,
+  stripNodePrefixFromRoutingRule,
 } from './helpers';
+import { stripNodeInboundTagPrefix } from '@/lib/xray/inbound-tag';
 import type { RuleRow } from './types';
 import type { XraySettingsValue, SetTemplate } from '@/hooks/useXraySetting';
 import { useNodesQuery } from '@/api/queries/useNodesQuery';
@@ -70,12 +72,25 @@ export default function RoutingTab({
   const { data: allInboundOptions = [] } = useInboundOptions();
 
   const nodeInboundOptions = useMemo(() => {
-    return allInboundOptions.filter((ib) =>
+    const filtered = allInboundOptions.filter((ib) =>
       selectedNodeId === 0 ? ib.nodeId == null : ib.nodeId === selectedNodeId,
     );
+    if (selectedNodeId <= 0) return filtered;
+    return filtered.map((ib) => ({
+      ...ib,
+      tag: ib.tag ? stripNodeInboundTagPrefix(selectedNodeId, ib.tag) : ib.tag,
+    }));
   }, [allInboundOptions, selectedNodeId]);
 
-  const remarkByTag = useMemo(() => buildRemarkByTag(nodeInboundOptions), [nodeInboundOptions]);
+  const selectedNodeName = useMemo(() => {
+    if (selectedNodeId <= 0) return undefined;
+    return nodesList.find((n) => n.id === selectedNodeId)?.name?.trim() || undefined;
+  }, [selectedNodeId, nodesList]);
+
+  const remarkByTag = useMemo(
+    () => buildRemarkByTag(nodeInboundOptions, selectedNodeName),
+    [nodeInboundOptions, selectedNodeName],
+  );
 
   const fetchRemoteRules = useCallback(
     async (nodeId: number) => {
@@ -95,7 +110,9 @@ export default function RoutingTab({
           message.error(t('somethingWentWrong'));
           return;
         }
-        setRemoteRules(rules as RoutingRule[]);
+        setRemoteRules(
+          (rules as RoutingRule[]).map((rule) => stripNodePrefixFromRoutingRule(nodeId, rule)),
+        );
         setRemoteOutboundTags(parseOutboundTagsFromXrayConfigObj(resp.obj));
         setRemoteReady(true);
       } catch {

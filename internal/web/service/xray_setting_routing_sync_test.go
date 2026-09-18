@@ -400,3 +400,39 @@ func TestDelInbound_RemovesInboundOnlyRoutingRule(t *testing.T) {
 	}
 	findRuleByOutbound(t, template, "blocked")
 }
+
+func TestStripNodeInboundTagsFromRoutingRules(t *testing.T) {
+	rules := []map[string]any{
+		{"type": "field", "inboundTag": []any{"n13-in-443-tcp", "n13-in-8443-tcp"}, "outboundTag": "direct"},
+		{"type": "field", "inboundTag": "n13-in-80-tcp", "outboundTag": "blocked"},
+		{"type": "field", "inboundTag": []any{"in-443-tcp"}, "outboundTag": "proxy"},
+		{"type": "field", "inboundTag": []any{"n99-in-443-tcp"}, "outboundTag": "other-node"},
+		{"type": "field", "outboundTag": "direct"},
+	}
+
+	StripNodeInboundTagsFromRoutingRules(13, rules)
+
+	if tags := readInboundTags(rules[0]["inboundTag"]); len(tags) != 2 || tags[0] != "in-443-tcp" || tags[1] != "in-8443-tcp" {
+		t.Fatalf("prefixed array = %v, want [in-443-tcp in-8443-tcp]", tags)
+	}
+	if tags := readInboundTags(rules[1]["inboundTag"]); len(tags) != 1 || tags[0] != "in-80-tcp" {
+		t.Fatalf("prefixed string = %v, want [in-80-tcp]", tags)
+	}
+	if tags := readInboundTags(rules[2]["inboundTag"]); len(tags) != 1 || tags[0] != "in-443-tcp" {
+		t.Fatalf("already native = %v, want [in-443-tcp]", tags)
+	}
+	if tags := readInboundTags(rules[3]["inboundTag"]); len(tags) != 1 || tags[0] != "n99-in-443-tcp" {
+		t.Fatalf("other node prefix must stay, got %v", tags)
+	}
+	if _, ok := rules[4]["inboundTag"]; ok {
+		t.Fatalf("rule without inboundTag should stay unset")
+	}
+
+	left := []map[string]any{
+		{"inboundTag": []any{"n13-in-443-tcp"}, "outboundTag": "direct"},
+	}
+	StripNodeInboundTagsFromRoutingRules(0, left)
+	if tags := readInboundTags(left[0]["inboundTag"]); len(tags) != 1 || tags[0] != "n13-in-443-tcp" {
+		t.Fatalf("nodeID 0 must not strip, got %v", tags)
+	}
+}

@@ -205,4 +205,98 @@ describe('RoutingTab remote node rules', () => {
     });
     expect(screen.queryByRole('option', { name: 'local-only' })).toBeNull();
   });
+
+  it('saves child inbound tags without the central n<id>- prefix', async () => {
+    const posts: Array<{ url: string; data: unknown }> = [];
+    vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
+      if (url.includes('/panel/api/nodes/list')) {
+        return new Msg(true, '', [{ id: 7, name: 'worker', address: '10.0.0.2' }]);
+      }
+      if (url.includes('/panel/api/inbounds/options')) {
+        return new Msg(true, '', [
+          { id: 11, tag: 'n7-in-443-tcp', remark: 'worker in', nodeId: 7 },
+        ]);
+      }
+      return new Msg(true, '', {});
+    });
+    vi.spyOn(HttpUtil, 'post').mockImplementation(async (url: string, data?: unknown) => {
+      posts.push({ url, data });
+      if (url === '/panel/api/xray/') {
+        return new Msg(
+          true,
+          '',
+          JSON.stringify({
+            xraySetting: {
+              routing: {
+                rules: [{ ...REMOTE_RULE, inboundTag: ['n7-in-443-tcp'] }],
+              },
+            },
+            inboundTags: ['n7-in-443-tcp'],
+            clientReverseTags: [],
+            outboundTags: ['direct'],
+          }),
+        );
+      }
+      return new Msg(true, 'ok');
+    });
+
+    renderTab();
+    await openRulesTab();
+    await selectWorkerNode();
+    await waitFor(() => expect(screen.getByText('remote-proxy')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => {
+      expect(posts.some((p) => p.url === '/panel/api/xray/update')).toBe(true);
+    });
+    const update = posts.find((p) => p.url === '/panel/api/xray/update');
+    const payload = update?.data as { xraySetting?: string };
+    const setting = JSON.parse(payload.xraySetting || '{}') as {
+      routing?: { rules?: Array<{ inboundTag?: string[] }> };
+    };
+    expect(setting.routing?.rules?.[0]?.inboundTag).toEqual(['in-443-tcp']);
+  });
+
+  it('lists native child inbound tags in the rule editor, not the central n<id>- alias', async () => {
+    vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
+      if (url.includes('/panel/api/nodes/list')) {
+        return new Msg(true, '', [{ id: 7, name: 'worker', address: '10.0.0.2' }]);
+      }
+      if (url.includes('/panel/api/inbounds/options')) {
+        return new Msg(true, '', [
+          { id: 11, tag: 'n7-in-443-tcp', remark: 'worker in', nodeId: 7 },
+        ]);
+      }
+      return new Msg(true, '', {});
+    });
+    vi.spyOn(HttpUtil, 'post').mockImplementation(async (url: string) => {
+      if (url === '/panel/api/xray/') {
+        return new Msg(
+          true,
+          '',
+          JSON.stringify({
+            xraySetting: { routing: { rules: [REMOTE_RULE] } },
+            inboundTags: ['n7-in-443-tcp'],
+            clientReverseTags: [],
+            outboundTags: ['direct'],
+          }),
+        );
+      }
+      return new Msg(true, '');
+    });
+
+    renderTab();
+    await openRulesTab();
+    await selectWorkerNode();
+    await waitFor(() => expect(screen.getByText('remote-proxy')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+    const inbound = await screen.findByLabelText('Inbound tags');
+    fireEvent.mouseDown(inbound);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'in-443-tcp (worker in · worker)' })).toBeTruthy();
+    });
+    expect(screen.queryByRole('option', { name: /n7-in-443-tcp/ })).toBeNull();
+  });
 });

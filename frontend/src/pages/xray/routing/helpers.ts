@@ -1,3 +1,4 @@
+import { stripNodeInboundTagPrefix } from '@/lib/xray/inbound-tag';
 import type { RuleRow } from './types';
 
 export function arrJoin(v: unknown): string | undefined {
@@ -36,13 +37,22 @@ export function chipPreview(value?: string): string {
   return chipPreviewParts(csv(value));
 }
 
-/** Same lookup as RuleFormModal inbound select: remark first, else tag. */
+/** Same lookup as RuleFormModal inbound select: remark first, else tag.
+ *  When `nodeName` is set (child-node routing editor), it is appended so the
+ *  picker shows `tag (remark · node)` or `tag (node)` when there is no remark. */
 export function buildRemarkByTag(
   options: Array<{ tag?: string; remark?: string }>,
+  nodeName?: string,
 ): Record<string, string> {
   const map: Record<string, string> = {};
+  const host = nodeName?.trim() || '';
   for (const ib of options) {
-    if (ib.tag) map[ib.tag] = ib.remark?.trim() || ib.tag;
+    if (!ib.tag) continue;
+    const remark = ib.remark?.trim() || '';
+    const parts: string[] = [];
+    if (remark && remark !== ib.tag) parts.push(remark);
+    if (host && host !== remark) parts.push(host);
+    map[ib.tag] = parts.length > 0 ? parts.join(' · ') : ib.tag;
   }
   return map;
 }
@@ -137,6 +147,22 @@ export function parseOutboundTagsFromXrayConfigObj(obj: unknown): string[] {
   }
   if (!Array.isArray(tags)) return [];
   return tags.filter((t): t is string => typeof t === 'string' && t.trim() !== '');
+}
+
+/** Rewrite inboundTag on a routing rule from the central n<id>- alias to the node's native tag. */
+export function stripNodePrefixFromRoutingRule<T extends { inboundTag?: unknown }>(
+  nodeId: number,
+  rule: T,
+): T {
+  const raw = rule.inboundTag;
+  if (raw == null) return rule;
+  const tags = Array.isArray(raw)
+    ? raw.filter((t): t is string => typeof t === 'string')
+    : typeof raw === 'string'
+      ? csv(raw)
+      : [];
+  if (tags.length === 0) return rule;
+  return { ...rule, inboundTag: tags.map((t) => stripNodeInboundTagPrefix(nodeId, t)) };
 }
 
 /** The internal api rule (stats traffic) — its enabled state must stay locked on. */
