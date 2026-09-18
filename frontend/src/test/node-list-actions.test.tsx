@@ -123,4 +123,31 @@ describe('NodeList row and batch actions', () => {
     expect(rowChecks.length).toBeGreaterThanOrEqual(3);
     expect((rowChecks[2] as HTMLInputElement).disabled).toBe(false);
   });
+
+  it('opens node url in existing new window without triggering duplicate window.open', async () => {
+    const fakeWindow = { location: { href: '' }, opener: {} as unknown, closed: false };
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(fakeWindow as unknown as Window);
+
+    renderList({
+      nodes: [
+        {
+          id: 10,
+          name: 'token-node',
+          address: '1.2.3.4',
+          port: 2053,
+          scheme: 'http',
+          enable: true,
+          hasApiToken: true,
+          transitive: false,
+          status: 'online',
+        },
+      ],
+    });
+
+    const link = screen.getByText('http://1.2.3.4:2053/');
+    fireEvent.click(link);
+
+    expect(openSpy).toHaveBeenCalledTimes(1);
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank');
+  });
 });

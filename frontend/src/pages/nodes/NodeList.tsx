@@ -328,19 +328,21 @@ export default function NodeList({
       window.open(defaultUrl, '_blank', 'noopener,noreferrer');
       return;
     }
-    const newWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    const newWindow = window.open('about:blank', '_blank');
     try {
       const msg = await HttpUtil.get<string>(`/panel/api/nodes/loginUrl/${record.id}`);
       const targetUrl = msg?.success && msg.obj ? msg.obj : defaultUrl;
-      if (newWindow) {
+      if (newWindow && !newWindow.closed) {
         newWindow.location.href = targetUrl;
-      } else {
+        newWindow.opener = null;
+      } else if (!newWindow) {
         window.open(targetUrl, '_blank', 'noopener,noreferrer');
       }
     } catch {
-      if (newWindow) {
+      if (newWindow && !newWindow.closed) {
         newWindow.location.href = defaultUrl;
-      } else {
+        newWindow.opener = null;
+      } else if (!newWindow) {
         window.open(defaultUrl, '_blank', 'noopener,noreferrer');
       }
     }
