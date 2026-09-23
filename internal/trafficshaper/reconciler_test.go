@@ -2,6 +2,7 @@ package trafficshaper
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -111,21 +112,26 @@ func TestReconcilerRemoveInbound(t *testing.T) {
 	_ = reconciler.ApplyInbound(ctx, rule)
 	_ = reconciler.SyncClientIPs(ctx, 3, "user3@example.com", []string{"192.168.1.103"})
 
+	mock.commands = nil
 	if err := reconciler.RemoveInbound(3); err != nil {
 		t.Fatalf("RemoveInbound failed: %v", err)
 	}
 
-	hasFilterDel := false
+	hasClientFilterDel := false
+	hasPortFilterDel := false
 	hasClassDel := false
 	for _, cmd := range mock.commands {
-		if strings.Contains(cmd, "filter del dev eth0") && strings.Contains(cmd, "192.168.1.103/32") {
-			hasFilterDel = true
+		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle") {
+			hasClientFilterDel = true
+		}
+		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 10 handle 3 u32") {
+			hasPortFilterDel = true
 		}
 		if strings.Contains(cmd, "class del dev eth0 classid 1:30") {
 			hasClassDel = true
 		}
 	}
-	if !hasFilterDel || !hasClassDel {
+	if !hasClientFilterDel || !hasPortFilterDel || !hasClassDel {
 		t.Fatalf("expected deletion commands not found: %v", mock.commands)
 	}
 }
@@ -171,12 +177,12 @@ func TestReconcilerClientIPIncrementalSync(t *testing.T) {
 
 	hasDelFilter := false
 	for _, cmd := range mock.commands {
-		if strings.Contains(cmd, "filter del") && strings.Contains(cmd, "10.0.0.2/32") {
+		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle") {
 			hasDelFilter = true
 		}
 	}
 	if !hasDelFilter {
-		t.Fatalf("expected filter del for 10.0.0.2, got: %v", mock.commands)
+		t.Fatalf("expected filter del with handle for 10.0.0.2, got: %v", mock.commands)
 	}
 
 	// Step 4: Disconnect all IPs
@@ -186,15 +192,131 @@ func TestReconcilerClientIPIncrementalSync(t *testing.T) {
 	hasDelOld := false
 	hasDelClass := false
 	for _, cmd := range mock.commands {
-		if strings.Contains(cmd, "filter del") && strings.Contains(cmd, "10.0.0.1/32") {
+		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle") {
 			hasDelOld = true
 		}
-		if strings.Contains(cmd, "class del") && strings.Contains(cmd, "classid 1:101") {
+		if strings.Contains(cmd, "class del dev eth0 classid 1:10001") {
 			hasDelClass = true
 		}
 	}
 	if !hasDelOld || !hasDelClass {
 		t.Fatalf("expected complete cleanup on client disconnect, got: %v", mock.commands)
+	}
+}
+
+func TestReconcilerPortChangeUpdatesClientFilters(t *testing.T) {
+	mock := &mockExecutor{}
+	engine := NewEngineWithExecutor("eth0", mock)
+	reconciler := NewReconciler(engine)
+
+	ctx := context.Background()
+	rule := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+	}
+	_ = reconciler.ApplyInbound(ctx, rule)
+	_ = reconciler.SyncClientIPs(ctx, 1, "portchange@test.com", []string{"10.5.5.5"})
+
+	mock.commands = nil
+	rule.Port = 8443
+	if err := reconciler.ApplyInbound(ctx, rule); err != nil {
+		t.Fatalf("ApplyInbound with updated port failed: %v", err)
+	}
+
+	hasUpdatedClientFilter := false
+	hasUpdatedPortFilter := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "prio 5") && strings.Contains(cmd, "sport 8443") && strings.Contains(cmd, "10.5.5.5/32") {
+			hasUpdatedClientFilter = true
+		}
+		if strings.Contains(cmd, "prio 10") && strings.Contains(cmd, "sport 8443") {
+			hasUpdatedPortFilter = true
+		}
+	}
+	if !hasUpdatedClientFilter || !hasUpdatedPortFilter {
+		t.Fatalf("client filter or port filter not updated with new port 8443: %v", mock.commands)
+	}
+}
+
+func TestReconcilerClassIDCollisionAvoidance(t *testing.T) {
+	inbound11Class := formatInboundClassID(11)
+	client10Class := formatClientClassID(1, 10)
+
+	if inbound11Class == client10Class {
+		t.Fatalf("collision detected: inbound 11 class %s equals client 10 class %s", inbound11Class, client10Class)
+	}
+}
+
+func TestReconcilerFlushErrorAccumulation(t *testing.T) {
+	mock := &mockExecutor{
+		errOnCmd:  "debounce-fail@test.com",
+		customErr: errors.New("simulated error"),
+	}
+	engine := NewEngineWithExecutor("eth0", mock)
+	reconciler := NewReconciler(engine)
+
+	ctx := context.Background()
+	rule := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+	}
+	_ = reconciler.ApplyInbound(ctx, rule)
+
+	// Queue one failing client and one succeeding client
+	reconciler.QueueClientIPs(1, "valid@test.com", []string{"10.1.1.1"})
+	reconciler.QueueClientIPs(999, "unknown-inbound@test.com", []string{"10.2.2.2"})
+
+	err := reconciler.Flush(ctx)
+	if err == nil {
+		t.Fatal("expected joined error from flush, got nil")
+	}
+
+	// Verify valid client was still processed despite the error on unknown inbound
+	hasValidFilter := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "10.1.1.1/32") {
+			hasValidFilter = true
+		}
+	}
+	if !hasValidFilter {
+		t.Fatalf("valid client update was dropped on error: %v", mock.commands)
+	}
+}
+
+func TestReconcilerIPv4Validation(t *testing.T) {
+	mock := &mockExecutor{}
+	engine := NewEngineWithExecutor("eth0", mock)
+	reconciler := NewReconciler(engine)
+
+	ctx := context.Background()
+	rule := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+	}
+	_ = reconciler.ApplyInbound(ctx, rule)
+
+	mock.commands = nil
+	// Pass an IPv6 address and an invalid string along with valid IPv4
+	_ = reconciler.SyncClientIPs(ctx, 1, "mixed@test.com", []string{"2001:db8::1", "invalid-ip", "192.168.10.50"})
+
+	hasValidV4 := false
+	hasInvalidV6 := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "192.168.10.50/32") {
+			hasValidV4 = true
+		}
+		if strings.Contains(cmd, "2001:db8::1") {
+			hasInvalidV6 = true
+		}
+	}
+	if !hasValidV4 || hasInvalidV6 {
+		t.Fatalf("expected only valid IPv4 configured, got: %v", mock.commands)
 	}
 }
 

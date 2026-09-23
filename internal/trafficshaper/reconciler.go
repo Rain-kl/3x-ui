@@ -2,7 +2,9 @@ package trafficshaper
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,16 +31,17 @@ func SetReconciler(r *Reconciler) {
 }
 
 type clientState struct {
-	classIdx int
-	ips      map[string]bool
+	classIdx  int
+	ipHandles map[string]int
 }
 
 type inboundState struct {
-	rule         InboundRule
-	applied      bool
-	clients      map[string]*clientState
-	nextClassIdx int
-	freeClassIdx []int
+	rule             InboundRule
+	applied          bool
+	clients          map[string]*clientState
+	nextClassIdx     int
+	freeClassIdx     []int
+	nextFilterHandle int
 }
 
 func (s *inboundState) allocClientClassIdx() int {
@@ -50,6 +53,12 @@ func (s *inboundState) allocClientClassIdx() int {
 	idx := s.nextClassIdx
 	s.nextClassIdx++
 	return idx
+}
+
+func (s *inboundState) allocFilterHandle(inboundID int) int {
+	h := (inboundID * 10000) + s.nextFilterHandle
+	s.nextFilterHandle++
+	return h
 }
 
 // Reconciler synchronizes inbound and client rate limiting state with Linux TC.
@@ -137,9 +146,10 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 	state, exists := r.inbounds[rule.InboundID]
 	if !exists {
 		state = &inboundState{
-			rule:         rule,
-			clients:      make(map[string]*clientState),
-			nextClassIdx: 1,
+			rule:             rule,
+			clients:          make(map[string]*clientState),
+			nextClassIdx:     1,
+			nextFilterHandle: 1,
 		}
 		r.inbounds[rule.InboundID] = state
 	}
@@ -156,13 +166,21 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 		return err
 	}
 
-	// Delete obsolete port filter if the inbound port changed.
-	if exists && state.applied && state.rule.Port != rule.Port {
-		_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "flowid", inboundClassID)
+	inboundFilterHandle := strconv.Itoa(rule.InboundID)
+	if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "flowid", inboundClassID); err != nil {
+		return err
 	}
 
-	if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "flowid", inboundClassID); err != nil {
-		return err
+	// Update existing client filters if port changed on active inbound.
+	if exists && state.applied && state.rule.Port != rule.Port {
+		for _, client := range state.clients {
+			subClassID := formatClientClassID(rule.InboundID, client.classIdx)
+			for ip, h := range client.ipHandles {
+				if formattedIP, ok := formatIPv4Mask(ip); ok {
+					_ = r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "match", "ip", "dst", formattedIP, "flowid", subClassID)
+				}
+			}
+		}
 	}
 
 	// Update existing client classes if per-client bandwidth limit changed.
@@ -176,8 +194,8 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 		} else {
 			for _, client := range state.clients {
 				subClassID := formatClientClassID(rule.InboundID, client.classIdx)
-				for ip := range client.ips {
-					_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "match", "ip", "dst", formatIPMask(ip), "flowid", subClassID)
+				for _, h := range client.ipHandles {
+					_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
 				}
 				_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
 			}
@@ -206,13 +224,14 @@ func (r *Reconciler) removeInboundLocked(ctx context.Context, inboundID int) err
 
 	for _, client := range state.clients {
 		subClassID := formatClientClassID(inboundID, client.classIdx)
-		for ip := range client.ips {
-			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "match", "ip", "dst", formatIPMask(ip), "flowid", subClassID)
+		for _, h := range client.ipHandles {
+			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
 		}
 		_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
 	}
 
-	_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "flowid", inboundClassID)
+	inboundFilterHandle := strconv.Itoa(inboundID)
+	_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32")
 	_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", inboundClassID)
 
 	delete(r.inbounds, inboundID)
@@ -245,11 +264,10 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 
 	client, clientExists := state.clients[email]
 
-	newIPs := make(map[string]bool)
+	newIPs := make(map[string]string)
 	for _, ip := range ips {
-		trimmed := strings.TrimSpace(ip)
-		if trimmed != "" {
-			newIPs[trimmed] = true
+		if formatted, ok := formatIPv4Mask(ip); ok {
+			newIPs[ip] = formatted
 		}
 	}
 
@@ -257,8 +275,8 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 	if len(newIPs) == 0 {
 		if clientExists {
 			subClassID := formatClientClassID(inboundID, client.classIdx)
-			for ip := range client.ips {
-				_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "match", "ip", "dst", formatIPMask(ip), "flowid", subClassID)
+			for _, h := range client.ipHandles {
+				_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
 			}
 			_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
 			state.freeClassIdx = append(state.freeClassIdx, client.classIdx)
@@ -269,8 +287,8 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 
 	if !clientExists {
 		client = &clientState{
-			classIdx: state.allocClientClassIdx(),
-			ips:      make(map[string]bool),
+			classIdx:  state.allocClientClassIdx(),
+			ipHandles: make(map[string]int),
 		}
 		state.clients[email] = client
 	}
@@ -282,21 +300,23 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 	}
 	_ = r.engine.Execute(ctx, "tc", "qdisc", "replace", "dev", iface, "parent", subClassID, "fq_codel")
 
-	for oldIP := range client.ips {
-		if !newIPs[oldIP] {
-			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "match", "ip", "dst", formatIPMask(oldIP), "flowid", subClassID)
+	for oldIP, h := range client.ipHandles {
+		if _, stillPresent := newIPs[oldIP]; !stillPresent {
+			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
+			delete(client.ipHandles, oldIP)
 		}
 	}
 
-	for newIP := range newIPs {
-		if !client.ips[newIP] {
-			if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "match", "ip", "dst", formatIPMask(newIP), "flowid", subClassID); err != nil {
+	for newIP, formattedIP := range newIPs {
+		if _, alreadyPresent := client.ipHandles[newIP]; !alreadyPresent {
+			h := state.allocFilterHandle(inboundID)
+			if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "match", "ip", "dst", formattedIP, "flowid", subClassID); err != nil {
 				return err
 			}
+			client.ipHandles[newIP] = h
 		}
 	}
 
-	client.ips = newIPs
 	return nil
 }
 
@@ -324,7 +344,7 @@ func (r *Reconciler) QueueClientIPs(inboundID int, email string, ips []string) {
 	})
 }
 
-// Flush applies all buffered debounced IP updates immediately.
+// Flush applies all buffered debounced IP updates, accumulating any errors.
 func (r *Reconciler) Flush(ctx context.Context) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -340,14 +360,15 @@ func (r *Reconciler) Flush(ctx context.Context) error {
 	toProcess := r.pending
 	r.pending = make(map[int]map[string][]string)
 
+	var errs []error
 	for inboundID, clients := range toProcess {
 		for email, ips := range clients {
 			if err := r.syncClientIPsLocked(ctx, inboundID, email, ips); err != nil {
-				return err
+				errs = append(errs, err)
 			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func formatInboundClassID(inboundID int) string {
@@ -355,12 +376,26 @@ func formatInboundClassID(inboundID int) string {
 }
 
 func formatClientClassID(inboundID int, clientIdx int) string {
-	return fmt.Sprintf("1:%d%02d", inboundID, clientIdx)
+	return fmt.Sprintf("1:%d%04d", inboundID, clientIdx)
 }
 
-func formatIPMask(ip string) string {
-	if strings.Contains(ip, "/") {
-		return ip
+func formatIPv4Mask(raw string) (string, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", false
 	}
-	return ip + "/32"
+	if ip, _, err := net.ParseCIDR(raw); err == nil {
+		if v4 := ip.To4(); v4 != nil {
+			return raw, true
+		}
+		return "", false
+	}
+	parsed := net.ParseIP(raw)
+	if parsed == nil {
+		return "", false
+	}
+	if v4 := parsed.To4(); v4 != nil {
+		return v4.String() + "/32", true
+	}
+	return "", false
 }
