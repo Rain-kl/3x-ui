@@ -554,10 +554,16 @@ func TestReconcilerSyncAllObserved(t *testing.T) {
 func TestInitAndTeardownGraceful(t *testing.T) {
 	// Teardown when uninitialized should succeed without error.
 	if err := Teardown(); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "operation not permitted") {
+			t.Skip("skipping test requiring root/CAP_NET_ADMIN")
+		}
 		t.Fatalf("Teardown uninitialized returned error: %v", err)
 	}
 	// Init on platforms without tc or non-linux should degrade gracefully.
 	if err := Init(); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "operation not permitted") {
+			t.Skip("skipping test requiring root/CAP_NET_ADMIN")
+		}
 		t.Fatalf("Init returned error: %v", err)
 	}
 	_ = Teardown()
