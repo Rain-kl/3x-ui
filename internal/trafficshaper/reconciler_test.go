@@ -3,6 +3,7 @@ package trafficshaper
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -84,10 +85,10 @@ func TestReconcilerUpdateInboundAndRateChange(t *testing.T) {
 	hasUpdatedInboundClass := false
 	hasUpdatedClientClass := false
 	for _, cmd := range mock.commands {
-		if strings.Contains(cmd, "class replace dev eth0 parent 1:1 classid 1:20 htb rate 200mbit") {
+		if strings.Contains(cmd, "class replace dev eth0 parent 1:1 classid 1:10 htb rate 200mbit") {
 			hasUpdatedInboundClass = true
 		}
-		if strings.Contains(cmd, "class replace dev eth0 parent 1:20") && strings.Contains(cmd, "rate 20mbit") {
+		if strings.Contains(cmd, "class replace dev eth0 parent 1:10") && strings.Contains(cmd, "rate 20mbit") {
 			hasUpdatedClientClass = true
 		}
 	}
@@ -127,7 +128,7 @@ func TestReconcilerRemoveInbound(t *testing.T) {
 		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 10 handle 0x3 u32") {
 			hasPortFilterDel = true
 		}
-		if strings.Contains(cmd, "class del dev eth0 classid 1:30") {
+		if strings.Contains(cmd, "class del dev eth0 classid 1:10") {
 			hasClassDel = true
 		}
 	}
@@ -195,7 +196,7 @@ func TestReconcilerClientIPIncrementalSync(t *testing.T) {
 		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle") {
 			hasDelOld = true
 		}
-		if strings.Contains(cmd, "class del dev eth0 classid 1:1001") {
+		if strings.Contains(cmd, "class del dev eth0 classid 1:11") {
 			hasDelClass = true
 		}
 	}
@@ -240,12 +241,51 @@ func TestReconcilerPortChangeUpdatesClientFilters(t *testing.T) {
 	}
 }
 
-func TestReconcilerClassIDCollisionAvoidance(t *testing.T) {
-	inbound11Class := formatInboundClassID(11)
-	client10Class := formatClientClassID(1, 10)
+func TestReconcilerLargeInboundAndManyClientsCollisionFree(t *testing.T) {
+	mock := &mockExecutor{}
+	engine := NewEngineWithExecutor("eth0", mock)
+	reconciler := NewReconciler(engine)
+	ctx := context.Background()
 
-	if inbound11Class == client10Class {
-		t.Fatalf("collision detected: inbound 11 class %s equals client 10 class %s", inbound11Class, client10Class)
+	// Apply inbound with large ID
+	rule := InboundRule{
+		InboundID:        1001,
+		Port:             18443,
+		InboundDownLimit: 500,
+		ClientDownLimit:  50,
+	}
+	if err := reconciler.ApplyInbound(ctx, rule); err != nil {
+		t.Fatalf("ApplyInbound failed: %v", err)
+	}
+
+	// Add 200 clients
+	for i := 1; i <= 200; i++ {
+		email := fmt.Sprintf("user%d@scale.test", i)
+		ip := fmt.Sprintf("10.100.%d.%d", i/256, i%256)
+		if err := reconciler.SyncClientIPs(ctx, 1001, email, []string{ip}); err != nil {
+			t.Fatalf("SyncClientIPs for client %d failed: %v", i, err)
+		}
+	}
+
+	// Verify all class IDs in commands are unique and strictly 16-bit
+	seenClassIDs := make(map[string]bool)
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "class replace dev eth0") {
+			parts := strings.Fields(cmd)
+			for idx, p := range parts {
+				if p == "classid" && idx+1 < len(parts) {
+					cid := parts[idx+1]
+					if seenClassIDs[cid] {
+						t.Fatalf("duplicate classid generated: %s", cid)
+					}
+					seenClassIDs[cid] = true
+				}
+			}
+		}
+	}
+
+	if len(seenClassIDs) != 201 { // 1 inbound + 200 clients
+		t.Fatalf("expected 201 unique classes, got %d", len(seenClassIDs))
 	}
 }
 

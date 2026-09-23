@@ -31,28 +31,16 @@ func SetReconciler(r *Reconciler) {
 }
 
 type clientState struct {
-	classIdx  int
-	ipHandles map[string]string
+	classMinor uint16
+	ipHandles  map[string]string
 }
 
 type inboundState struct {
 	rule             InboundRule
 	applied          bool
+	classMinor       uint16
 	clients          map[string]*clientState
-	nextClassIdx     int
-	freeClassIdx     []int
 	nextFilterHandle int
-}
-
-func (s *inboundState) allocClientClassIdx() int {
-	if len(s.freeClassIdx) > 0 {
-		idx := s.freeClassIdx[len(s.freeClassIdx)-1]
-		s.freeClassIdx = s.freeClassIdx[:len(s.freeClassIdx)-1]
-		return idx
-	}
-	idx := s.nextClassIdx
-	s.nextClassIdx++
-	return idx
 }
 
 func (s *inboundState) allocFilterHandle(inboundID int) string {
@@ -69,6 +57,8 @@ type Reconciler struct {
 	debounceDelay time.Duration
 	debounceTimer *time.Timer
 	pending       map[int]map[string][]string
+	usedMinors    map[uint16]bool
+	nextMinor     uint16
 }
 
 // NewReconciler creates a Reconciler bound to the specified Engine.
@@ -78,7 +68,27 @@ func NewReconciler(engine *Engine) *Reconciler {
 		inbounds:      make(map[int]*inboundState),
 		debounceDelay: time.Second,
 		pending:       make(map[int]map[string][]string),
+		usedMinors:    map[uint16]bool{0: true, 1: true, 0x9999: true},
+		nextMinor:     0x0f,
 	}
+}
+
+func (r *Reconciler) allocMinorLocked() (uint16, error) {
+	for count := 0; count < 0xffff; count++ {
+		r.nextMinor++
+		if r.nextMinor <= 1 || r.nextMinor == 0x9999 {
+			continue
+		}
+		if !r.usedMinors[r.nextMinor] {
+			r.usedMinors[r.nextMinor] = true
+			return r.nextMinor, nil
+		}
+	}
+	return 0, errors.New("exhausted 16-bit TC class IDs")
+}
+
+func (r *Reconciler) freeMinorLocked(minor uint16) {
+	delete(r.usedMinors, minor)
 }
 
 // SetDebounceDelay configures the batch aggregation window for client IP updates.
@@ -148,14 +158,21 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 		state = &inboundState{
 			rule:             rule,
 			clients:          make(map[string]*clientState),
-			nextClassIdx:     1,
 			nextFilterHandle: 1,
 		}
 		r.inbounds[rule.InboundID] = state
 	}
 
+	if state.classMinor == 0 {
+		minor, err := r.allocMinorLocked()
+		if err != nil {
+			return err
+		}
+		state.classMinor = minor
+	}
+
 	iface := r.engine.Interface()
-	inboundClassID := formatInboundClassID(rule.InboundID)
+	inboundClassID := fmt.Sprintf("1:%x", state.classMinor)
 
 	rateStr := DefaultBandwidth
 	if rule.InboundDownLimit > 0 {
@@ -174,7 +191,7 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 	// Update existing client filters if port changed on active inbound.
 	if exists && state.applied && state.rule.Port != rule.Port {
 		for _, client := range state.clients {
-			subClassID := formatClientClassID(rule.InboundID, client.classIdx)
+			subClassID := fmt.Sprintf("1:%x", client.classMinor)
 			for ip, h := range client.ipHandles {
 				if formattedIP, ok := formatIPv4Mask(ip); ok {
 					_ = r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "match", "ip", "dst", formattedIP, "flowid", subClassID)
@@ -188,16 +205,17 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 		if rule.ClientDownLimit > 0 {
 			clientRateStr := fmt.Sprintf("%dmbit", rule.ClientDownLimit)
 			for _, client := range state.clients {
-				subClassID := formatClientClassID(rule.InboundID, client.classIdx)
+				subClassID := fmt.Sprintf("1:%x", client.classMinor)
 				_ = r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", clientRateStr, "ceil", clientRateStr)
 			}
 		} else {
 			for _, client := range state.clients {
-				subClassID := formatClientClassID(rule.InboundID, client.classIdx)
+				subClassID := fmt.Sprintf("1:%x", client.classMinor)
 				for _, h := range client.ipHandles {
 					_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 				}
 				_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
+				r.freeMinorLocked(client.classMinor)
 			}
 			state.clients = make(map[string]*clientState)
 		}
@@ -220,20 +238,22 @@ func (r *Reconciler) removeInboundLocked(ctx context.Context, inboundID int) err
 	}
 
 	iface := r.engine.Interface()
-	inboundClassID := formatInboundClassID(inboundID)
+	inboundClassID := fmt.Sprintf("1:%x", state.classMinor)
 
 	for _, client := range state.clients {
-		subClassID := formatClientClassID(inboundID, client.classIdx)
+		subClassID := fmt.Sprintf("1:%x", client.classMinor)
 		for _, h := range client.ipHandles {
 			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 		}
 		_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
+		r.freeMinorLocked(client.classMinor)
 	}
 
 	inboundFilterHandle := fmt.Sprintf("0x%x", inboundID)
 	_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32")
 	_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", inboundClassID)
 
+	r.freeMinorLocked(state.classMinor)
 	delete(r.inbounds, inboundID)
 	return nil
 }
@@ -259,7 +279,7 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 	}
 
 	iface := r.engine.Interface()
-	inboundClassID := formatInboundClassID(inboundID)
+	inboundClassID := fmt.Sprintf("1:%x", state.classMinor)
 	clientRateStr := fmt.Sprintf("%dmbit", state.rule.ClientDownLimit)
 
 	client, clientExists := state.clients[email]
@@ -274,26 +294,30 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 	// Client disconnected or has no active IPs: remove client filters and leaf class.
 	if len(newIPs) == 0 {
 		if clientExists {
-			subClassID := formatClientClassID(inboundID, client.classIdx)
+			subClassID := fmt.Sprintf("1:%x", client.classMinor)
 			for _, h := range client.ipHandles {
 				_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 			}
 			_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
-			state.freeClassIdx = append(state.freeClassIdx, client.classIdx)
+			r.freeMinorLocked(client.classMinor)
 			delete(state.clients, email)
 		}
 		return nil
 	}
 
 	if !clientExists {
+		minor, err := r.allocMinorLocked()
+		if err != nil {
+			return err
+		}
 		client = &clientState{
-			classIdx:  state.allocClientClassIdx(),
-			ipHandles: make(map[string]string),
+			classMinor: minor,
+			ipHandles:  make(map[string]string),
 		}
 		state.clients[email] = client
 	}
 
-	subClassID := formatClientClassID(inboundID, client.classIdx)
+	subClassID := fmt.Sprintf("1:%x", client.classMinor)
 
 	if err := r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", clientRateStr, "ceil", clientRateStr); err != nil {
 		return err
@@ -369,16 +393,6 @@ func (r *Reconciler) Flush(ctx context.Context) error {
 		}
 	}
 	return errors.Join(errs...)
-}
-
-func formatInboundClassID(inboundID int) string {
-	minor := uint16(inboundID * 16)
-	return fmt.Sprintf("1:%x", minor)
-}
-
-func formatClientClassID(inboundID int, clientIdx int) string {
-	minor := uint16(0x1000 + ((inboundID-1)&0x7f)*128 + (clientIdx & 0x7f))
-	return fmt.Sprintf("1:%x", minor)
 }
 
 func parseCanonicalIPv4(raw string) (string, string, bool) {
