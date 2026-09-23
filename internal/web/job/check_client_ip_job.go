@@ -33,12 +33,13 @@ type IPWithTimestamp struct {
 // API; no access log is involved. On a core too old to expose that API the job
 // simply skips the run (the bundled core always supports it).
 type CheckClientIpJob struct {
-	disAllowedIps []string
-	bannedSeen    map[string]int64
-	xrayService   service.XrayService
-	clientService service.ClientService
-	allowlist     ipLimitAllowlist
-	lastIpPrune   int64
+	disAllowedIps  []string
+	bannedSeen     map[string]int64
+	xrayService    service.XrayService
+	clientService  service.ClientService
+	inboundService service.InboundService
+	allowlist      ipLimitAllowlist
+	lastIpPrune    int64
 }
 
 var job *CheckClientIpJob
@@ -86,6 +87,7 @@ func (j *CheckClientIpJob) Run() {
 							InboundDownLimit: ib.InboundDownLimit,
 							ClientDownLimit:  ib.ClientDownLimit,
 							ClientLimits:     clientLimits,
+							Clients:          j.inboundService.ExtractClientEmails(ib),
 						})
 					}
 				}

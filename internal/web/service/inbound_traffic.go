@@ -172,18 +172,22 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 	}
 	// Load traffic ratios for inbounds referenced by the clients.
 	inboundRatios := make(map[int]float64)
-	inboundIds := make([]int, 0, len(dbClientTraffics))
+	idSet := make(map[int]struct{})
 	for _, ct := range dbClientTraffics {
 		if ct.InboundId > 0 {
-			inboundIds = append(inboundIds, ct.InboundId)
+			idSet[ct.InboundId] = struct{}{}
 		}
 	}
 	for _, t := range traffics {
 		if t != nil && t.InboundId > 0 {
-			inboundIds = append(inboundIds, t.InboundId)
+			idSet[t.InboundId] = struct{}{}
 		}
 	}
-	if len(inboundIds) > 0 {
+	if len(idSet) > 0 {
+		inboundIds := make([]int, 0, len(idSet))
+		for id := range idSet {
+			inboundIds = append(inboundIds, id)
+		}
 		var inbounds []model.Inbound
 		if err := tx.Model(&model.Inbound{}).Where("id IN ?", inboundIds).Find(&inbounds).Error; err == nil {
 			for _, ib := range inbounds {
@@ -199,9 +203,9 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 		if !ok || (t.Up == 0 && t.Down == 0) {
 			continue
 		}
-		ibId := ct.InboundId
-		if ibId == 0 && t.InboundId > 0 {
-			ibId = t.InboundId
+		ibId := t.InboundId
+		if ibId == 0 {
+			ibId = ct.InboundId
 		}
 		ratio := inboundRatios[ibId]
 		if ratio > 0 && ratio != 1.0 {

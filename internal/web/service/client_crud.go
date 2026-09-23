@@ -247,14 +247,19 @@ func (s *ClientService) Create(inboundSvc *InboundService, payload *ClientCreate
 	// standing makes the next node merge prune the new client's inbound links.
 	withdrawClientTombstones(client.Email)
 	var rec model.ClientRecord
-	if err := database.GetDB().Where("email = ?", client.Email).First(&rec).Error; err == nil {
-		_ = database.GetDB().Model(&model.ClientRecord{}).
-			Where("id = ?", rec.Id).
-			UpdateColumn("down_limit", client.DownLimit).Error
-		for ibId, limit := range client.DownLimitByInbound {
-			_ = database.GetDB().Model(&model.ClientInbound{}).
-				Where("client_id = ? AND inbound_id = ?", rec.Id, ibId).
-				UpdateColumn("down_limit", limit).Error
+	if err := database.GetDB().Where("email = ?", client.Email).First(&rec).Error; err != nil {
+		return needRestart, err
+	}
+	if err := database.GetDB().Model(&model.ClientRecord{}).
+		Where("id = ?", rec.Id).
+		UpdateColumn("down_limit", client.DownLimit).Error; err != nil {
+		return needRestart, err
+	}
+	for ibId, limit := range client.DownLimitByInbound {
+		if err := database.GetDB().Model(&model.ClientInbound{}).
+			Where("client_id = ? AND inbound_id = ?", rec.Id, ibId).
+			UpdateColumn("down_limit", limit).Error; err != nil {
+			return needRestart, err
 		}
 	}
 	return needRestart, s.setClientLimitHwidByEmail(nil, client.Email, payload.LimitHwid)
@@ -847,11 +852,6 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 				UpdateColumn("down_limit", limit).Error; err != nil {
 				return needRestart, err
 			}
-		}
-		for ibId, limit := range updated.DownLimitByInbound {
-			_ = database.GetDB().Model(&model.ClientInbound{}).
-				Where("client_id = ? AND inbound_id = ?", id, ibId).
-				UpdateColumn("down_limit", limit).Error
 		}
 	}
 
