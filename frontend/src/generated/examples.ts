@@ -686,6 +686,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "remaining": 1
   },
   "Inbound": {
+    "clientDownLimit": 10,
     "clientStats": [
       {
         "down": 2097152,
@@ -712,6 +713,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "expiryTime": 0,
     "fallbackParent": null,
     "id": 1,
+    "inboundDownLimit": 100,
     "lastTrafficResetTime": 0,
     "listen": "",
     "nodeId": null,

@@ -2646,6 +2646,12 @@ export const SCHEMAS: Record<string, unknown> = {
   "Inbound": {
     "description": "Inbound represents an Xray inbound configuration with traffic statistics and settings.",
     "properties": {
+      "clientDownLimit": {
+        "description": "ClientDownLimit sets peak outbound bandwidth for each client on this inbound in Mbps (0 = unlimited).",
+        "example": 10,
+        "minimum": 0,
+        "type": "integer"
+      },
       "clientStats": {
         "description": "Client traffic statistics",
         "items": {
@@ -2684,6 +2690,12 @@ export const SCHEMAS: Record<string, unknown> = {
       "id": {
         "description": "Unique identifier",
         "example": 1,
+        "type": "integer"
+      },
+      "inboundDownLimit": {
+        "description": "InboundDownLimit sets peak outbound bandwidth for this entire inbound in Mbps (0 = unlimited).",
+        "example": 100,
+        "minimum": 0,
         "type": "integer"
       },
       "lastTrafficResetTime": {
@@ -2786,12 +2798,14 @@ export const SCHEMAS: Record<string, unknown> = {
       }
     },
     "required": [
+      "clientDownLimit",
       "clientStats",
       "disableFlow",
       "down",
       "enable",
       "expiryTime",
       "id",
+      "inboundDownLimit",
       "lastTrafficResetTime",
       "listen",
       "port",

@@ -2672,6 +2672,12 @@
       "Inbound": {
         "description": "Inbound represents an Xray inbound configuration with traffic statistics and settings.",
         "properties": {
+          "clientDownLimit": {
+            "description": "ClientDownLimit sets peak outbound bandwidth for each client on this inbound in Mbps (0 = unlimited).",
+            "example": 10,
+            "minimum": 0,
+            "type": "integer"
+          },
           "clientStats": {
             "description": "Client traffic statistics",
             "items": {
@@ -2710,6 +2716,12 @@
           "id": {
             "description": "Unique identifier",
             "example": 1,
+            "type": "integer"
+          },
+          "inboundDownLimit": {
+            "description": "InboundDownLimit sets peak outbound bandwidth for this entire inbound in Mbps (0 = unlimited).",
+            "example": 100,
+            "minimum": 0,
             "type": "integer"
           },
           "lastTrafficResetTime": {
@@ -2812,12 +2824,14 @@
           }
         },
         "required": [
+          "clientDownLimit",
           "clientStats",
           "disableFlow",
           "down",
           "enable",
           "expiryTime",
           "id",
+          "inboundDownLimit",
           "lastTrafficResetTime",
           "listen",
           "port",
@@ -4646,6 +4660,7 @@
                   "success": true,
                   "obj": [
                     {
+                      "clientDownLimit": 10,
                       "clientStats": [
                         {
                           "down": 2097152,
@@ -4672,6 +4687,7 @@
                       "expiryTime": 0,
                       "fallbackParent": null,
                       "id": 1,
+                      "inboundDownLimit": 100,
                       "lastTrafficResetTime": 0,
                       "listen": "",
                       "nodeId": null,
@@ -15942,6 +15958,7 @@
               "type": "inbounds",
               "payload": [
                 {
+                  "clientDownLimit": 10,
                   "clientStats": [
                     {
                       "down": 2097152,
@@ -15968,6 +15985,7 @@
                   "expiryTime": 0,
                   "fallbackParent": null,
                   "id": 1,
+                  "inboundDownLimit": 100,
                   "lastTrafficResetTime": 0,
                   "listen": "",
                   "nodeId": null,

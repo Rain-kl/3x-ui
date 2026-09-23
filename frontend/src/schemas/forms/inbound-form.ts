@@ -82,6 +82,8 @@ export const InboundDbFieldsSchema = z.object({
   shareAddr: z.string().default(''),
   subSortIndex: z.number().int().default(1),
   disableFlow: z.boolean().default(false),
+  inboundDownLimit: z.number().int().min(0).default(0),
+  clientDownLimit: z.number().int().min(0).default(0),
 });
 export type InboundDbFields = z.infer<typeof InboundDbFieldsSchema>;
 

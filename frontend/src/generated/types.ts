@@ -613,6 +613,7 @@ export interface HwidSlotStatus {
 }
 
 export interface Inbound {
+  clientDownLimit: number;
   clientStats: ClientTraffic[];
   disableFlow: boolean;
   down: number;
@@ -620,6 +621,7 @@ export interface Inbound {
   expiryTime: number;
   fallbackParent?: FallbackParentInfo | null;
   id: number;
+  inboundDownLimit: number;
   lastTrafficResetTime: number;
   listen: string;
   nodeId?: number | null;

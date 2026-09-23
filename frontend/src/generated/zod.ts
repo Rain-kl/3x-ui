@@ -652,6 +652,7 @@ export const HwidSlotStatusSchema = z.object({
 export type HwidSlotStatus = z.infer<typeof HwidSlotStatusSchema>;
 
 export const InboundSchema = z.object({
+  clientDownLimit: z.number().int().min(0),
   clientStats: z.array(z.lazy(() => ClientTrafficSchema)),
   disableFlow: z.boolean(),
   down: z.number().int(),
@@ -659,6 +660,7 @@ export const InboundSchema = z.object({
   expiryTime: z.number().int(),
   fallbackParent: z.lazy(() => FallbackParentInfoSchema).nullable().optional(),
   id: z.number().int(),
+  inboundDownLimit: z.number().int().min(0),
   lastTrafficResetTime: z.number().int(),
   listen: z.string(),
   nodeId: z.number().int().nullable().optional(),
