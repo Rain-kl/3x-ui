@@ -85,6 +85,8 @@ func (e *Engine) Init(ctx context.Context) error {
 	if err := e.executor.Execute(ctx, "tc", "class", "replace", "dev", e.iface, "parent", DefaultRootHandle, "classid", DefaultDirectClassID, "htb", "rate", DefaultBandwidth, "ceil", DefaultBandwidth); err != nil {
 		return err
 	}
+	// Anchor priority 5 to root table 800 so client filters share deterministic 800::x handles.
+	_ = e.executor.Execute(ctx, "tc", "filter", "replace", "dev", e.iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", "800::800", "u32", "match", "ip", "dst", "0.0.0.0/32", "flowid", DefaultDirectClassID)
 	return nil
 }
 

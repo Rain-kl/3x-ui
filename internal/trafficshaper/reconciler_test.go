@@ -43,7 +43,7 @@ func TestReconcilerInboundAndClientSync(t *testing.T) {
 	hasClientClass := false
 	hasClientFilter := false
 	for _, cmd := range mock.commands {
-		if strings.Contains(cmd, "class replace dev eth0 parent 1:10") && strings.Contains(cmd, "rate 10mbit") {
+		if strings.Contains(cmd, "class replace dev eth0 parent 1:10") && strings.Contains(cmd, "ceil 10mbit") {
 			hasClientClass = true
 		}
 		if strings.Contains(cmd, "filter replace dev eth0") && strings.Contains(cmd, "match ip dst 192.168.1.100/32") {
@@ -88,7 +88,7 @@ func TestReconcilerUpdateInboundAndRateChange(t *testing.T) {
 		if strings.Contains(cmd, "class replace dev eth0 parent 1:1 classid 1:10 htb rate 200mbit") {
 			hasUpdatedInboundClass = true
 		}
-		if strings.Contains(cmd, "class replace dev eth0 parent 1:10") && strings.Contains(cmd, "rate 20mbit") {
+		if strings.Contains(cmd, "class replace dev eth0 parent 1:10") && strings.Contains(cmd, "ceil 20mbit") {
 			hasUpdatedClientClass = true
 		}
 	}
@@ -122,7 +122,7 @@ func TestReconcilerRemoveInbound(t *testing.T) {
 	hasPortFilterDel := false
 	hasClassDel := false
 	for _, cmd := range mock.commands {
-		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle 0x30001 u32") {
+		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle 800::301 u32") {
 			hasClientFilterDel = true
 		}
 		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 10 handle 0x3 u32") {

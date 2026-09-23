@@ -44,9 +44,9 @@ type inboundState struct {
 }
 
 func (s *inboundState) allocFilterHandle(inboundID int) string {
-	h := (inboundID << 16) | (s.nextFilterHandle & 0xffff)
+	node := ((inboundID & 0x7) << 8) | (s.nextFilterHandle & 0xff)
 	s.nextFilterHandle++
-	return fmt.Sprintf("0x%x", h)
+	return fmt.Sprintf("800::%x", node)
 }
 
 // Reconciler synchronizes inbound and client rate limiting state with Linux TC.
@@ -181,13 +181,18 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 		rateStr = fmt.Sprintf("%dmbit", rule.InboundDownLimit)
 	}
 
-	if err := r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", DefaultRootClassID, "classid", inboundClassID, "htb", "rate", rateStr, "ceil", rateStr); err != nil {
+	if err := r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", DefaultRootClassID, "classid", inboundClassID, "htb", "rate", rateStr, "ceil", rateStr, "burst", "64k", "cburst", "64k"); err != nil {
 		return err
 	}
 
-	inboundFilterHandle := fmt.Sprintf("0x%x", rule.InboundID)
-	if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "flowid", inboundClassID); err != nil {
-		return err
+	if !state.applied || state.rule.Port != rule.Port {
+		inboundFilterHandle := fmt.Sprintf("0x%x", rule.InboundID)
+		if state.applied && state.rule.Port != rule.Port {
+			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32")
+		}
+		if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "flowid", inboundClassID); err != nil {
+			return err
+		}
 	}
 
 	// Update existing client filters if port changed on active inbound.
@@ -205,10 +210,10 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 	// Update existing client classes if per-client bandwidth limit changed.
 	if state.applied && state.rule.ClientDownLimit != rule.ClientDownLimit {
 		if rule.ClientDownLimit > 0 {
-			clientRateStr := fmt.Sprintf("%dmbit", rule.ClientDownLimit)
 			for _, client := range state.clients {
 				subClassID := fmt.Sprintf("1:%x", client.classMinor)
-				_ = r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", clientRateStr, "ceil", clientRateStr)
+				rateStr, ceilStr := clientRateParams(rule.InboundDownLimit, rule.ClientDownLimit)
+				_ = r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", rateStr, "ceil", ceilStr, "burst", "32k", "cburst", "32k")
 			}
 		} else {
 			for _, client := range state.clients {
@@ -301,7 +306,7 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 
 	iface := r.engine.Interface()
 	inboundClassID := fmt.Sprintf("1:%x", state.classMinor)
-	clientRateStr := fmt.Sprintf("%dmbit", state.rule.ClientDownLimit)
+	rateStr, ceilStr := clientRateParams(state.rule.InboundDownLimit, state.rule.ClientDownLimit)
 
 	client, clientExists := state.clients[email]
 
@@ -340,7 +345,7 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 
 	subClassID := fmt.Sprintf("1:%x", client.classMinor)
 
-	if err := r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", clientRateStr, "ceil", clientRateStr); err != nil {
+	if err := r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", rateStr, "ceil", ceilStr, "burst", "32k", "cburst", "32k"); err != nil {
 		return err
 	}
 	_ = r.engine.Execute(ctx, "tc", "qdisc", "replace", "dev", iface, "parent", subClassID, "fq_codel")
@@ -496,4 +501,13 @@ func parseCanonicalIPv4(raw string) (string, string, bool) {
 func formatIPv4Mask(raw string) (string, bool) {
 	_, formattedCIDR, ok := parseCanonicalIPv4(raw)
 	return formattedCIDR, ok
+}
+
+// clientRateParams guarantees minimum rate while enforcing ceiling to honor parent inbound limits.
+func clientRateParams(inboundLimit, clientLimit int) (string, string) {
+	ceilStr := fmt.Sprintf("%dmbit", clientLimit)
+	if inboundLimit <= 0 || clientLimit <= 1 {
+		return ceilStr, ceilStr
+	}
+	return "1mbit", ceilStr
 }
