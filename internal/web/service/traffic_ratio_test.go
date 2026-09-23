@@ -156,3 +156,93 @@ func TestTrafficRatio_RemoteTrafficMultiplier(t *testing.T) {
 		t.Errorf("row.Down = %d, want 3000 (2000 * 1.5)", row.Down)
 	}
 }
+
+func TestTrafficRatio_ZeroMultiplierFreeTraffic(t *testing.T) {
+	db := initTrafficTestDB(t)
+	svc := &InboundService{}
+
+	ib := &model.Inbound{
+		UserId:       1,
+		Tag:          "in-ratio-zero",
+		Enable:       true,
+		Port:         45002,
+		Protocol:     model.VLESS,
+		TrafficRatio: 0.0,
+		Settings:     `{"clients":[]}`,
+	}
+	if err := db.Create(ib).Error; err != nil {
+		t.Fatalf("create inbound: %v", err)
+	}
+	if err := db.Model(ib).Update("traffic_ratio", 0.0).Error; err != nil {
+		t.Fatalf("update traffic_ratio: %v", err)
+	}
+
+	if err := svc.AddClientStat(db, ib.Id, &model.Client{
+		Email:  "free@ratio.com",
+		Enable: true,
+	}); err != nil {
+		t.Fatalf("AddClientStat: %v", err)
+	}
+
+	clientTraffics := []*xray.ClientTraffic{
+		{
+			InboundId: ib.Id,
+			Email:     "free@ratio.com",
+			Up:        1000,
+			Down:      2000,
+		},
+	}
+	if _, _, err := svc.AddTraffic(nil, clientTraffics); err != nil {
+		t.Fatalf("AddTraffic: %v", err)
+	}
+
+	var row xray.ClientTraffic
+	if err := db.Where("email = ?", "free@ratio.com").First(&row).Error; err != nil {
+		t.Fatalf("find client traffic: %v", err)
+	}
+	if row.Up != 0 || row.Down != 0 {
+		t.Errorf("expected 0 traffic for 0.0 ratio, got Up=%d Down=%d", row.Up, row.Down)
+	}
+}
+
+func TestTrafficRatio_UpdateInbound(t *testing.T) {
+	db := initTrafficTestDB(t)
+	svc := &InboundService{}
+
+	ib := &model.Inbound{
+		UserId:       1,
+		Tag:          "in-update-ratio",
+		Enable:       true,
+		Port:         45003,
+		Protocol:     model.VLESS,
+		TrafficRatio: 1.0,
+		Settings:     `{"clients":[]}`,
+	}
+	if err := db.Create(ib).Error; err != nil {
+		t.Fatalf("create inbound: %v", err)
+	}
+
+	ib.TrafficRatio = 2.5
+	if _, _, err := svc.UpdateInbound(ib); err != nil {
+		t.Fatalf("UpdateInbound: %v", err)
+	}
+
+	var updated model.Inbound
+	if err := db.First(&updated, ib.Id).Error; err != nil {
+		t.Fatalf("find inbound: %v", err)
+	}
+	if updated.TrafficRatio != 2.5 {
+		t.Errorf("updated.TrafficRatio = %f, want 2.5", updated.TrafficRatio)
+	}
+
+	ib.TrafficRatio = 0.0
+	if _, _, err := svc.UpdateInbound(ib); err != nil {
+		t.Fatalf("UpdateInbound 0.0: %v", err)
+	}
+	if err := db.First(&updated, ib.Id).Error; err != nil {
+		t.Fatalf("find inbound: %v", err)
+	}
+	if updated.TrafficRatio != 0.0 {
+		t.Errorf("updated.TrafficRatio = %f, want 0.0", updated.TrafficRatio)
+	}
+}

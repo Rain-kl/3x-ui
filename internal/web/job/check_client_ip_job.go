@@ -80,16 +80,14 @@ func (j *CheckClientIpJob) Run() {
 				if _, seen := seenInbounds[ib.Id]; !seen {
 					seenInbounds[ib.Id] = struct{}{}
 					clientLimits := j.clientService.ClientLimitsByInbound(ib.Id)
-					if ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0 || len(clientLimits) > 0 {
-						_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-							InboundID:        ib.Id,
-							Port:             ib.Port,
-							InboundDownLimit: ib.InboundDownLimit,
-							ClientDownLimit:  ib.ClientDownLimit,
-							ClientLimits:     clientLimits,
-							Clients:          j.inboundService.ExtractClientEmails(ib),
-						})
-					}
+					_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+						InboundID:        ib.Id,
+						Port:             ib.Port,
+						InboundDownLimit: ib.InboundDownLimit,
+						ClientDownLimit:  ib.ClientDownLimit,
+						ClientLimits:     clientLimits,
+						Clients:          j.inboundService.ExtractClientEmails(ib),
+					})
 				}
 			}
 		}

@@ -1924,6 +1924,7 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 		oldInbound.Sniffing = inbound.Sniffing
 		oldInbound.InboundDownLimit = inbound.InboundDownLimit
 		oldInbound.ClientDownLimit = inbound.ClientDownLimit
+		oldInbound.TrafficRatio = inbound.TrafficRatio
 		if strings.TrimSpace(inbound.ShareAddrStrategy) == "" {
 			normalizeInboundShareAddress(oldInbound)
 			inbound.ShareAddrStrategy = oldInbound.ShareAddrStrategy

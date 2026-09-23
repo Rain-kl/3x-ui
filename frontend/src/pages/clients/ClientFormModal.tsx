@@ -1399,6 +1399,7 @@ export default function ClientFormModal({
                             <InputNumber
                               min={0}
                               step={1}
+                              precision={0}
                               placeholder="0"
                               style={{ width: '100%' }}
                             />
@@ -1451,6 +1452,8 @@ export default function ClientFormModal({
                               render: (_v, ib) => (
                                 <InputNumber
                                   min={0}
+                                  step={1}
+                                  precision={0}
                                   value={downLimitByInboundVal[ib.id] || undefined}
                                   placeholder={t('pages.clients.inheritGlobalLimit', {
                                     limit: downLimit > 0 ? downLimit : 0,

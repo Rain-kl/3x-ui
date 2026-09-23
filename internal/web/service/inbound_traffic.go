@@ -207,8 +207,8 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 		if ibId == 0 {
 			ibId = ct.InboundId
 		}
-		ratio := inboundRatios[ibId]
-		if ratio > 0 && ratio != 1.0 {
+		ratio, okRatio := inboundRatios[ibId]
+		if okRatio && ratio >= 0 && ratio != 1.0 {
 			t.Up = int64(float64(t.Up) * ratio)
 			t.Down = int64(float64(t.Down) * ratio)
 		}

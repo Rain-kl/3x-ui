@@ -176,3 +176,65 @@ func TestCheckClientIpJob_TrafficShaperDifferentialLimits(t *testing.T) {
 		t.Fatalf("expected rate 50mbit class for bob@test.com, commands: %v", mockExec.commands)
 	}
 }
+
+func TestCheckClientIpJob_LimitRemovalTeardown(t *testing.T) {
+	dbDir := t.TempDir()
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	t.Cleanup(func() { _ = database.CloseDB() })
+
+	mockExec := &mockJobCmdExecutor{}
+	eng := trafficshaper.NewEngineWithExecutor("eth0", mockExec)
+	rec := trafficshaper.NewReconciler(eng)
+	trafficshaper.SetReconciler(rec)
+	t.Cleanup(func() { trafficshaper.SetReconciler(nil) })
+
+	ib := &model.Inbound{
+		Port:            3643,
+		Protocol:        model.VLESS,
+		ClientDownLimit: 10,
+		Tag:             "in-teardown-test",
+		Enable:          true,
+		Settings:        `{"clients":[{"id":"c1","email":"carol@test.com","enable":true}]}`,
+	}
+	if err := database.GetDB().Create(ib).Error; err != nil {
+		t.Fatalf("Create inbound failed: %v", err)
+	}
+
+	// Apply initial limit
+	ctx := context.Background()
+	_ = rec.ApplyInbound(ctx, trafficshaper.InboundRule{
+		InboundID:       ib.Id,
+		Port:            ib.Port,
+		ClientDownLimit: ib.ClientDownLimit,
+		Clients:         []string{"carol@test.com"},
+	})
+
+	// Clear limits on inbound and simulate CheckClientIpJob Run behavior
+	ib.ClientDownLimit = 0
+	ib.InboundDownLimit = 0
+	_ = database.GetDB().Save(ib).Error
+
+	j := NewCheckClientIpJob()
+	clientLimits := j.clientService.ClientLimitsByInbound(ib.Id)
+	_ = rec.ApplyInbound(ctx, trafficshaper.InboundRule{
+		InboundID:        ib.Id,
+		Port:             ib.Port,
+		InboundDownLimit: ib.InboundDownLimit,
+		ClientDownLimit:  ib.ClientDownLimit,
+		ClientLimits:     clientLimits,
+		Clients:          j.inboundService.ExtractClientEmails(ib),
+	})
+
+	hasDelClass := false
+	for _, cmd := range mockExec.commands {
+		if strings.Contains(cmd, "class del") {
+			hasDelClass = true
+			break
+		}
+	}
+	if !hasDelClass {
+		t.Fatalf("expected class del command when limits are cleared, got: %v", mockExec.commands)
+	}
+}
