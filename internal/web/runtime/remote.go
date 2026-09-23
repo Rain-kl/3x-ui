@@ -838,6 +838,8 @@ func wireInbound(ib *model.Inbound, remoteNodeID int) url.Values {
 	v.Set("shareAddrStrategy", shareAddrStrategy)
 	v.Set("shareAddr", ib.ShareAddr)
 	v.Set("disableFlow", strconv.FormatBool(ib.DisableFlow))
+	v.Set("inboundDownLimit", strconv.Itoa(ib.InboundDownLimit))
+	v.Set("clientDownLimit", strconv.Itoa(ib.ClientDownLimit))
 	if ib.TrafficReset != "" {
 		v.Set("trafficReset", ib.TrafficReset)
 	}

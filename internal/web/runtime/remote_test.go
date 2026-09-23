@@ -196,6 +196,16 @@ func TestWireInboundCarriesDisableFlow(t *testing.T) {
 	}
 }
 
+func TestWireInboundCarriesRateLimits(t *testing.T) {
+	values := wireInbound(&model.Inbound{InboundDownLimit: 100, ClientDownLimit: 10}, 0)
+	if got := values.Get("inboundDownLimit"); got != "100" {
+		t.Fatalf("inboundDownLimit = %q, want 100", got)
+	}
+	if got := values.Get("clientDownLimit"); got != "10" {
+		t.Fatalf("clientDownLimit = %q, want 10", got)
+	}
+}
+
 func TestRemoteHTTPClientEgressProxy(t *testing.T) {
 	// OutboundTag + a resolver → a dedicated proxy client (not the shared default).
 	withTag := NewRemote(&model.Node{Id: 1, Scheme: "https", TlsVerifyMode: "verify", OutboundTag: "warp"}, stubEgress{url: "socks5://127.0.0.1:1080"})
