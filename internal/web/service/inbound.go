@@ -566,6 +566,24 @@ func (s *InboundService) GetClients(inbound *model.Inbound) ([]model.Client, err
 	return ParseInboundSettingsClients(inbound.Settings)
 }
 
+// ExtractClientEmails returns non-empty client emails from an inbound.
+func (s *InboundService) ExtractClientEmails(inbound *model.Inbound) []string {
+	if inbound == nil {
+		return nil
+	}
+	clients, err := s.GetClients(inbound)
+	if err != nil || len(clients) == 0 {
+		return nil
+	}
+	var emails []string
+	for _, c := range clients {
+		if c.Email != "" {
+			emails = append(emails, c.Email)
+		}
+	}
+	return emails
+}
+
 // GetClientsBySubId returns the inbound's clients with the given subscription
 // id, resolved from the normalized clients tables (the same source the running
 // Xray users are built from) instead of parsing the settings JSON blob.
@@ -1360,22 +1378,17 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 		needRestart = true
 	}
 
-	if r := trafficshaper.GetReconciler(); r != nil {
-		if inbound.Enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0) {
-			clients, _ := s.GetClients(inbound)
-			var clientEmails []string
-			for _, c := range clients {
-				if c.Email != "" {
-					clientEmails = append(clientEmails, c.Email)
-				}
+	if inbound.NodeID == nil {
+		if r := trafficshaper.GetReconciler(); r != nil {
+			if inbound.Enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0) {
+				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+					InboundID:        inbound.Id,
+					Port:             inbound.Port,
+					InboundDownLimit: inbound.InboundDownLimit,
+					ClientDownLimit:  inbound.ClientDownLimit,
+					Clients:          s.ExtractClientEmails(inbound),
+				})
 			}
-			_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-				InboundID:        inbound.Id,
-				Port:             inbound.Port,
-				InboundDownLimit: inbound.InboundDownLimit,
-				ClientDownLimit:  inbound.ClientDownLimit,
-				Clients:          clientEmails,
-			})
 		}
 	}
 
@@ -1497,8 +1510,10 @@ func (s *InboundService) delInbound(id int) (bool, func(), error) {
 	if mtprotoRoutesThroughXray(&ib) {
 		needRestart = true
 	}
-	if r := trafficshaper.GetReconciler(); r != nil {
-		_ = r.RemoveInbound(id)
+	if ib.NodeID == nil {
+		if r := trafficshaper.GetReconciler(); r != nil {
+			_ = r.RemoveInbound(id)
+		}
 	}
 	return needRestart, nodePush, nil
 }
@@ -1653,19 +1668,12 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 	if inbound.NodeID == nil {
 		if r := trafficshaper.GetReconciler(); r != nil {
 			if enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0) {
-				clients, _ := s.GetClients(inbound)
-				var clientEmails []string
-				for _, c := range clients {
-					if c.Email != "" {
-						clientEmails = append(clientEmails, c.Email)
-					}
-				}
 				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
 					InboundID:        inbound.Id,
 					Port:             inbound.Port,
 					InboundDownLimit: inbound.InboundDownLimit,
 					ClientDownLimit:  inbound.ClientDownLimit,
-					Clients:          clientEmails,
+					Clients:          s.ExtractClientEmails(inbound),
 				})
 			} else if !enable {
 				_ = r.RemoveInbound(inbound.Id)
@@ -2045,24 +2053,19 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 		}
 	}
 
-	if r := trafficshaper.GetReconciler(); r != nil {
-		if oldInbound.Enable && (oldInbound.InboundDownLimit > 0 || oldInbound.ClientDownLimit > 0) {
-			clients, _ := s.GetClients(oldInbound)
-			var clientEmails []string
-			for _, c := range clients {
-				if c.Email != "" {
-					clientEmails = append(clientEmails, c.Email)
-				}
+	if oldInbound.NodeID == nil {
+		if r := trafficshaper.GetReconciler(); r != nil {
+			if oldInbound.Enable && (oldInbound.InboundDownLimit > 0 || oldInbound.ClientDownLimit > 0) {
+				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+					InboundID:        oldInbound.Id,
+					Port:             oldInbound.Port,
+					InboundDownLimit: oldInbound.InboundDownLimit,
+					ClientDownLimit:  oldInbound.ClientDownLimit,
+					Clients:          s.ExtractClientEmails(oldInbound),
+				})
+			} else {
+				_ = r.RemoveInbound(oldInbound.Id)
 			}
-			_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-				InboundID:        oldInbound.Id,
-				Port:             oldInbound.Port,
-				InboundDownLimit: oldInbound.InboundDownLimit,
-				ClientDownLimit:  oldInbound.ClientDownLimit,
-				Clients:          clientEmails,
-			})
-		} else {
-			_ = r.RemoveInbound(oldInbound.Id)
 		}
 	}
 

@@ -117,22 +117,16 @@ func runWebServer() {
 	if err := trafficshaper.Init(); err != nil {
 		logger.Warning("Failed to initialize trafficshaper:", err)
 	} else if r := trafficshaper.GetReconciler(); r != nil {
-		if inbounds, err := (&service.InboundService{}).GetAllInbounds(); err == nil {
+		inboundSvc := &service.InboundService{}
+		if inbounds, err := inboundSvc.GetAllInbounds(); err == nil {
 			for _, ib := range inbounds {
-				if ib.Enable && (ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0) {
-					clients, _ := (&service.InboundService{}).GetClients(ib)
-					var clientEmails []string
-					for _, c := range clients {
-						if c.Email != "" {
-							clientEmails = append(clientEmails, c.Email)
-						}
-					}
+				if ib.NodeID == nil && ib.Enable && (ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0) {
 					_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
 						InboundID:        ib.Id,
 						Port:             ib.Port,
 						InboundDownLimit: ib.InboundDownLimit,
 						ClientDownLimit:  ib.ClientDownLimit,
-						Clients:          clientEmails,
+						Clients:          inboundSvc.ExtractClientEmails(ib),
 					})
 				}
 			}

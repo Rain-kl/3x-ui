@@ -174,3 +174,62 @@ func TestInboundServiceRateLimitReconcilerLifecycle(t *testing.T) {
 		t.Fatalf("reconciler did not receive DelInbound; commands: %v", mockExec.commands)
 	}
 }
+
+func TestInboundServiceRateLimit_RemoteNodeIgnored(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "test_svc_rl_remote.db")
+	_ = database.InitDB(dbPath)
+	t.Cleanup(func() { _ = database.CloseDB() })
+
+	mockExec := &mockCmdExecutor{}
+	eng := trafficshaper.NewEngineWithExecutor("eth0", mockExec)
+	rec := trafficshaper.NewReconciler(eng)
+	trafficshaper.SetReconciler(rec)
+	t.Cleanup(func() { trafficshaper.SetReconciler(nil) })
+
+	node := &model.Node{
+		Name:    "test-node",
+		Address: "127.0.0.1",
+		Port:    1234,
+	}
+	if err := database.GetDB().Create(node).Error; err != nil {
+		t.Fatalf("Create node failed: %v", err)
+	}
+	nodeID := node.Id
+	svc := &InboundService{}
+	inbound := &model.Inbound{
+		Remark:           "svc-test-remote-rl",
+		Port:             28445,
+		Protocol:         model.VLESS,
+		Settings:         `{"clients":[{"id":"u3","email":"user3@example.com","enable":true}]}`,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+		Tag:              "in-svc-remote-rl",
+		Enable:           true,
+		NodeID:           &nodeID,
+	}
+
+	_, _, err := svc.AddInbound(inbound)
+	if err != nil {
+		t.Fatalf("AddInbound failed: %v", err)
+	}
+	if len(mockExec.commands) > 0 {
+		t.Fatalf("remote node inbound should not invoke local reconciler, got commands: %v", mockExec.commands)
+	}
+
+	inbound.InboundDownLimit = 200
+	_, _, err = svc.UpdateInbound(inbound)
+	if err != nil {
+		t.Fatalf("UpdateInbound failed: %v", err)
+	}
+	if len(mockExec.commands) > 0 {
+		t.Fatalf("remote node inbound update should not invoke local reconciler, got commands: %v", mockExec.commands)
+	}
+
+	_, err = svc.DelInbound(inbound.Id)
+	if err != nil {
+		t.Fatalf("DelInbound failed: %v", err)
+	}
+	if len(mockExec.commands) > 0 {
+		t.Fatalf("remote node inbound deletion should not invoke local reconciler, got commands: %v", mockExec.commands)
+	}
+}

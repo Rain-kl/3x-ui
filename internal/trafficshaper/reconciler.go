@@ -453,11 +453,9 @@ func (r *Reconciler) SyncAllObserved(observed map[string]map[string]int64) {
 		syncedEmails := make(map[string]bool)
 		for email, ips := range observedIPs {
 			belongs := false
-			if r.emailToInbound != nil && r.emailToInbound[email] == inboundID {
-				belongs = true
+			if r.emailToInbound != nil && r.emailToInbound[email] != 0 {
+				belongs = r.emailToInbound[email] == inboundID
 			} else if _, exists := state.clients[email]; exists {
-				belongs = true
-			} else if len(r.inbounds) == 1 {
 				belongs = true
 			}
 			if belongs {
@@ -467,9 +465,7 @@ func (r *Reconciler) SyncAllObserved(observed map[string]map[string]int64) {
 		}
 		for email := range state.clients {
 			if !syncedEmails[email] {
-				if _, present := observed[email]; !present {
-					_ = r.syncClientIPsLocked(context.Background(), inboundID, email, nil)
-				}
+				_ = r.syncClientIPsLocked(context.Background(), inboundID, email, nil)
 			}
 		}
 	}

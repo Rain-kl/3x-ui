@@ -507,13 +507,15 @@ func TestReconcilerSyncAllObserved(t *testing.T) {
 		t.Fatalf("expected filters for alice and bob, got: %v", mock.commands)
 	}
 
-	// Second observation: bob disconnected, only alice active.
+	// Second observation: bob disconnected, only alice active, and unknown charlie present.
 	mock.commands = nil
 	delete(observed, "bob@example.com")
+	observed["charlie@unknown.com"] = map[string]int64{"192.168.1.70": 1000}
 	r.SyncAllObserved(observed)
 
 	hasBobDelFilter := false
 	hasBobDelClass := false
+	hasCharlieFilter := false
 	for _, cmd := range mock.commands {
 		if strings.Contains(cmd, "filter del dev eth0") {
 			hasBobDelFilter = true
@@ -521,9 +523,31 @@ func TestReconcilerSyncAllObserved(t *testing.T) {
 		if strings.Contains(cmd, "class del dev eth0") {
 			hasBobDelClass = true
 		}
+		if strings.Contains(cmd, "192.168.1.70") {
+			hasCharlieFilter = true
+		}
 	}
 	if !hasBobDelFilter || !hasBobDelClass {
 		t.Fatalf("expected bob filter and class deletion on disconnect, got: %v", mock.commands)
+	}
+	if hasCharlieFilter {
+		t.Fatalf("unmapped charlie should not have rule created on inbound 1, got: %v", mock.commands)
+	}
+
+	// Third observation: alice re-assigned away from inbound 1, inbound 1 cleans her up even though she is observed.
+	mock.commands = nil
+	r.RegisterClientInbound("alice@example.com", 999)
+	r.SyncAllObserved(observed)
+
+	hasAliceDelFilter := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "filter del dev eth0") {
+			hasAliceDelFilter = true
+			break
+		}
+	}
+	if !hasAliceDelFilter {
+		t.Fatalf("expected alice filter deletion on inbound 1 after reassignment, got: %v", mock.commands)
 	}
 }
 
