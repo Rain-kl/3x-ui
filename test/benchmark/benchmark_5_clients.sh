@@ -5,7 +5,8 @@ set -euo pipefail
 # Dispatch to OrbStack VM if running on macOS host
 if [[ "$(uname)" == "Darwin" ]]; then
     echo "==> Running on macOS. Dispatching benchmark into OrbStack Ubuntu VM..."
-    exec orb -m ubuntu sudo bash /Users/ryan/Code/Go/3x-ui/test/benchmark/benchmark_5_clients.sh "$@"
+    SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    exec orb -m ubuntu sudo bash "${SCRIPT_PATH}" "$@"
 fi
 
 if [[ "$(id -u)" -ne 0 ]]; then
@@ -405,10 +406,12 @@ measure_client_stream() {
     local i=$1
     local duration=$2
     local err_file="$TMP_DIR/curl_err_$i.txt"
-    local out
-    out=$(ip netns exec "ns-c$i" curl -s -S -m "$duration" -w "%{time_total},%{time_starttransfer},%{size_download},%{http_code},%{exitcode}\n" -x socks5://127.0.0.1:1080 "http://$HOST_IP:$DATA_PORT/stream" -o /dev/null 2>"$err_file" || true)
+    local raw_file="$TMP_DIR/client_${i}_out.txt"
+    ip netns exec "ns-c$i" curl -s -S -m "$duration" -w "%{time_total},%{time_starttransfer},%{size_download},%{http_code},%{exitcode}\n" -x socks5://127.0.0.1:1080 "http://$HOST_IP:$DATA_PORT/stream" -o /dev/null 2>"$err_file" > "$raw_file" || true
     python3 -c "
-parts = '$out'.strip().split(',')
+with open('$raw_file', 'r') as f:
+    out = f.read().strip()
+parts = out.split(',')
 if len(parts) >= 3 and float(parts[2]) > 0:
     t_tot = float(parts[0])
     t_st = float(parts[1])
@@ -443,7 +446,7 @@ else:
     if [[ "$status" != "PASS" ]]; then
         PHASE1_PASS=false
         echo "   [FAIL] $name: $mbps Mbps (Target: $target Mbps, Expected Range: [$min_bound, $max_bound] Mbps)"
-        echo "      -> curl raw: $out"
+        echo "      -> curl raw: $(cat "$TMP_DIR/client_${i}_out.txt" 2>/dev/null || true)"
         echo "      -> curl stderr: $(cat "$TMP_DIR/curl_err_$i.txt" 2>/dev/null || true)"
         echo "      -> client log: $(tail -n 5 "$TMP_DIR/client$i.log" 2>/dev/null || true)"
     else
@@ -462,7 +465,7 @@ echo "--- Phase 2: Concurrent 5-Client Saturation Benchmark (15s parallel) ---"
 CONCURRENT_PIDS=()
 for i in {1..5}; do
     (
-        ip netns exec "ns-c$i" curl -s -m 15 -w "%{time_total},%{time_starttransfer},%{size_download}\n" -x socks5://127.0.0.1:1080 "http://$HOST_IP:$DATA_PORT/stream" -o /dev/null > "$TMP_DIR/concurrent_$i.txt" 2>&1 || true
+        ip netns exec "ns-c$i" curl -s -S -m 15 -w "%{time_total},%{time_starttransfer},%{size_download}\n" -x socks5://127.0.0.1:1080 "http://$HOST_IP:$DATA_PORT/stream" -o /dev/null > "$TMP_DIR/concurrent_$i.txt" 2>"$TMP_DIR/concurrent_err_$i.txt" || true
     ) &
     CONCURRENT_PIDS+=($!)
 done
@@ -500,6 +503,7 @@ print('PASS' if val <= ceil_limit else 'EXCEEDED')
     if [[ "$ceil_check" != "PASS" ]]; then
         PHASE2_INDIVIDUAL_PASS=false
         echo "   [!] $name: $mbps Mbps (Exceeded ceiling $target Mbps)"
+        echo "      -> curl stderr: $(cat "$TMP_DIR/concurrent_err_$i.txt" 2>/dev/null || true)"
     else
         echo "   [+] $name: $mbps Mbps (Within ceil $target Mbps)"
     fi
@@ -511,6 +515,12 @@ echo "   ======================================================"
 echo "   Aggregate 5-Client Concurrent Throughput: $TOTAL_CONCURRENT_SPEED Mbps"
 echo "   Inbound Bandwidth Limit (HTB Class 1:10): 100.00 Mbps"
 echo "   ======================================================"
+
+# Assert individual client ceilings enforced in Phase 2
+if [[ "$PHASE2_INDIVIDUAL_PASS" != "true" ]]; then
+    echo "ERROR: Phase 2 individual client ceiling assertion failed!" >&2
+    exit 1
+fi
 
 # Verify total bandwidth <= 100 Mbps (with 5% buffer for packet headers/burst)
 TOTAL_PASS=$(python3 -c "
