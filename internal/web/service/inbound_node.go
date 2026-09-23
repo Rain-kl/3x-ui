@@ -932,6 +932,10 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 				if deltaDown = canon.Down - base.Down; deltaDown < 0 {
 					deltaDown = 0
 				}
+				if c.TrafficRatio > 0 && c.TrafficRatio != 1.0 {
+					deltaUp = int64(float64(deltaUp) * c.TrafficRatio)
+					deltaDown = int64(float64(deltaDown) * c.TrafficRatio)
+				}
 			}
 
 			if _, rowExists := existingEmails[cs.Email]; !rowExists {

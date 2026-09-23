@@ -170,16 +170,43 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 			trafficByEmail[traffics[i].Email] = traffics[i]
 		}
 	}
+	// Load traffic ratios for inbounds referenced by the clients.
+	inboundRatios := make(map[int]float64)
+	inboundIds := make([]int, 0, len(dbClientTraffics))
+	for _, ct := range dbClientTraffics {
+		if ct.InboundId > 0 {
+			inboundIds = append(inboundIds, ct.InboundId)
+		}
+	}
+	for _, t := range traffics {
+		if t != nil && t.InboundId > 0 {
+			inboundIds = append(inboundIds, t.InboundId)
+		}
+	}
+	if len(inboundIds) > 0 {
+		var inbounds []model.Inbound
+		if err := tx.Model(&model.Inbound{}).Where("id IN ?", inboundIds).Find(&inbounds).Error; err == nil {
+			for _, ib := range inbounds {
+				inboundRatios[ib.Id] = ib.TrafficRatio
+			}
+		}
+	}
+
 	now := time.Now().UnixMilli()
-	// Use atomic per-row UPDATE instead of read-modify-write Save. tx.Save
-	// issues UPDATEs in slice order, which varies between concurrent callers;
-	// on PostgreSQL two transactions locking the same rows in opposite order
-	// deadlock. An atomic "SET up = up + ?" never holds a row lock across a
-	// subsequent lock acquisition, so concurrent writers cannot deadlock.
+	// Atomic per-row UPDATE avoids lock inversion deadlocks on Postgres.
 	for _, ct := range dbClientTraffics {
 		t, ok := trafficByEmail[ct.Email]
 		if !ok || (t.Up == 0 && t.Down == 0) {
 			continue
+		}
+		ibId := ct.InboundId
+		if ibId == 0 && t.InboundId > 0 {
+			ibId = t.InboundId
+		}
+		ratio := inboundRatios[ibId]
+		if ratio > 0 && ratio != 1.0 {
+			t.Up = int64(float64(t.Up) * ratio)
+			t.Down = int64(float64(t.Down) * ratio)
 		}
 		if err = tx.Exec(
 			fmt.Sprintf(

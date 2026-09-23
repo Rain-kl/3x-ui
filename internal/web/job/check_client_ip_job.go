@@ -36,6 +36,7 @@ type CheckClientIpJob struct {
 	disAllowedIps []string
 	bannedSeen    map[string]int64
 	xrayService   service.XrayService
+	clientService service.ClientService
 	allowlist     ipLimitAllowlist
 	lastIpPrune   int64
 }
@@ -71,9 +72,23 @@ func (j *CheckClientIpJob) Run() {
 			emails = append(emails, email)
 		}
 		inboundByEmail := j.loadInboundsByEmails(emails)
+		seenInbounds := make(map[int]struct{})
 		for email, ib := range inboundByEmail {
 			if ib != nil {
 				r.RegisterClientInbound(email, ib.Id)
+				if _, seen := seenInbounds[ib.Id]; !seen {
+					seenInbounds[ib.Id] = struct{}{}
+					clientLimits := j.clientService.ClientLimitsByInbound(ib.Id)
+					if ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0 || len(clientLimits) > 0 {
+						_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+							InboundID:        ib.Id,
+							Port:             ib.Port,
+							InboundDownLimit: ib.InboundDownLimit,
+							ClientDownLimit:  ib.ClientDownLimit,
+							ClientLimits:     clientLimits,
+						})
+					}
+				}
 			}
 		}
 		r.SyncAllObserved(observed)

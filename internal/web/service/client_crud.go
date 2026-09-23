@@ -222,6 +222,15 @@ func (s *ClientService) Create(inboundSvc *InboundService, payload *ClientCreate
 			// comment on the Attach path.
 			clientForInbound.AllowedIPs = nil
 		}
+		effectiveDownLimit := 0
+		if override, ok := client.DownLimitByInbound[ibId]; ok && override > 0 {
+			effectiveDownLimit = override
+		} else if client.DownLimit > 0 {
+			effectiveDownLimit = client.DownLimit
+		} else if inbound.ClientDownLimit > 0 {
+			effectiveDownLimit = inbound.ClientDownLimit
+		}
+		clientForInbound.DownLimit = effectiveDownLimit
 		settingsPayload, mErr := json.Marshal(map[string][]model.Client{"clients": {clientWithInboundFlow(clientForInbound, inbound)}})
 		if mErr != nil {
 			return false, fmt.Errorf("inbound %d: %w", ibId, mErr)
@@ -237,6 +246,17 @@ func (s *ClientService) Create(inboundSvc *InboundService, payload *ClientCreate
 	// A re-created email is a live identity again: a delete tombstone left
 	// standing makes the next node merge prune the new client's inbound links.
 	withdrawClientTombstones(client.Email)
+	var rec model.ClientRecord
+	if err := database.GetDB().Where("email = ?", client.Email).First(&rec).Error; err == nil {
+		_ = database.GetDB().Model(&model.ClientRecord{}).
+			Where("id = ?", rec.Id).
+			UpdateColumn("down_limit", client.DownLimit).Error
+		for ibId, limit := range client.DownLimitByInbound {
+			_ = database.GetDB().Model(&model.ClientInbound{}).
+				Where("client_id = ? AND inbound_id = ?", rec.Id, ibId).
+				UpdateColumn("down_limit", limit).Error
+		}
+	}
 	return needRestart, s.setClientLimitHwidByEmail(nil, client.Email, payload.LimitHwid)
 }
 
@@ -702,6 +722,15 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 			// instead.
 			clientForInbound.AllowedIPs = nil
 		}
+		effectiveDownLimit := 0
+		if override, ok := updated.DownLimitByInbound[ibId]; ok && override > 0 {
+			effectiveDownLimit = override
+		} else if updated.DownLimit > 0 {
+			effectiveDownLimit = updated.DownLimit
+		} else if inbound.ClientDownLimit > 0 {
+			effectiveDownLimit = inbound.ClientDownLimit
+		}
+		clientForInbound.DownLimit = effectiveDownLimit
 		settingsPayload, mErr := json.Marshal(map[string][]model.Client{"clients": {clientWithInboundFlow(clientForInbound, inbound)}})
 		if mErr != nil {
 			return false, mErr
@@ -759,6 +788,7 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 				"reset_max":         merged.ResetMax,
 				"traffic_reset":     merged.TrafficReset,
 				"traffic_reset_day": merged.TrafficResetDay,
+				"down_limit":        updated.DownLimit,
 			}).Error; err != nil {
 			return needRestart, err
 		}
@@ -801,6 +831,28 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 		Where("id = ?", id).
 		UpdateColumn("enable", updated.Enable).Error; err != nil {
 		return needRestart, err
+	}
+
+	if err := database.GetDB().Model(&model.ClientRecord{}).
+		Where("id = ?", id).
+		UpdateColumn("down_limit", updated.DownLimit).Error; err != nil {
+		return needRestart, err
+	}
+
+	if updated.DownLimitByInbound != nil {
+		for _, ibId := range attachedIds {
+			limit := updated.DownLimitByInbound[ibId]
+			if err := database.GetDB().Model(&model.ClientInbound{}).
+				Where("client_id = ? AND inbound_id = ?", id, ibId).
+				UpdateColumn("down_limit", limit).Error; err != nil {
+				return needRestart, err
+			}
+		}
+		for ibId, limit := range updated.DownLimitByInbound {
+			_ = database.GetDB().Model(&model.ClientInbound{}).
+				Where("client_id = ? AND inbound_id = ?", id, ibId).
+				UpdateColumn("down_limit", limit).Error
+		}
 	}
 
 	if err := s.setClientLimitHwidByEmail(nil, updated.Email, limitHwid); err != nil {

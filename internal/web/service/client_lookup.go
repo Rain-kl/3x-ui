@@ -292,3 +292,123 @@ func clientRecordsByEmail(tx *gorm.DB, emails []string) (map[string]*model.Clien
 	}
 	return byEmail, nil
 }
+
+// ComputeClientEffectiveLimit resolves downlink bandwidth priority:
+// client_inbound.down_limit > client.down_limit > inbound.client_down_limit.
+func (s *ClientService) ComputeClientEffectiveLimit(email string, inboundId int, dbs ...*gorm.DB) (int, error) {
+	db := database.GetDB()
+	if len(dbs) > 0 && dbs[0] != nil {
+		db = dbs[0]
+	}
+
+	var rec model.ClientRecord
+	clientFound := false
+	if err := db.Where("email = ?", email).First(&rec).Error; err == nil {
+		clientFound = true
+		var ci model.ClientInbound
+		if err := db.Where("client_id = ? AND inbound_id = ?", rec.Id, inboundId).First(&ci).Error; err == nil {
+			if ci.DownLimit > 0 {
+				return ci.DownLimit, nil
+			}
+		}
+		if rec.DownLimit > 0 {
+			return rec.DownLimit, nil
+		}
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return 0, err
+	}
+
+	var ib model.Inbound
+	if err := db.Where("id = ?", inboundId).First(&ib).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) && !clientFound {
+			return 0, err
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return 0, err
+		}
+	} else if ib.ClientDownLimit > 0 {
+		return ib.ClientDownLimit, nil
+	}
+
+	return 0, nil
+}
+
+// ClientLimitsByInbound returns the effective downlink limit in Mbps for
+// all clients attached to the given inbound.
+func (s *ClientService) ClientLimitsByInbound(inboundId int, dbs ...*gorm.DB) map[string]int {
+	db := database.GetDB()
+	if len(dbs) > 0 && dbs[0] != nil {
+		db = dbs[0]
+	}
+
+	limits := make(map[string]int)
+	var ib model.Inbound
+	if err := db.Where("id = ?", inboundId).First(&ib).Error; err != nil {
+		return limits
+	}
+
+	type clientLimitRow struct {
+		Email            string
+		ClientDownLimit  int `gorm:"column:client_down_limit"`
+		InboundDownLimit int `gorm:"column:inbound_down_limit"`
+	}
+
+	var rows []clientLimitRow
+	err := db.Table("client_inbounds").
+		Select("clients.email AS email, clients.down_limit AS client_down_limit, client_inbounds.down_limit AS inbound_down_limit").
+		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
+		Where("client_inbounds.inbound_id = ?", inboundId).
+		Scan(&rows).Error
+	if err != nil {
+		return limits
+	}
+
+	for _, r := range rows {
+		if r.Email == "" {
+			continue
+		}
+		effective := 0
+		if r.InboundDownLimit > 0 {
+			effective = r.InboundDownLimit
+		} else if r.ClientDownLimit > 0 {
+			effective = r.ClientDownLimit
+		} else if ib.ClientDownLimit > 0 {
+			effective = ib.ClientDownLimit
+		}
+		if effective > 0 {
+			limits[r.Email] = effective
+		}
+	}
+
+	var settings map[string]any
+	if err := json.Unmarshal([]byte(ib.Settings), &settings); err == nil {
+		if rawClients, ok := settings["clients"].([]any); ok {
+			for _, item := range rawClients {
+				if cm, ok := item.(map[string]any); ok {
+					email, _ := cm["email"].(string)
+					if email == "" {
+						continue
+					}
+					if _, exists := limits[email]; !exists {
+						var dl int
+						if rawDl, ok := cm["downLimit"]; ok {
+							switch v := rawDl.(type) {
+							case float64:
+								dl = int(v)
+							case int:
+								dl = v
+							}
+						}
+						if dl > 0 {
+							limits[email] = dl
+						} else if ib.ClientDownLimit > 0 {
+							limits[email] = ib.ClientDownLimit
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return limits
+}

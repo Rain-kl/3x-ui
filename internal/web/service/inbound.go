@@ -1380,12 +1380,14 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 
 	if inbound.NodeID == nil {
 		if r := trafficshaper.GetReconciler(); r != nil {
-			if inbound.Enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0) {
+			clientLimits := s.clientService.ClientLimitsByInbound(inbound.Id)
+			if inbound.Enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0 || len(clientLimits) > 0) {
 				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
 					InboundID:        inbound.Id,
 					Port:             inbound.Port,
 					InboundDownLimit: inbound.InboundDownLimit,
 					ClientDownLimit:  inbound.ClientDownLimit,
+					ClientLimits:     clientLimits,
 					Clients:          s.ExtractClientEmails(inbound),
 				})
 			}
@@ -1667,12 +1669,14 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 
 	if inbound.NodeID == nil {
 		if r := trafficshaper.GetReconciler(); r != nil {
-			if enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0) {
+			clientLimits := s.clientService.ClientLimitsByInbound(inbound.Id)
+			if enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0 || len(clientLimits) > 0) {
 				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
 					InboundID:        inbound.Id,
 					Port:             inbound.Port,
 					InboundDownLimit: inbound.InboundDownLimit,
 					ClientDownLimit:  inbound.ClientDownLimit,
+					ClientLimits:     clientLimits,
 					Clients:          s.ExtractClientEmails(inbound),
 				})
 			} else if !enable {
@@ -2055,12 +2059,14 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 
 	if oldInbound.NodeID == nil {
 		if r := trafficshaper.GetReconciler(); r != nil {
-			if oldInbound.Enable && (oldInbound.InboundDownLimit > 0 || oldInbound.ClientDownLimit > 0) {
+			clientLimits := s.clientService.ClientLimitsByInbound(oldInbound.Id)
+			if oldInbound.Enable && (oldInbound.InboundDownLimit > 0 || oldInbound.ClientDownLimit > 0 || len(clientLimits) > 0) {
 				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
 					InboundID:        oldInbound.Id,
 					Port:             oldInbound.Port,
 					InboundDownLimit: oldInbound.InboundDownLimit,
 					ClientDownLimit:  oldInbound.ClientDownLimit,
+					ClientLimits:     clientLimits,
 					Clients:          s.ExtractClientEmails(oldInbound),
 				})
 			} else {
