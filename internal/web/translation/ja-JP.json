@@ -395,6 +395,7 @@
       "streamTab": "ストリーム",
       "securityTab": "セキュリティ",
       "sniffingTab": "スニッフィング",
+      "rateLimitTab": "速度制限",
       "sniffingMetadataOnly": "メタデータのみ",
       "sniffingRouteOnly": "ルーティングのみ",
       "sniffingIpsExcluded": "除外する IP",

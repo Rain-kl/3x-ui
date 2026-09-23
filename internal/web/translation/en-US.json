@@ -395,6 +395,7 @@
       "streamTab": "Stream",
       "securityTab": "Security",
       "sniffingTab": "Sniffing",
+      "rateLimitTab": "Rate Limit",
       "sniffingMetadataOnly": "Metadata only",
       "sniffingRouteOnly": "Route only",
       "sniffingIpsExcluded": "IPs excluded",

@@ -395,6 +395,7 @@
       "streamTab": "传输",
       "securityTab": "安全",
       "sniffingTab": "嗅探",
+      "rateLimitTab": "限速",
       "sniffingMetadataOnly": "仅元数据",
       "sniffingRouteOnly": "仅路由",
       "sniffingIpsExcluded": "排除的 IP",

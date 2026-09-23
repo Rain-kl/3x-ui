@@ -395,6 +395,7 @@
       "streamTab": "Потік",
       "securityTab": "Безпека",
       "sniffingTab": "Сніфінг",
+      "rateLimitTab": "Обмеження швидкості",
       "sniffingMetadataOnly": "Лише метадані",
       "sniffingRouteOnly": "Лише маршрутизація",
       "sniffingIpsExcluded": "Виключені IP",

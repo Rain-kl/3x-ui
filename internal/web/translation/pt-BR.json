@@ -395,6 +395,7 @@
       "streamTab": "Transmissão",
       "securityTab": "Segurança",
       "sniffingTab": "Inspeção",
+      "rateLimitTab": "Limite de velocidade",
       "sniffingMetadataOnly": "Apenas metadados",
       "sniffingRouteOnly": "Apenas roteamento",
       "sniffingIpsExcluded": "IPs excluídos",

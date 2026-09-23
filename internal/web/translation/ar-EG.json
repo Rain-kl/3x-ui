@@ -395,6 +395,7 @@
       "streamTab": "تدفق",
       "securityTab": "الأمان",
       "sniffingTab": "تنصت",
+      "rateLimitTab": "حد السرعة",
       "sniffingMetadataOnly": "البيانات الوصفية فقط",
       "sniffingRouteOnly": "التوجيه فقط",
       "sniffingIpsExcluded": "IP المستثناة",

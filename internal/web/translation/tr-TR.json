@@ -395,6 +395,7 @@
       "streamTab": "Akış (Stream)",
       "securityTab": "Güvenlik",
       "sniffingTab": "Dinleme (Sniffing)",
+      "rateLimitTab": "Hız Sınırı",
       "sniffingMetadataOnly": "Yalnızca üst veri",
       "sniffingRouteOnly": "Yalnızca yönlendirme",
       "sniffingIpsExcluded": "Hariç tutulan IP'ler",

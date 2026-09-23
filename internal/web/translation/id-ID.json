@@ -395,6 +395,7 @@
       "streamTab": "Aliran",
       "securityTab": "Keamanan",
       "sniffingTab": "Sniffing",
+      "rateLimitTab": "Batas Kecepatan",
       "sniffingMetadataOnly": "Hanya metadata",
       "sniffingRouteOnly": "Hanya routing",
       "sniffingIpsExcluded": "IP yang dikecualikan",

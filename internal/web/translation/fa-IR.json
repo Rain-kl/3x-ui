@@ -395,6 +395,7 @@
       "streamTab": "انتقال",
       "securityTab": "امنیت",
       "sniffingTab": "شنود",
+      "rateLimitTab": "محدودیت سرعت",
       "sniffingMetadataOnly": "فقط متادیتا",
       "sniffingRouteOnly": "فقط مسیریابی",
       "sniffingIpsExcluded": "IPهای مستثنا",

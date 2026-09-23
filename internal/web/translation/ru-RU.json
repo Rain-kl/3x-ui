@@ -395,6 +395,7 @@
       "streamTab": "Поток",
       "securityTab": "Безопасность",
       "sniffingTab": "Сниффинг",
+      "rateLimitTab": "Ограничение скорости",
       "sniffingMetadataOnly": "Только метаданные",
       "sniffingRouteOnly": "Только маршрутизация",
       "sniffingIpsExcluded": "Исключённые IP",

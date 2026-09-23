@@ -395,6 +395,7 @@
       "streamTab": "Luồng",
       "securityTab": "Bảo mật",
       "sniffingTab": "Dò gói",
+      "rateLimitTab": "Giới hạn tốc độ",
       "sniffingMetadataOnly": "Chỉ siêu dữ liệu",
       "sniffingRouteOnly": "Chỉ định tuyến",
       "sniffingIpsExcluded": "IP bị loại trừ",
