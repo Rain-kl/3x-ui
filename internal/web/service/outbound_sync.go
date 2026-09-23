@@ -25,6 +25,7 @@ var nonProxyTags = map[string]bool{
 	"metrics_out": true,
 	"blocked":     true,
 	"direct":      true,
+	"warp":        true,
 }
 
 var nonProxyProtocols = map[string]bool{
@@ -40,7 +41,8 @@ func IsProxyOutbound(ob map[string]any) bool {
 		return false
 	}
 	tag, _ := ob["tag"].(string)
-	if nonProxyTags[strings.ToLower(strings.TrimSpace(tag))] {
+	tag = strings.ToLower(strings.TrimSpace(tag))
+	if nonProxyTags[tag] || strings.HasPrefix(tag, "warp-") || strings.HasPrefix(tag, "warp_") {
 		return false
 	}
 	protocol, _ := ob["protocol"].(string)

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -32,6 +33,9 @@ func TestOutboundSync_IsProxyOutbound(t *testing.T) {
 		{name: "tag metrics_out excluded", ob: map[string]any{"protocol": "trojan", "tag": "metrics_out"}, want: false},
 		{name: "case insensitive tag", ob: map[string]any{"protocol": "vless", "tag": "DIRECT"}, want: false},
 		{name: "arbitrary tag allowed", ob: map[string]any{"protocol": "vless", "tag": "proxy-1"}, want: true},
+		{name: "tag warp excluded", ob: map[string]any{"protocol": "wireguard", "tag": "warp"}, want: false},
+		{name: "tag warp uppercase excluded", ob: map[string]any{"protocol": "wireguard", "tag": "WARP"}, want: false},
+		{name: "tag warp prefix excluded", ob: map[string]any{"protocol": "wireguard", "tag": "warp-ipv4"}, want: false},
 	}
 
 	for _, tt := range tests {
@@ -41,6 +45,83 @@ func TestOutboundSync_IsProxyOutbound(t *testing.T) {
 				t.Fatalf("IsProxyOutbound() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestOutboundSync_WarpOutboundNotSynced(t *testing.T) {
+	warp := map[string]any{"protocol": "wireguard", "tag": "warp"}
+	if IsProxyOutbound(warp) {
+		t.Fatal("IsProxyOutbound(warp) = true, want false")
+	}
+
+	baseTemplate := `{
+  "outbounds": [
+    {"protocol": "freedom", "tag": "direct"},
+    {"protocol": "blackhole", "tag": "blocked"},
+    {"protocol": "wireguard", "tag": "warp", "settings": {"secretKey": "node-warp-key"}},
+    {"protocol": "vless", "tag": "old-proxy", "settings": {"address": "old.com", "port": 443}}
+  ]
+}`
+
+	masterOutbounds := []map[string]any{
+		{
+			"protocol": "trojan",
+			"tag":      "master-trojan",
+			"settings": map[string]any{
+				"servers": []any{
+					map[string]any{"address": "master.com", "port": float64(443)},
+				},
+			},
+		},
+	}
+
+	updated, changed, err := ReplaceProxyOutboundsInTemplate(baseTemplate, masterOutbounds)
+	if err != nil {
+		t.Fatalf("ReplaceProxyOutboundsInTemplate failed: %v", err)
+	}
+	if !changed {
+		t.Fatal("changed = false, want true")
+	}
+
+	// Verify WARP is preserved in the worker template
+	var tmpl map[string]any
+	if err := json.Unmarshal([]byte(updated), &tmpl); err != nil {
+		t.Fatalf("unmarshal updated: %v", err)
+	}
+	outbounds, _ := tmpl["outbounds"].([]any)
+	hasWarp := false
+	for _, o := range outbounds {
+		om, _ := o.(map[string]any)
+		if om["tag"] == "warp" {
+			hasWarp = true
+			if om["protocol"] != "wireguard" {
+				t.Fatalf("warp protocol = %v, want wireguard", om["protocol"])
+			}
+		}
+	}
+	if !hasWarp {
+		t.Fatal("WARP outbound was stripped from worker template after outbound sync")
+	}
+
+	// Verify master template containing WARP does NOT extract WARP into proxy outbounds
+	masterTemplateWithWarp := `{
+  "outbounds": [
+    {"protocol": "freedom", "tag": "direct"},
+    {"protocol": "wireguard", "tag": "warp", "settings": {"secretKey": "master-warp-key"}},
+    {"protocol": "vless", "tag": "master-vless", "settings": {"address": "master.com", "port": 443}}
+  ]
+}`
+	proxies, err := GetProxyOutboundsFromTemplate(masterTemplateWithWarp)
+	if err != nil {
+		t.Fatalf("GetProxyOutboundsFromTemplate failed: %v", err)
+	}
+	for _, p := range proxies {
+		if p["tag"] == "warp" {
+			t.Fatal("master's WARP outbound must not be extracted for sync to workers")
+		}
+	}
+	if len(proxies) != 1 || proxies[0]["tag"] != "master-vless" {
+		t.Fatalf("proxies = %+v, want only [master-vless]", proxies)
 	}
 }
 
