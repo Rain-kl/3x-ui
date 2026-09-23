@@ -121,10 +121,10 @@ func TestReconcilerRemoveInbound(t *testing.T) {
 	hasPortFilterDel := false
 	hasClassDel := false
 	for _, cmd := range mock.commands {
-		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle") {
+		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle 0x30001 u32") {
 			hasClientFilterDel = true
 		}
-		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 10 handle 3 u32") {
+		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 10 handle 0x3 u32") {
 			hasPortFilterDel = true
 		}
 		if strings.Contains(cmd, "class del dev eth0 classid 1:30") {
@@ -195,7 +195,7 @@ func TestReconcilerClientIPIncrementalSync(t *testing.T) {
 		if strings.Contains(cmd, "filter del dev eth0 protocol ip parent 1:0 prio 5 handle") {
 			hasDelOld = true
 		}
-		if strings.Contains(cmd, "class del dev eth0 classid 1:10001") {
+		if strings.Contains(cmd, "class del dev eth0 classid 1:1001") {
 			hasDelClass = true
 		}
 	}
@@ -303,7 +303,7 @@ func TestReconcilerIPv4Validation(t *testing.T) {
 
 	mock.commands = nil
 	// Pass an IPv6 address and an invalid string along with valid IPv4
-	_ = reconciler.SyncClientIPs(ctx, 1, "mixed@test.com", []string{"2001:db8::1", "invalid-ip", "192.168.10.50"})
+	_ = reconciler.SyncClientIPs(ctx, 1, "mixed@test.com", []string{"2001:db8::1", "invalid-ip", " 192.168.10.50/32 "})
 
 	hasValidV4 := false
 	hasInvalidV6 := false

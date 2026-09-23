@@ -32,7 +32,7 @@ func SetReconciler(r *Reconciler) {
 
 type clientState struct {
 	classIdx  int
-	ipHandles map[string]int
+	ipHandles map[string]string
 }
 
 type inboundState struct {
@@ -55,10 +55,10 @@ func (s *inboundState) allocClientClassIdx() int {
 	return idx
 }
 
-func (s *inboundState) allocFilterHandle(inboundID int) int {
-	h := (inboundID * 10000) + s.nextFilterHandle
+func (s *inboundState) allocFilterHandle(inboundID int) string {
+	h := (inboundID << 16) | (s.nextFilterHandle & 0xffff)
 	s.nextFilterHandle++
-	return h
+	return fmt.Sprintf("0x%x", h)
 }
 
 // Reconciler synchronizes inbound and client rate limiting state with Linux TC.
@@ -166,7 +166,7 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 		return err
 	}
 
-	inboundFilterHandle := strconv.Itoa(rule.InboundID)
+	inboundFilterHandle := fmt.Sprintf("0x%x", rule.InboundID)
 	if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "flowid", inboundClassID); err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 			subClassID := formatClientClassID(rule.InboundID, client.classIdx)
 			for ip, h := range client.ipHandles {
 				if formattedIP, ok := formatIPv4Mask(ip); ok {
-					_ = r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "match", "ip", "dst", formattedIP, "flowid", subClassID)
+					_ = r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32", "match", "ip", "sport", strconv.Itoa(rule.Port), "0xffff", "match", "ip", "dst", formattedIP, "flowid", subClassID)
 				}
 			}
 		}
@@ -195,7 +195,7 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 			for _, client := range state.clients {
 				subClassID := formatClientClassID(rule.InboundID, client.classIdx)
 				for _, h := range client.ipHandles {
-					_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
+					_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 				}
 				_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
 			}
@@ -225,12 +225,12 @@ func (r *Reconciler) removeInboundLocked(ctx context.Context, inboundID int) err
 	for _, client := range state.clients {
 		subClassID := formatClientClassID(inboundID, client.classIdx)
 		for _, h := range client.ipHandles {
-			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
+			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 		}
 		_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
 	}
 
-	inboundFilterHandle := strconv.Itoa(inboundID)
+	inboundFilterHandle := fmt.Sprintf("0x%x", inboundID)
 	_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "10", "handle", inboundFilterHandle, "u32")
 	_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", inboundClassID)
 
@@ -265,9 +265,9 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 	client, clientExists := state.clients[email]
 
 	newIPs := make(map[string]string)
-	for _, ip := range ips {
-		if formatted, ok := formatIPv4Mask(ip); ok {
-			newIPs[ip] = formatted
+	for _, raw := range ips {
+		if canonicalIP, formattedCIDR, ok := parseCanonicalIPv4(raw); ok {
+			newIPs[canonicalIP] = formattedCIDR
 		}
 	}
 
@@ -276,7 +276,7 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 		if clientExists {
 			subClassID := formatClientClassID(inboundID, client.classIdx)
 			for _, h := range client.ipHandles {
-				_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
+				_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 			}
 			_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
 			state.freeClassIdx = append(state.freeClassIdx, client.classIdx)
@@ -288,7 +288,7 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 	if !clientExists {
 		client = &clientState{
 			classIdx:  state.allocClientClassIdx(),
-			ipHandles: make(map[string]int),
+			ipHandles: make(map[string]string),
 		}
 		state.clients[email] = client
 	}
@@ -302,15 +302,15 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 
 	for oldIP, h := range client.ipHandles {
 		if _, stillPresent := newIPs[oldIP]; !stillPresent {
-			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32")
+			_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 			delete(client.ipHandles, oldIP)
 		}
 	}
 
-	for newIP, formattedIP := range newIPs {
+	for newIP, formattedCIDR := range newIPs {
 		if _, alreadyPresent := client.ipHandles[newIP]; !alreadyPresent {
 			h := state.allocFilterHandle(inboundID)
-			if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", strconv.Itoa(h), "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "match", "ip", "dst", formattedIP, "flowid", subClassID); err != nil {
+			if err := r.engine.Execute(ctx, "tc", "filter", "replace", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32", "match", "ip", "sport", strconv.Itoa(state.rule.Port), "0xffff", "match", "ip", "dst", formattedCIDR, "flowid", subClassID); err != nil {
 				return err
 			}
 			client.ipHandles[newIP] = h
@@ -372,30 +372,38 @@ func (r *Reconciler) Flush(ctx context.Context) error {
 }
 
 func formatInboundClassID(inboundID int) string {
-	return fmt.Sprintf("1:%d0", inboundID)
+	minor := uint16(inboundID * 16)
+	return fmt.Sprintf("1:%x", minor)
 }
 
 func formatClientClassID(inboundID int, clientIdx int) string {
-	return fmt.Sprintf("1:%d%04d", inboundID, clientIdx)
+	minor := uint16(0x1000 + ((inboundID-1)&0x7f)*128 + (clientIdx & 0x7f))
+	return fmt.Sprintf("1:%x", minor)
+}
+
+func parseCanonicalIPv4(raw string) (string, string, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", "", false
+	}
+	var parsed net.IP
+	if ip, _, err := net.ParseCIDR(trimmed); err == nil {
+		parsed = ip
+	} else {
+		parsed = net.ParseIP(trimmed)
+	}
+	if parsed == nil {
+		return "", "", false
+	}
+	v4 := parsed.To4()
+	if v4 == nil {
+		return "", "", false
+	}
+	canonical := v4.String()
+	return canonical, canonical + "/32", true
 }
 
 func formatIPv4Mask(raw string) (string, bool) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return "", false
-	}
-	if ip, _, err := net.ParseCIDR(raw); err == nil {
-		if v4 := ip.To4(); v4 != nil {
-			return raw, true
-		}
-		return "", false
-	}
-	parsed := net.ParseIP(raw)
-	if parsed == nil {
-		return "", false
-	}
-	if v4 := parsed.To4(); v4 != nil {
-		return v4.String() + "/32", true
-	}
-	return "", false
+	_, formattedCIDR, ok := parseCanonicalIPv4(raw)
+	return formattedCIDR, ok
 }
