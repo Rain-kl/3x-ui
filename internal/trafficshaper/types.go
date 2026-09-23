@@ -14,6 +14,7 @@ type InboundRule struct {
 	InboundDownLimit int      `json:"inboundDownLimit"`
 	ClientDownLimit  int      `json:"clientDownLimit"`
 	ActiveIPs        []string `json:"activeIps,omitempty"`
+	Clients          []string `json:"clients,omitempty"`
 }
 
 // ID returns InboundID for caller convenience.

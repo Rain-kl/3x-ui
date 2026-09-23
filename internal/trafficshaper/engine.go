@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 // Engine manages the root TC qdisc hierarchy on the target network interface.
@@ -154,4 +155,49 @@ func getFirstActiveInterface() (string, error) {
 		}
 	}
 	return "", errors.New("no active interface found")
+}
+
+var (
+	defaultEngineLock sync.RWMutex
+	defaultEngine     *Engine
+)
+
+// Init initializes the default trafficshaper engine and reconciler singleton if supported.
+func Init() error {
+	defaultEngineLock.Lock()
+	defer defaultEngineLock.Unlock()
+	eng := NewEngine("")
+	if !eng.IsSupported() {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := eng.Init(ctx); err != nil {
+		return err
+	}
+	defaultEngine = eng
+	SetReconciler(NewReconciler(eng))
+	return nil
+}
+
+// Teardown cleans up root qdisc and stops the reconciler singleton.
+func Teardown() error {
+	defaultEngineLock.Lock()
+	defer defaultEngineLock.Unlock()
+	r := GetReconciler()
+	if r != nil {
+		r.Stop()
+		SetReconciler(nil)
+	}
+	eng := defaultEngine
+	if eng == nil {
+		eng = NewEngine("")
+	}
+	if !eng.IsSupported() {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	defaultEngine = nil
+	return eng.Teardown(ctx)
 }

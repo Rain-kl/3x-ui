@@ -468,3 +468,73 @@ func TestReconcilerSingleton(t *testing.T) {
 		t.Fatalf("GetReconciler got %v, want %v", got, r)
 	}
 }
+
+func TestReconcilerSyncAllObserved(t *testing.T) {
+	mock := &mockExecutor{}
+	engine := NewEngineWithExecutor("eth0", mock)
+	r := NewReconciler(engine)
+
+	ctx := context.Background()
+	rule := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+		Clients:          []string{"alice@example.com", "bob@example.com"},
+	}
+	if err := r.ApplyInbound(ctx, rule); err != nil {
+		t.Fatalf("ApplyInbound failed: %v", err)
+	}
+
+	// First observation: alice and bob active.
+	observed := map[string]map[string]int64{
+		"alice@example.com": {"192.168.1.50": 1000},
+		"bob@example.com":   {"192.168.1.60": 1000},
+	}
+	r.SyncAllObserved(observed)
+
+	hasAliceFilter := false
+	hasBobFilter := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "match ip dst 192.168.1.50/32") {
+			hasAliceFilter = true
+		}
+		if strings.Contains(cmd, "match ip dst 192.168.1.60/32") {
+			hasBobFilter = true
+		}
+	}
+	if !hasAliceFilter || !hasBobFilter {
+		t.Fatalf("expected filters for alice and bob, got: %v", mock.commands)
+	}
+
+	// Second observation: bob disconnected, only alice active.
+	mock.commands = nil
+	delete(observed, "bob@example.com")
+	r.SyncAllObserved(observed)
+
+	hasBobDelFilter := false
+	hasBobDelClass := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "filter del dev eth0") {
+			hasBobDelFilter = true
+		}
+		if strings.Contains(cmd, "class del dev eth0") {
+			hasBobDelClass = true
+		}
+	}
+	if !hasBobDelFilter || !hasBobDelClass {
+		t.Fatalf("expected bob filter and class deletion on disconnect, got: %v", mock.commands)
+	}
+}
+
+func TestInitAndTeardownGraceful(t *testing.T) {
+	// Teardown when uninitialized should succeed without error.
+	if err := Teardown(); err != nil {
+		t.Fatalf("Teardown uninitialized returned error: %v", err)
+	}
+	// Init on platforms without tc or non-linux should degrade gracefully.
+	if err := Init(); err != nil {
+		t.Fatalf("Init returned error: %v", err)
+	}
+	_ = Teardown()
+}

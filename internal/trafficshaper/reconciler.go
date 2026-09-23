@@ -51,25 +51,27 @@ func (s *inboundState) allocFilterHandle(inboundID int) string {
 
 // Reconciler synchronizes inbound and client rate limiting state with Linux TC.
 type Reconciler struct {
-	mu            sync.Mutex
-	engine        *Engine
-	inbounds      map[int]*inboundState
-	debounceDelay time.Duration
-	debounceTimer *time.Timer
-	pending       map[int]map[string][]string
-	usedMinors    map[uint16]bool
-	nextMinor     uint16
+	mu             sync.Mutex
+	engine         *Engine
+	inbounds       map[int]*inboundState
+	debounceDelay  time.Duration
+	debounceTimer  *time.Timer
+	pending        map[int]map[string][]string
+	usedMinors     map[uint16]bool
+	nextMinor      uint16
+	emailToInbound map[string]int
 }
 
 // NewReconciler creates a Reconciler bound to the specified Engine.
 func NewReconciler(engine *Engine) *Reconciler {
 	return &Reconciler{
-		engine:        engine,
-		inbounds:      make(map[int]*inboundState),
-		debounceDelay: time.Second,
-		pending:       make(map[int]map[string][]string),
-		usedMinors:    map[uint16]bool{0: true, 1: true, 0x9999: true},
-		nextMinor:     0x0f,
+		engine:         engine,
+		inbounds:       make(map[int]*inboundState),
+		debounceDelay:  time.Second,
+		pending:        make(map[int]map[string][]string),
+		usedMinors:     map[uint16]bool{0: true, 1: true, 0x9999: true},
+		nextMinor:      0x0f,
+		emailToInbound: make(map[string]int),
 	}
 }
 
@@ -224,6 +226,19 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 	state.rule = rule
 	state.applied = true
 
+	if len(rule.Clients) > 0 {
+		for email, ibID := range r.emailToInbound {
+			if ibID == rule.InboundID {
+				delete(r.emailToInbound, email)
+			}
+		}
+		for _, email := range rule.Clients {
+			if email != "" {
+				r.emailToInbound[email] = rule.InboundID
+			}
+		}
+	}
+
 	if len(rule.ActiveIPs) > 0 {
 		_ = r.syncClientIPsLocked(ctx, rule.InboundID, "default", rule.ActiveIPs)
 	}
@@ -235,6 +250,12 @@ func (r *Reconciler) removeInboundLocked(ctx context.Context, inboundID int) err
 	state, exists := r.inbounds[inboundID]
 	if !exists {
 		return nil
+	}
+
+	for email, ibID := range r.emailToInbound {
+		if ibID == inboundID {
+			delete(r.emailToInbound, email)
+		}
 	}
 
 	iface := r.engine.Interface()
@@ -393,6 +414,65 @@ func (r *Reconciler) Flush(ctx context.Context) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// RegisterClientInbound maps a client email to an inbound ID.
+func (r *Reconciler) RegisterClientInbound(email string, inboundID int) {
+	if email == "" || inboundID <= 0 {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.emailToInbound == nil {
+		r.emailToInbound = make(map[string]int)
+	}
+	r.emailToInbound[email] = inboundID
+}
+
+// SyncAllObserved reconciles observed active client IPs across all managed inbounds.
+func (r *Reconciler) SyncAllObserved(observed map[string]map[string]int64) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	observedIPs := make(map[string][]string, len(observed))
+	for email, ipMap := range observed {
+		ips := make([]string, 0, len(ipMap))
+		for ip := range ipMap {
+			ips = append(ips, ip)
+		}
+		observedIPs[email] = ips
+	}
+
+	for inboundID, state := range r.inbounds {
+		if !state.applied || state.rule.ClientDownLimit <= 0 {
+			continue
+		}
+		syncedEmails := make(map[string]bool)
+		for email, ips := range observedIPs {
+			belongs := false
+			if r.emailToInbound != nil && r.emailToInbound[email] == inboundID {
+				belongs = true
+			} else if _, exists := state.clients[email]; exists {
+				belongs = true
+			} else if len(r.inbounds) == 1 {
+				belongs = true
+			}
+			if belongs {
+				syncedEmails[email] = true
+				_ = r.syncClientIPsLocked(context.Background(), inboundID, email, ips)
+			}
+		}
+		for email := range state.clients {
+			if !syncedEmails[email] {
+				if _, present := observed[email]; !present {
+					_ = r.syncClientIPsLocked(context.Background(), inboundID, email, nil)
+				}
+			}
+		}
+	}
 }
 
 func parseCanonicalIPv4(raw string) (string, string, bool) {

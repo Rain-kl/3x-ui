@@ -20,6 +20,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/sub"
+	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 	"github.com/mhsanaei/3x-ui/v3/internal/tunnelmonitor"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/sys"
@@ -111,6 +112,31 @@ func runWebServer() {
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
+	}
+
+	if err := trafficshaper.Init(); err != nil {
+		logger.Warning("Failed to initialize trafficshaper:", err)
+	} else if r := trafficshaper.GetReconciler(); r != nil {
+		if inbounds, err := (&service.InboundService{}).GetAllInbounds(); err == nil {
+			for _, ib := range inbounds {
+				if ib.Enable && (ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0) {
+					clients, _ := (&service.InboundService{}).GetClients(ib)
+					var clientEmails []string
+					for _, c := range clients {
+						if c.Email != "" {
+							clientEmails = append(clientEmails, c.Email)
+						}
+					}
+					_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+						InboundID:        ib.Id,
+						Port:             ib.Port,
+						InboundDownLimit: ib.InboundDownLimit,
+						ClientDownLimit:  ib.ClientDownLimit,
+						Clients:          clientEmails,
+					})
+				}
+			}
+		}
 	}
 
 	server := web.NewServer()
@@ -209,6 +235,9 @@ func runWebServer() {
 
 			_ = server.Stop()
 			_ = subServer.Stop()
+			if err := trafficshaper.Teardown(); err != nil {
+				logger.Warning("Error during trafficshaper teardown:", err)
+			}
 			log.Println("Shutting down servers.")
 			return
 		}
@@ -751,6 +780,16 @@ func main() {
 		} else {
 			updateCert(webCertFile, webKeyFile)
 		}
+	case "tc":
+		if len(os.Args) > 2 && os.Args[2] == "clean" {
+			if err := trafficshaper.Teardown(); err != nil {
+				fmt.Printf("tc clean failed: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Traffic shaper rules cleaned successfully.")
+			return
+		}
+		fmt.Println("Usage: x-ui tc clean")
 	default:
 		fmt.Println("Invalid subcommands")
 		fmt.Println()
@@ -768,5 +807,6 @@ Commands:
     migrate-db     SQLite <-> .dump (--dump/--restore) or copy into PostgreSQL (--dsn)
     encrypt-tokens encrypt node bearer tokens with the configured active key
     setting        set settings
+    tc             traffic control commands (tc clean)
 `
 }

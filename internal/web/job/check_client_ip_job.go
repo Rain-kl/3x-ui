@@ -15,6 +15,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 
@@ -62,6 +63,20 @@ func (j *CheckClientIpJob) Run() {
 		// fallback anymore, so there is nothing to do this run.
 		logger.Debug("[LimitIP] online-stats API unavailable this run; skipping")
 		return
+	}
+
+	if r := trafficshaper.GetReconciler(); r != nil {
+		emails := make([]string, 0, len(observed))
+		for email := range observed {
+			emails = append(emails, email)
+		}
+		inboundByEmail := j.loadInboundsByEmails(emails)
+		for email, ib := range inboundByEmail {
+			if ib != nil {
+				r.RegisterClientInbound(email, ib.Id)
+			}
+		}
+		r.SyncAllObserved(observed)
 	}
 
 	if !isFail2BanEnabled() {

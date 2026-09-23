@@ -21,6 +21,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
+	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 	"github.com/mhsanaei/3x-ui/v3/internal/tuic"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/netsafe"
@@ -1359,6 +1360,25 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 		needRestart = true
 	}
 
+	if r := trafficshaper.GetReconciler(); r != nil {
+		if inbound.Enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0) {
+			clients, _ := s.GetClients(inbound)
+			var clientEmails []string
+			for _, c := range clients {
+				if c.Email != "" {
+					clientEmails = append(clientEmails, c.Email)
+				}
+			}
+			_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+				InboundID:        inbound.Id,
+				Port:             inbound.Port,
+				InboundDownLimit: inbound.InboundDownLimit,
+				ClientDownLimit:  inbound.ClientDownLimit,
+				Clients:          clientEmails,
+			})
+		}
+	}
+
 	return inbound, needRestart, err
 }
 
@@ -1476,6 +1496,9 @@ func (s *InboundService) delInbound(id int) (bool, func(), error) {
 	// Drop the egress SOCKS bridge a routed mtproto inbound left in the config.
 	if mtprotoRoutesThroughXray(&ib) {
 		needRestart = true
+	}
+	if r := trafficshaper.GetReconciler(); r != nil {
+		_ = r.RemoveInbound(id)
 	}
 	return needRestart, nodePush, nil
 }
@@ -1626,6 +1649,29 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 		return false, err
 	}
 	inbound.Enable = enable
+
+	if inbound.NodeID == nil {
+		if r := trafficshaper.GetReconciler(); r != nil {
+			if enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0) {
+				clients, _ := s.GetClients(inbound)
+				var clientEmails []string
+				for _, c := range clients {
+					if c.Email != "" {
+						clientEmails = append(clientEmails, c.Email)
+					}
+				}
+				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+					InboundID:        inbound.Id,
+					Port:             inbound.Port,
+					InboundDownLimit: inbound.InboundDownLimit,
+					ClientDownLimit:  inbound.ClientDownLimit,
+					Clients:          clientEmails,
+				})
+			} else if !enable {
+				_ = r.RemoveInbound(inbound.Id)
+			}
+		}
+	}
 
 	needRestart := false
 	rt, push, _, perr := s.nodePushPlan(inbound)
@@ -1864,6 +1910,8 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 		oldInbound.Settings = inbound.Settings
 		oldInbound.StreamSettings = inbound.StreamSettings
 		oldInbound.Sniffing = inbound.Sniffing
+		oldInbound.InboundDownLimit = inbound.InboundDownLimit
+		oldInbound.ClientDownLimit = inbound.ClientDownLimit
 		if strings.TrimSpace(inbound.ShareAddrStrategy) == "" {
 			normalizeInboundShareAddress(oldInbound)
 			inbound.ShareAddrStrategy = oldInbound.ShareAddrStrategy
@@ -1996,6 +2044,28 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 			needRestart = true
 		}
 	}
+
+	if r := trafficshaper.GetReconciler(); r != nil {
+		if oldInbound.Enable && (oldInbound.InboundDownLimit > 0 || oldInbound.ClientDownLimit > 0) {
+			clients, _ := s.GetClients(oldInbound)
+			var clientEmails []string
+			for _, c := range clients {
+				if c.Email != "" {
+					clientEmails = append(clientEmails, c.Email)
+				}
+			}
+			_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
+				InboundID:        oldInbound.Id,
+				Port:             oldInbound.Port,
+				InboundDownLimit: oldInbound.InboundDownLimit,
+				ClientDownLimit:  oldInbound.ClientDownLimit,
+				Clients:          clientEmails,
+			})
+		} else {
+			_ = r.RemoveInbound(oldInbound.Id)
+		}
+	}
+
 	return inbound, needRestart, nil
 }
 
