@@ -14,7 +14,7 @@ func TestInboundRateLimitSchema(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InitDB failed: %v", err)
 	}
-	defer func() { _ = CloseDB() }()
+	t.Cleanup(func() { _ = CloseDB() })
 
 	inbound := &model.Inbound{
 		Remark:           "test-rate-limit",
@@ -76,7 +76,7 @@ func TestInboundRateLimitMigration(t *testing.T) {
 	if err := InitDB(dbPath); err != nil {
 		t.Fatalf("InitDB failed on legacy db: %v", err)
 	}
-	defer func() { _ = CloseDB() }()
+	t.Cleanup(func() { _ = CloseDB() })
 
 	var loaded model.Inbound
 	if err := GetDB().Where("tag = ?", "in-legacy").First(&loaded).Error; err != nil {

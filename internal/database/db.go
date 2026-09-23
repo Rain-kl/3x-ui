@@ -110,10 +110,14 @@ func migrateInboundRateLimitColumns() error {
 		return nil
 	}
 	if !migrator.HasColumn(&model.Inbound{}, "inbound_down_limit") {
-		_ = migrator.AddColumn(&model.Inbound{}, "inbound_down_limit")
+		if err := migrator.AddColumn(&model.Inbound{}, "inbound_down_limit"); err != nil {
+			return err
+		}
 	}
 	if !migrator.HasColumn(&model.Inbound{}, "client_down_limit") {
-		_ = migrator.AddColumn(&model.Inbound{}, "client_down_limit")
+		if err := migrator.AddColumn(&model.Inbound{}, "client_down_limit"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
