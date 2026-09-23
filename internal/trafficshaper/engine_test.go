@@ -11,9 +11,10 @@ import (
 )
 
 type mockExecutor struct {
-	mu       sync.Mutex
-	commands []string
-	errOnCmd string
+	mu        sync.Mutex
+	commands  []string
+	errOnCmd  string
+	customErr error
 }
 
 func (m *mockExecutor) Execute(ctx context.Context, cmd string, args ...string) error {
@@ -22,6 +23,9 @@ func (m *mockExecutor) Execute(ctx context.Context, cmd string, args ...string) 
 	full := cmd + " " + strings.Join(args, " ")
 	m.commands = append(m.commands, full)
 	if m.errOnCmd != "" && strings.Contains(full, m.errOnCmd) {
+		if m.customErr != nil {
+			return m.customErr
+		}
 		return errors.New("simulated error")
 	}
 	return nil
@@ -85,12 +89,28 @@ func TestEngineInitError(t *testing.T) {
 }
 
 func TestEngineTeardownToleratesMissingQdisc(t *testing.T) {
-	mock := &mockExecutor{errOnCmd: "No such file or directory"}
+	mock := &mockExecutor{
+		errOnCmd:  "qdisc del",
+		customErr: errors.New("RTNETLINK answers: No such file or directory"),
+	}
 	engine := NewEngineWithExecutor("eth0", mock)
 
 	ctx := context.Background()
 	if err := engine.Teardown(ctx); err != nil {
 		t.Fatalf("expected nil for missing qdisc, got: %v", err)
+	}
+}
+
+func TestEngineTeardownFailsOnUnexpectedError(t *testing.T) {
+	mock := &mockExecutor{
+		errOnCmd:  "qdisc del",
+		customErr: errors.New("permission denied"),
+	}
+	engine := NewEngineWithExecutor("eth0", mock)
+
+	ctx := context.Background()
+	if err := engine.Teardown(ctx); err == nil {
+		t.Fatal("expected error on permission denied during teardown, got nil")
 	}
 }
 
@@ -137,6 +157,11 @@ func TestSysExecutor(t *testing.T) {
 
 	if err := executor.Execute(ctx, "nonexistent-command-12345"); err == nil {
 		t.Fatal("expected error for nonexistent command, got nil")
+	}
+
+	//nolint:staticcheck // explicitly testing nil context guard in SysExecutor
+	if err := executor.Execute(nil, "echo", "nil-context"); err != nil {
+		t.Fatalf("SysExecutor with nil context failed: %v", err)
 	}
 }
 

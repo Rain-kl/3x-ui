@@ -30,6 +30,9 @@ func NewSysExecutorWithTimeout(timeout time.Duration) *SysExecutor {
 
 // Execute runs the command with context timeout and captures stderr/stdout on error.
 func (s *SysExecutor) Execute(ctx context.Context, cmd string, args ...string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	execCtx := ctx
 	if s.timeout > 0 {
 		var cancel context.CancelFunc
