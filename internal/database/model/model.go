@@ -74,6 +74,11 @@ type Inbound struct {
 
 	DisableFlow bool `json:"disableFlow" form:"disableFlow" gorm:"column:disable_flow;default:false" example:"false"`
 
+	// InboundDownLimit sets peak outbound bandwidth for this entire inbound in Mbps (0 = unlimited).
+	InboundDownLimit int `json:"inboundDownLimit" form:"inboundDownLimit" gorm:"column:inbound_down_limit;default:0" validate:"omitempty,gte=0" example:"100"`
+	// ClientDownLimit sets peak outbound bandwidth for each client on this inbound in Mbps (0 = unlimited).
+	ClientDownLimit int `json:"clientDownLimit" form:"clientDownLimit" gorm:"column:client_down_limit;default:0" validate:"omitempty,gte=0" example:"10"`
+
 	// OriginNodeGuid is the panelGuid of the node that physically hosts this
 	// inbound, propagated up across hops (#4983). Empty for an inbound that
 	// lives on this panel's own xray; set to the originating node's GUID when

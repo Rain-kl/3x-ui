@@ -104,11 +104,28 @@ func migrateOutboundSubscriptionUserAgentColumn() error {
 	return migrator.AddColumn(&model.OutboundSubscription{}, "UserAgent")
 }
 
+func migrateInboundRateLimitColumns() error {
+	migrator := db.Migrator()
+	if !migrator.HasTable(&model.Inbound{}) {
+		return nil
+	}
+	if !migrator.HasColumn(&model.Inbound{}, "inbound_down_limit") {
+		_ = migrator.AddColumn(&model.Inbound{}, "inbound_down_limit")
+	}
+	if !migrator.HasColumn(&model.Inbound{}, "client_down_limit") {
+		_ = migrator.AddColumn(&model.Inbound{}, "client_down_limit")
+	}
+	return nil
+}
+
 func initModels() error {
 	if err := migrateClientTrafficLastSubFetchColumn(); err != nil {
 		return err
 	}
 	if err := migrateOutboundSubscriptionUserAgentColumn(); err != nil {
+		return err
+	}
+	if err := migrateInboundRateLimitColumns(); err != nil {
 		return err
 	}
 	models := allModels()
