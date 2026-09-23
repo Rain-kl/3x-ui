@@ -719,7 +719,9 @@
         "peerNumberConfig": "Config Peer {n}"
       },
       "sniffingDestOverride": "Substituição de destino",
-      "advancedTitle": "Configurações avançadas"
+      "advancedTitle": "Configurações avançadas",
+      "trafficRatio": "Multiplicador de tráfego",
+      "trafficRatioDesc": "Multiplicador aplicado à quota do cliente, padrão: 1.0"
     },
     "clients": {
       "tabBasics": "Básico",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "Renova neste dia de cada mês do calendário, à meia-noite no fuso horário do painel, em vez de a cada N dias. Se o mês for curto demais para o dia escolhido, renova no último dia dele. 0 mantém o modo de intervalo em dias.",
       "renewsUsed": "Renovações usadas",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "Insira uma tag hexadecimal de 32 caracteres para definir ou 'none' para limpar no MTProto."
+      "bulkAdTagHint": "Insira uma tag hexadecimal de 32 caracteres para definir ou 'none' para limpar no MTProto.",
+      "tabRateLimit": "Limite de velocidade",
+      "downLimit": "Limite de download (Mbps)",
+      "downLimitDesc": "Limite de largura de banda padrão do cliente, 0 significa sem limite",
+      "inboundRateLimitOverrides": "Substituições de limite de nós vinculados",
+      "inheritGlobalLimit": "Herdar limite padrão ({limit} Mbps)"
     },
     "groups": {
       "name": "Nome",

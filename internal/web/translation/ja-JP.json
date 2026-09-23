@@ -719,7 +719,9 @@
         "peerNumberConfig": "Peer {n} 設定"
       },
       "sniffingDestOverride": "宛先のオーバーライド",
-      "advancedTitle": "詳細設定"
+      "advancedTitle": "詳細設定",
+      "trafficRatio": "トラフィック倍率",
+      "trafficRatioDesc": "クライアントのクォータ消費に乗算される倍率、デフォルト: 1.0"
     },
     "clients": {
       "tabBasics": "基本",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "毎月この日の深夜（パネルのタイムゾーン基準）に更新します。N 日ごとの更新の代わりになります。その日が存在しない月は月末に更新されます。0 で日数間隔モードのままになります。",
       "renewsUsed": "使用済み更新回数",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "設定するには 32 文字の 16 進数タグを入力し、クリアするには 'none' を入力します (MTProto 用)。"
+      "bulkAdTagHint": "設定するには 32 文字の 16 進数タグを入力し、クリアするには 'none' を入力します (MTProto 用)。",
+      "tabRateLimit": "速度制限",
+      "downLimit": "下り速度制限 (Mbps)",
+      "downLimitDesc": "クライアントのデフォルト下り帯域上限、0で無制限",
+      "inboundRateLimitOverrides": "関連ノードの速度制限上書き",
+      "inheritGlobalLimit": "全体制限を継承 ({limit} Mbps)"
     },
     "groups": {
       "name": "名前",

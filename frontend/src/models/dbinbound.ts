@@ -47,6 +47,7 @@ export type DBInboundInit = Partial<{
   disableFlow: boolean;
   inboundDownLimit: number;
   clientDownLimit: number;
+  trafficRatio: number;
   originNodeGuid: string;
   fallbackParent: FallbackParentRef | null;
 }>;
@@ -98,6 +99,7 @@ export class DBInbound {
   disableFlow: boolean;
   inboundDownLimit: number;
   clientDownLimit: number;
+  trafficRatio: number;
   originNodeGuid: string;
   fallbackParent: FallbackParentRef | null;
 
@@ -131,6 +133,7 @@ export class DBInbound {
     this.disableFlow = false;
     this.inboundDownLimit = 0;
     this.clientDownLimit = 0;
+    this.trafficRatio = 1.0;
     this.originNodeGuid = '';
     this.fallbackParent = null;
     if (data == null) {

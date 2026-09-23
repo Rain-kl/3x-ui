@@ -137,12 +137,17 @@ func (a *ClientController) buildClientPayload(rec *model.ClientRecord) (gin.H, e
 	if err != nil {
 		return nil, err
 	}
+	downLimitByInbound, err := a.clientService.DownLimitsByClientId(rec.Id)
+	if err != nil {
+		return nil, err
+	}
 	return gin.H{
-		"client":           rec,
-		"inboundIds":       inboundIds,
-		"externalLinks":    externalLinks,
-		"usedTraffic":      usedTraffic,
-		"tunnelAllowedIPs": tunnelAllowedIPs,
+		"client":             rec,
+		"inboundIds":         inboundIds,
+		"externalLinks":      externalLinks,
+		"usedTraffic":        usedTraffic,
+		"tunnelAllowedIPs":   tunnelAllowedIPs,
+		"downLimitByInbound": downLimitByInbound,
 	}, nil
 }
 

@@ -391,6 +391,9 @@ export default function ClientsPage() {
   const [editingTunnelAllowedIPs, setEditingTunnelAllowedIPs] = useState<Record<number, string>>(
     {},
   );
+  const [editingDownLimitByInbound, setEditingDownLimitByInbound] = useState<
+    Record<number, number>
+  >({});
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoClient, setInfoClient] = useState<ClientRecord | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
@@ -679,6 +682,7 @@ export default function ClientsPage() {
     setEditingAttachedIds([]);
     setEditingExternalLinks([]);
     setEditingTunnelAllowedIPs({});
+    setEditingDownLimitByInbound({});
     setFormOpen(true);
   }
 
@@ -696,6 +700,7 @@ export default function ClientsPage() {
       setEditingAttachedIds([...ids]);
       setEditingExternalLinks(Array.isArray(full?.externalLinks) ? [...full.externalLinks] : []);
       setEditingTunnelAllowedIPs(full?.tunnelAllowedIPs ?? {});
+      setEditingDownLimitByInbound(full?.downLimitByInbound ?? row.downLimitByInbound ?? {});
       setFormOpen(true);
     },
     [hydrate],
@@ -1110,17 +1115,55 @@ export default function ClientsPage() {
         title: t('pages.clients.client'),
         key: 'email',
         width: 220,
-        render: (_v, record) => (
-          <div className="email-cell">
-            <span className="email">{record.email}</span>
-            {record.subId && (
-              <span className="sub" title={record.subId}>
-                {record.subId}
-              </span>
-            )}
-            <ClientCardComment comment={record.comment} className="sub" />
-          </div>
-        ),
+        render: (_v, record) => {
+          const overridesCount = record.downLimitByInbound
+            ? Object.values(record.downLimitByInbound).filter((v) => Number(v) > 0).length
+            : 0;
+          const hasRateLimit = (record.downLimit ?? 0) > 0 || overridesCount > 0;
+          return (
+            <div className="email-cell">
+              <span className="email">{record.email}</span>
+              {record.subId && (
+                <span className="sub" title={record.subId}>
+                  {record.subId}
+                </span>
+              )}
+              <ClientCardComment comment={record.comment} className="sub" />
+              {hasRateLimit && (
+                <Tooltip
+                  title={
+                    <div>
+                      {(record.downLimit ?? 0) > 0 && (
+                        <div>
+                          {t('pages.clients.downLimit')}: {record.downLimit} Mbps
+                        </div>
+                      )}
+                      {overridesCount > 0 && (
+                        <div>
+                          {t('pages.clients.inboundRateLimitOverrides')}: {overridesCount}
+                        </div>
+                      )}
+                    </div>
+                  }
+                >
+                  <Tag
+                    color="cyan"
+                    style={{
+                      fontSize: 11,
+                      lineHeight: '18px',
+                      padding: '0 4px',
+                      marginTop: 2,
+                      width: 'fit-content',
+                    }}
+                  >
+                    ⚡ {(record.downLimit ?? 0) > 0 ? `${record.downLimit} Mbps` : ''}
+                    {overridesCount > 0 ? ` (${overridesCount})` : ''}
+                  </Tag>
+                </Tooltip>
+              )}
+            </div>
+          );
+        },
       },
       {
         title: t('pages.clients.group'),
@@ -1759,6 +1802,48 @@ export default function ClientsPage() {
                                       <Badge status={bucketBadgeStatus(bucket)} />
                                     )}
                                     <span className="tag-name">{row.email}</span>
+                                    {(() => {
+                                      const overridesCount = row.downLimitByInbound
+                                        ? Object.values(row.downLimitByInbound).filter(
+                                            (v) => Number(v) > 0,
+                                          ).length
+                                        : 0;
+                                      const hasRateLimit =
+                                        (row.downLimit ?? 0) > 0 || overridesCount > 0;
+                                      if (!hasRateLimit) return null;
+                                      return (
+                                        <Tooltip
+                                          title={
+                                            <div>
+                                              {(row.downLimit ?? 0) > 0 && (
+                                                <div>
+                                                  {t('pages.clients.downLimit')}: {row.downLimit}{' '}
+                                                  Mbps
+                                                </div>
+                                              )}
+                                              {overridesCount > 0 && (
+                                                <div>
+                                                  {t('pages.clients.inboundRateLimitOverrides')}:{' '}
+                                                  {overridesCount}
+                                                </div>
+                                              )}
+                                            </div>
+                                          }
+                                        >
+                                          <Tag
+                                            color="cyan"
+                                            className="status-tag"
+                                            style={{ marginInlineStart: 4 }}
+                                          >
+                                            ⚡{' '}
+                                            {(row.downLimit ?? 0) > 0
+                                              ? `${row.downLimit} Mbps`
+                                              : ''}
+                                            {overridesCount > 0 ? ` (${overridesCount})` : ''}
+                                          </Tag>
+                                        </Tooltip>
+                                      );
+                                    })()}
                                     {bucket === 'depleted' && (
                                       <Tag color="red" className="status-tag">
                                         {t('depleted')}
@@ -1882,6 +1967,7 @@ export default function ClientsPage() {
             attachedIds={editingAttachedIds}
             attachedExternalLinks={editingExternalLinks}
             tunnelAllowedIPs={editingTunnelAllowedIPs}
+            downLimitByInbound={editingDownLimitByInbound}
             inbounds={inbounds}
             tgBotEnable={tgBotEnable}
             groups={allGroups}

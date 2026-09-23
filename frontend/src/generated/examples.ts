@@ -353,6 +353,8 @@ export const EXAMPLES: Record<string, unknown> = {
     "auth": "",
     "comment": "",
     "created_at": 0,
+    "downLimit": 0,
+    "downLimitByInbound": {},
     "email": "",
     "enable": false,
     "expiryTime": 0,
@@ -382,6 +384,7 @@ export const EXAMPLES: Record<string, unknown> = {
   "ClientInbound": {
     "clientId": 0,
     "createdAt": 0,
+    "downLimit": 50,
     "flowOverride": "",
     "inboundId": 0
   },
@@ -395,6 +398,8 @@ export const EXAMPLES: Record<string, unknown> = {
       {
         "comment": "Primary device",
         "createdAt": 1735000000000,
+        "downLimit": 100,
+        "downLimitByInbound": {},
         "email": "alice@example.com",
         "enable": true,
         "expiryTime": 1735689600000,
@@ -440,6 +445,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "auth": "",
     "comment": "",
     "createdAt": 0,
+    "downLimit": 100,
     "email": "",
     "enable": false,
     "expiryTime": 0,
@@ -474,6 +480,8 @@ export const EXAMPLES: Record<string, unknown> = {
   "ClientSlim": {
     "comment": "Primary device",
     "createdAt": 1735000000000,
+    "downLimit": 100,
+    "downLimitByInbound": {},
     "email": "alice@example.com",
     "enable": true,
     "expiryTime": 1735689600000,
@@ -729,6 +737,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "subSortIndex": 1,
     "tag": "in-443-tcp",
     "total": 0,
+    "trafficRatio": 1.5,
     "trafficReset": "never",
     "trafficResetDay": 1,
     "up": 0

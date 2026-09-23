@@ -719,7 +719,9 @@
         "peerNumberConfig": "تكوين Peer {n}"
       },
       "sniffingDestOverride": "تجاوز الوجهة",
-      "advancedTitle": "الإعدادات المتقدمة"
+      "advancedTitle": "الإعدادات المتقدمة",
+      "trafficRatio": "مضاعف حركة المرور",
+      "trafficRatioDesc": "المضاعف المطبق على استهلاك حصة العميل، الافتراضي: 1.0"
     },
     "clients": {
       "tabBasics": "أساسي",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "يتم التجديد في هذا اليوم من كل شهر ميلادي، عند منتصف الليل بتوقيت اللوحة، بدلاً من كل N يوم. إذا كان الشهر أقصر من اليوم المختار، يتم التجديد في آخر يوم منه. القيمة 0 تُبقي وضع الفاصل اليومي.",
       "renewsUsed": "التجديدات المستخدمة",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "أدخل علامة من 32 حرفًا ست عشريًا للتعيين، أو 'none' للمسح في منافذ MTProto."
+      "bulkAdTagHint": "أدخل علامة من 32 حرفًا ست عشريًا للتعيين، أو 'none' للمسح في منافذ MTProto.",
+      "tabRateLimit": "تحديد السرعة",
+      "downLimit": "حد التنزيل (Mbps)",
+      "downLimitDesc": "الحد الأقصى الافتراضي للنطاق الترددي للعميل، 0 يعني بدون حد",
+      "inboundRateLimitOverrides": "تجاوز حد السرعة للمنافذ المرتبطة",
+      "inheritGlobalLimit": "وراثة الحد العام ({limit} Mbps)"
     },
     "groups": {
       "name": "الاسم",

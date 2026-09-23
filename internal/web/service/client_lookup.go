@@ -412,3 +412,20 @@ func (s *ClientService) ClientLimitsByInbound(inboundId int, dbs ...*gorm.DB) ma
 
 	return limits
 }
+
+// DownLimitsByClientId returns per-inbound limit overrides for a client.
+func (s *ClientService) DownLimitsByClientId(clientId int, dbs ...*gorm.DB) (map[int]int, error) {
+	db := database.GetDB()
+	if len(dbs) > 0 && dbs[0] != nil {
+		db = dbs[0]
+	}
+	var links []model.ClientInbound
+	if err := db.Where("client_id = ? AND down_limit > 0", clientId).Find(&links).Error; err != nil {
+		return nil, err
+	}
+	result := make(map[int]int, len(links))
+	for _, l := range links {
+		result[l.InboundId] = l.DownLimit
+	}
+	return result, nil
+}

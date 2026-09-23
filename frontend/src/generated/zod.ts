@@ -367,6 +367,8 @@ export const ClientSchema = z.object({
   auth: z.string().optional(),
   comment: z.string(),
   created_at: z.number().int().optional(),
+  downLimit: z.number().int().optional(),
+  downLimitByInbound: z.record(z.number().int(), z.number().int()).optional(),
   email: z.string(),
   enable: z.boolean(),
   expiryTime: z.number().int(),
@@ -398,6 +400,7 @@ export type Client = z.infer<typeof ClientSchema>;
 export const ClientInboundSchema = z.object({
   clientId: z.number().int(),
   createdAt: z.number().int(),
+  downLimit: z.number().int().min(0),
   flowOverride: z.string(),
   inboundId: z.number().int(),
 });
@@ -420,6 +423,7 @@ export const ClientRecordSchema = z.object({
   auth: z.string(),
   comment: z.string(),
   createdAt: z.number().int(),
+  downLimit: z.number().int().min(0),
   email: z.string(),
   enable: z.boolean(),
   expiryTime: z.number().int(),
@@ -458,6 +462,8 @@ export type ClientReverse = z.infer<typeof ClientReverseSchema>;
 export const ClientSlimSchema = z.object({
   comment: z.string().optional(),
   createdAt: z.number().int(),
+  downLimit: z.number().int(),
+  downLimitByInbound: z.record(z.number().int(), z.number().int()).optional(),
   email: z.string(),
   enable: z.boolean(),
   expiryTime: z.number().int(),
@@ -676,6 +682,7 @@ export const InboundSchema = z.object({
   subSortIndex: z.number().int(),
   tag: z.string(),
   total: z.number().int(),
+  trafficRatio: z.number().min(0),
   trafficReset: z.enum(['never', 'hourly', 'daily', 'weekly', 'monthly']),
   trafficResetDay: z.number().int().min(1).max(31),
   up: z.number().int(),

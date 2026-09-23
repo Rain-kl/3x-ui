@@ -57,6 +57,7 @@ export interface RawInboundRow {
   disableFlow?: boolean;
   inboundDownLimit?: number;
   clientDownLimit?: number;
+  trafficRatio?: number;
   clientStats?: unknown;
 }
 
@@ -88,6 +89,7 @@ export interface WireInboundPayload {
   disableFlow: boolean;
   inboundDownLimit?: number;
   clientDownLimit?: number;
+  trafficRatio?: number;
 }
 
 function coerceJsonObject(value: unknown): Record<string, unknown> {
@@ -226,6 +228,7 @@ export function rawInboundToFormValues(row: RawInboundRow): InboundFormValues {
     disableFlow: row.disableFlow ?? false,
     inboundDownLimit: row.inboundDownLimit ?? 0,
     clientDownLimit: row.clientDownLimit ?? 0,
+    trafficRatio: row.trafficRatio ?? 1.0,
     protocol,
     settings,
   } as InboundFormValues;
@@ -396,6 +399,7 @@ export function formValuesToWirePayload(values: InboundFormValues): WireInboundP
     disableFlow: values.disableFlow,
     inboundDownLimit: values.inboundDownLimit,
     clientDownLimit: values.clientDownLimit,
+    trafficRatio: values.trafficRatio ?? 1.0,
   };
   if (values.nodeId != null) payload.nodeId = values.nodeId;
   return payload;

@@ -1118,6 +1118,23 @@ export default function InboundFormModal({
       >
         <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
       </FormField>
+
+      <FormField
+        name="trafficRatio"
+        label={labelWithHint(
+          t('pages.inbounds.trafficRatio'),
+          t('pages.inbounds.trafficRatioDesc'),
+        )}
+        rules={{ validate: rhfZodValidate(InboundDbFieldsSchema.shape.trafficRatio) }}
+      >
+        <InputNumber
+          min={0}
+          step={0.1}
+          placeholder="1.0"
+          defaultValue={1.0}
+          style={{ width: '100%' }}
+        />
+      </FormField>
     </>
   );
 

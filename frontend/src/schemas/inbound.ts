@@ -28,6 +28,7 @@ export const InboundFormSchema = z.object({
     .max(65535, 'pages.inbounds.toasts.portRange'),
   listen: z.string(),
   protocol: z.string().min(1, 'pages.inbounds.toasts.protocolRequired'),
+  trafficRatio: z.number().min(0).default(1.0).optional(),
 });
 
 export type SlimInbound = z.infer<typeof SlimInboundSchema>;

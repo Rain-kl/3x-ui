@@ -719,7 +719,9 @@
         "peerNumberConfig": "Konfig Peer {n}"
       },
       "sniffingDestOverride": "Penggantian tujuan",
-      "advancedTitle": "Pengaturan Lanjutan"
+      "advancedTitle": "Pengaturan Lanjutan",
+      "trafficRatio": "Pengali Trafik",
+      "trafficRatioDesc": "Pengali yang diterapkan pada kuota klien, default: 1.0"
     },
     "clients": {
       "tabBasics": "Dasar",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "Perpanjang pada tanggal ini setiap bulan kalender, pada tengah malam menurut zona waktu panel, alih-alih setiap N hari. Bulan yang terlalu pendek untuk tanggal yang dipilih diperpanjang pada hari terakhirnya. 0 mempertahankan mode interval hari.",
       "renewsUsed": "Perpanjangan terpakai",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "Masukkan tag heksadesimal 32 karakter untuk mengatur, atau 'none' untuk menghapus pada MTProto."
+      "bulkAdTagHint": "Masukkan tag heksadesimal 32 karakter untuk mengatur, atau 'none' untuk menghapus pada MTProto.",
+      "tabRateLimit": "Batas Kecepatan",
+      "downLimit": "Batas Unduhan (Mbps)",
+      "downLimitDesc": "Batas bandwidth unduhan default klien, 0 berarti tanpa batas",
+      "inboundRateLimitOverrides": "Pengabaian Batas Kecepatan Node Terhubung",
+      "inheritGlobalLimit": "Warisi batas default ({limit} Mbps)"
     },
     "groups": {
       "name": "Nama",

@@ -84,6 +84,7 @@ export const InboundDbFieldsSchema = z.object({
   disableFlow: z.boolean().default(false),
   inboundDownLimit: z.number().int().min(0).default(0),
   clientDownLimit: z.number().int().min(0).default(0),
+  trafficRatio: z.number().min(0).default(1.0),
 });
 export type InboundDbFields = z.infer<typeof InboundDbFieldsSchema>;
 

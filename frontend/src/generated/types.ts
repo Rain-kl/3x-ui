@@ -348,6 +348,8 @@ export interface Client {
   auth?: string;
   comment: string;
   created_at?: number;
+  downLimit?: number;
+  downLimitByInbound?: Record<number, number>;
   email: string;
   enable: boolean;
   expiryTime: number;
@@ -378,6 +380,7 @@ export interface Client {
 export interface ClientInbound {
   clientId: number;
   createdAt: number;
+  downLimit: number;
   flowOverride: string;
   inboundId: number;
 }
@@ -398,6 +401,7 @@ export interface ClientRecord {
   auth: string;
   comment: string;
   createdAt: number;
+  downLimit: number;
   email: string;
   enable: boolean;
   expiryTime: number;
@@ -434,6 +438,8 @@ export interface ClientReverse {
 export interface ClientSlim {
   comment?: string;
   createdAt: number;
+  downLimit: number;
+  downLimitByInbound?: Record<number, number>;
   email: string;
   enable: boolean;
   expiryTime: number;
@@ -637,6 +643,7 @@ export interface Inbound {
   subSortIndex: number;
   tag: string;
   total: number;
+  trafficRatio: number;
   trafficReset: string;
   trafficResetDay: number;
   up: number;

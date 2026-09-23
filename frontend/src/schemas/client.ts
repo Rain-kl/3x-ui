@@ -35,6 +35,8 @@ export const ClientRecordSchema = z
     expiryTime: z.number().optional(),
     limitIp: z.number().optional(),
     limitHwid: z.number().optional(),
+    downLimit: z.number().optional(),
+    downLimitByInbound: z.record(z.coerce.number().int(), z.number()).optional(),
     tgId: z.union([z.number(), z.string()]).optional(),
     group: z.string().optional(),
     comment: z.string().optional(),
@@ -211,6 +213,7 @@ export const ClientHydrateSchema = z.object({
   inboundIds: nullableNumberArray,
   externalLinks: ExternalLinkListSchema.optional(),
   tunnelAllowedIPs: z.record(z.number().int(), z.string()).optional(),
+  downLimitByInbound: z.record(z.coerce.number().int(), z.number().int()).optional(),
 });
 
 export const BulkAdjustResultSchema = z.object({
@@ -333,6 +336,8 @@ export const ClientFormSchema = z.object({
   trafficResetDay: z.number().int().min(1).max(31),
   limitIp: z.number().int().min(0),
   limitHwid: z.number().int().min(0),
+  downLimit: z.number().int().min(0).default(0),
+  downLimitByInbound: z.record(z.coerce.number().int(), z.number().int()).optional().default({}),
   tgId: z.number().int().min(0),
   group: z.string(),
   comment: z.string(),

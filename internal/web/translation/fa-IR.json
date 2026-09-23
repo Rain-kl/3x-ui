@@ -719,7 +719,9 @@
         "peerNumberConfig": "پیکربندی Peer {n}"
       },
       "sniffingDestOverride": "بازنویسی مقصد",
-      "advancedTitle": "تنظیمات پیشرفته"
+      "advancedTitle": "تنظیمات پیشرفته",
+      "trafficRatio": "ضریب محاسبه ترافیک",
+      "trafficRatioDesc": "ضریب اعمال‌شده در محاسبه سهمیه مصرفی کلاینت، پیش‌فرض: ۱.۰"
     },
     "clients": {
       "tabBasics": "پایه",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "در این روز از هر ماه تقویمی، در نیمه‌شب به وقت پنل تمدید می‌شود، به جای هر N روز. اگر ماه کوتاه‌تر از روز انتخابی باشد، در آخرین روز آن ماه تمدید می‌شود. مقدار ۰ حالت بازهٔ روزانه را حفظ می‌کند.",
       "renewsUsed": "تمدیدهای استفاده‌شده",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "یک برچسب هگز ۳۲ کاراکتری برای تنظیم وارد کنید، یا 'none' برای پاک کردن در MTProto."
+      "bulkAdTagHint": "یک برچسب هگز ۳۲ کاراکتری برای تنظیم وارد کنید، یا 'none' برای پاک کردن در MTProto.",
+      "tabRateLimit": "محدودیت سرعت",
+      "downLimit": "محدودیت دانلود (Mbps)",
+      "downLimitDesc": "حداکثر پهنای باند پیش‌فرض کلاینت، ۰ یعنی بدون محدودیت",
+      "inboundRateLimitOverrides": "بازنویسی محدودیت سرعت گره‌های متصل",
+      "inheritGlobalLimit": "ارث‌بری از محدودیت پیش‌فرض ({limit} Mbps)"
     },
     "groups": {
       "name": "نام",

@@ -1467,6 +1467,15 @@
             "format": "int64",
             "type": "integer"
           },
+          "downLimit": {
+            "type": "integer"
+          },
+          "downLimitByInbound": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
           "email": {
             "description": "Client email identifier",
             "type": "string"
@@ -1608,6 +1617,11 @@
             "format": "int64",
             "type": "integer"
           },
+          "downLimit": {
+            "example": 50,
+            "minimum": 0,
+            "type": "integer"
+          },
           "flowOverride": {
             "type": "string"
           },
@@ -1618,6 +1632,7 @@
         "required": [
           "clientId",
           "createdAt",
+          "downLimit",
           "flowOverride",
           "inboundId"
         ],
@@ -1689,6 +1704,11 @@
           },
           "createdAt": {
             "format": "int64",
+            "type": "integer"
+          },
+          "downLimit": {
+            "example": 100,
+            "minimum": 0,
             "type": "integer"
           },
           "email": {
@@ -1781,6 +1801,7 @@
           "auth",
           "comment",
           "createdAt",
+          "downLimit",
           "email",
           "enable",
           "expiryTime",
@@ -1833,6 +1854,16 @@
             "example": 1735000000000,
             "format": "int64",
             "type": "integer"
+          },
+          "downLimit": {
+            "example": 100,
+            "type": "integer"
+          },
+          "downLimitByInbound": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
           },
           "email": {
             "example": "alice@example.com",
@@ -1906,6 +1937,7 @@
         },
         "required": [
           "createdAt",
+          "downLimit",
           "email",
           "enable",
           "expiryTime",
@@ -2799,6 +2831,12 @@
             "format": "int64",
             "type": "integer"
           },
+          "trafficRatio": {
+            "description": "TrafficRatio applies a multiplier when accounting client traffic (default: 1.0).",
+            "example": 1.5,
+            "minimum": 0,
+            "type": "number"
+          },
           "trafficReset": {
             "description": "Traffic reset schedule",
             "enum": [
@@ -2845,6 +2883,7 @@
           "subSortIndex",
           "tag",
           "total",
+          "trafficRatio",
           "trafficReset",
           "trafficResetDay",
           "up"
@@ -4703,6 +4742,7 @@
                       "subSortIndex": 1,
                       "tag": "in-443-tcp",
                       "total": 0,
+                      "trafficRatio": 1.5,
                       "trafficReset": "never",
                       "trafficResetDay": 1,
                       "up": 0
@@ -8107,6 +8147,8 @@
                       {
                         "comment": "Primary device",
                         "createdAt": 1735000000000,
+                        "downLimit": 100,
+                        "downLimitByInbound": {},
                         "email": "alice@example.com",
                         "enable": true,
                         "expiryTime": 1735689600000,
@@ -16001,6 +16043,7 @@
                   "subSortIndex": 1,
                   "tag": "in-443-tcp",
                   "total": 0,
+                  "trafficRatio": 1.5,
                   "trafficReset": "never",
                   "trafficResetDay": 1,
                   "up": 0

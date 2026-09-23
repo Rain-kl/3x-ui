@@ -13,6 +13,7 @@ import {
   Select,
   Space,
   Switch,
+  Table,
   Tabs,
   Tag,
   Tooltip,
@@ -37,6 +38,7 @@ import { normalizeClientIps, type ClientIpInfo } from '@/lib/clients/ip-log';
 import { resolveExternalLinkExpiry } from '@/lib/clients/external-link';
 import { useDatepicker } from '@/hooks/useDatepicker';
 import { useClientHwids } from '@/hooks/useClientHwids';
+import { useNodesQuery } from '@/api/queries/useNodesQuery';
 import { DateTimePicker, SelectAllClearButtons } from '@/components/form';
 import { FormField } from '@/components/form/rhf';
 import ClientHwidListModal from '@/components/clients/ClientHwidList';
@@ -115,6 +117,7 @@ interface ClientFormModalProps {
   attachedExternalLinks?: ExternalLink[];
   attachedIds?: number[];
   tunnelAllowedIPs?: Record<number, string>;
+  downLimitByInbound?: Record<number, number>;
   tgBotEnable?: boolean;
   groups?: string[];
   save: (
@@ -160,6 +163,8 @@ const EMPTY: Values = {
   trafficResetDay: 1,
   limitIp: 0,
   limitHwid: 0,
+  downLimit: 0,
+  downLimitByInbound: {},
   tgId: 0,
   group: '',
   comment: '',
@@ -246,6 +251,7 @@ export default function ClientFormModal({
   attachedExternalLinks = [],
   attachedIds = [],
   tunnelAllowedIPs = {},
+  downLimitByInbound = {},
   tgBotEnable = false,
   groups = [],
   save,
@@ -270,9 +276,18 @@ export default function ClientFormModal({
   const password = useWatch({ control: methods.control, name: 'password' });
   const subId = useWatch({ control: methods.control, name: 'subId' });
   const limitHwid = useWatch({ control: methods.control, name: 'limitHwid' });
+  const downLimit = useWatch({ control: methods.control, name: 'downLimit' }) || 0;
+  const downLimitByInboundVal =
+    useWatch({ control: methods.control, name: 'downLimitByInbound' }) || {};
   const auth = useWatch({ control: methods.control, name: 'auth' });
   const wgPrivateKey = useWatch({ control: methods.control, name: 'wgPrivateKey' });
   const limitIp = useWatch({ control: methods.control, name: 'limitIp' });
+  const { nodes = [] } = useNodesQuery();
+  const nodesById = useMemo(() => new Map(nodes.map((n) => [n.id, n.name])), [nodes]);
+  const attachedInbounds = useMemo(() => {
+    const idSet = new Set(inboundIds || []);
+    return (inbounds || []).filter((ib) => idSet.has(ib.id));
+  }, [inbounds, inboundIds]);
   const {
     fields: externalLinkFields,
     append: appendExternalLink,
@@ -371,6 +386,11 @@ export default function ClientFormModal({
         trafficResetDay: Number(client.trafficResetDay) || 1,
         limitIp: client.limitIp || 0,
         limitHwid: client.limitHwid || 0,
+        downLimit: client.downLimit || 0,
+        downLimitByInbound:
+          downLimitByInbound && Object.keys(downLimitByInbound).length > 0
+            ? downLimitByInbound
+            : (client.downLimitByInbound ?? {}),
         tgId: Number(client.tgId) || 0,
         group: client.group || '',
         comment: client.comment || '',
@@ -668,6 +688,8 @@ export default function ClientFormModal({
       trafficResetDay: values.trafficResetDay,
       limitIp: values.limitIp,
       limitHwid: values.limitHwid,
+      downLimit: values.downLimit,
+      downLimitByInbound: values.downLimitByInbound,
       tgId: values.tgId,
       group: values.group,
       comment: values.comment,
@@ -701,6 +723,8 @@ export default function ClientFormModal({
       trafficResetDay: Number(values.trafficResetDay) || 1,
       limitIp: Number(values.limitIp) || 0,
       limitHwid: Number(values.limitHwid) || 0,
+      downLimit: Number(values.downLimit) || 0,
+      downLimitByInbound: values.downLimitByInbound || {},
       tgId: Number(values.tgId) || 0,
       group: values.group,
       comment: values.comment,
@@ -1356,6 +1380,98 @@ export default function ClientFormModal({
                           </FormField>
                         </>
                       )}
+                    </>
+                  ),
+                },
+                {
+                  key: 'rateLimit',
+                  label: t('pages.clients.tabRateLimit'),
+                  children: (
+                    <>
+                      <Row gutter={16}>
+                        <Col xs={24} md={12}>
+                          <FormField
+                            name="downLimit"
+                            label={t('pages.clients.downLimit')}
+                            tooltip={t('pages.clients.downLimitDesc')}
+                            transform={{ output: (v) => Number(v) || 0 }}
+                          >
+                            <InputNumber
+                              min={0}
+                              step={1}
+                              placeholder="0"
+                              style={{ width: '100%' }}
+                            />
+                          </FormField>
+                        </Col>
+                      </Row>
+
+                      <div style={{ marginTop: 16 }}>
+                        <Typography.Text strong>
+                          {t('pages.clients.inboundRateLimitOverrides')}
+                        </Typography.Text>
+                        <Table
+                          size="small"
+                          rowKey="id"
+                          pagination={false}
+                          dataSource={attachedInbounds}
+                          locale={{ emptyText: t('pages.clients.selectInbound') }}
+                          style={{ marginTop: 8 }}
+                          columns={[
+                            {
+                              title: t('pages.inbounds.remark'),
+                              key: 'remark',
+                              render: (_v, ib) => ib.remark || ib.tag || '-',
+                            },
+                            {
+                              title: `${t('pages.inbounds.protocol')} / ${t('pages.inbounds.port')}`,
+                              key: 'protoPort',
+                              render: (_v, ib) => (
+                                <Space>
+                                  <Tag color="blue">{ib.protocol?.toUpperCase() || '-'}</Tag>
+                                  <span>{ib.port || '-'}</span>
+                                </Space>
+                              ),
+                            },
+                            {
+                              title: t('pages.inbounds.node'),
+                              key: 'node',
+                              render: (_v, ib) => {
+                                if (ib.nodeId == null) {
+                                  return <Tag>{t('pages.clients.filters.localPanel')}</Tag>;
+                                }
+                                const name = nodesById.get(ib.nodeId) || `Node ${ib.nodeId}`;
+                                return <Tag color="purple">{name}</Tag>;
+                              },
+                            },
+                            {
+                              title: t('pages.clients.downLimit'),
+                              key: 'downLimitOverride',
+                              width: 220,
+                              render: (_v, ib) => (
+                                <InputNumber
+                                  min={0}
+                                  value={downLimitByInboundVal[ib.id] || undefined}
+                                  placeholder={t('pages.clients.inheritGlobalLimit', {
+                                    limit: downLimit > 0 ? downLimit : 0,
+                                  })}
+                                  style={{ width: '100%' }}
+                                  onChange={(val) => {
+                                    const next = { ...downLimitByInboundVal };
+                                    const num = Number(val) || 0;
+                                    if (num > 0) {
+                                      next[ib.id] = num;
+                                    } else {
+                                      delete next[ib.id];
+                                    }
+                                    methods.setValue('downLimitByInbound', next);
+                                  }}
+                                />
+                              ),
+                            },
+                          ]}
+                        />
+                      </div>
                     </>
                   ),
                 },

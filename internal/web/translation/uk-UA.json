@@ -719,7 +719,9 @@
         "peerNumberConfig": "Конфіг Peer {n}"
       },
       "sniffingDestOverride": "Перевизначення призначення",
-      "advancedTitle": "Додаткові налаштування"
+      "advancedTitle": "Додаткові налаштування",
+      "trafficRatio": "Коефіцієнт трафіку",
+      "trafficRatioDesc": "Коефіцієнт при підрахунку трафіку клієнта, за замовчуванням: 1.0"
     },
     "clients": {
       "tabBasics": "Основні",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "Подовжувати цього числа кожного місяця, опівночі за часовим поясом панелі, замість інтервалу в днях. Якщо в місяці такого числа немає, подовження припаде на останній день. 0 — залишити режим інтервалу.",
       "renewsUsed": "Подовжень витрачено",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "Введіть 32-значний hex-тег для встановлення або 'none' для очищення спонсорського каналу на MTProto."
+      "bulkAdTagHint": "Введіть 32-значний hex-тег для встановлення або 'none' для очищення спонсорського каналу на MTProto.",
+      "tabRateLimit": "Обмеження швидкості",
+      "downLimit": "Ліміт завантаження (Мбіт/с)",
+      "downLimitDesc": "Типовий ліміт швидкості клієнта, 0 — без обмежень",
+      "inboundRateLimitOverrides": "Перевизначення швидкості для прив'язаних вузлів",
+      "inheritGlobalLimit": "Успадкувати типовий ліміт ({limit} Мбіт/с)"
     },
     "groups": {
       "name": "Назва",

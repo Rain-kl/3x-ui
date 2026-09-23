@@ -150,10 +150,9 @@ export function parseOutboundTagsFromXrayConfigObj(obj: unknown): string[] {
 }
 
 /** Rewrite inboundTag on a routing rule from the central n<id>- alias to the node's native tag. */
-export function stripNodePrefixFromRoutingRule<T extends { inboundTag?: unknown }>(
-  nodeId: number,
-  rule: T,
-): T {
+export function stripNodePrefixFromRoutingRule<
+  T extends { inboundTag?: unknown; [key: string]: unknown },
+>(nodeId: number, rule: T): T {
   const raw = rule.inboundTag;
   if (raw == null) return rule;
   const tags = Array.isArray(raw)

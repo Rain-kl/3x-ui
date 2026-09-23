@@ -719,7 +719,9 @@
         "peerNumberConfig": "Peer {n} Yapılandırması"
       },
       "sniffingDestOverride": "Hedef geçersiz kılma",
-      "advancedTitle": "Gelişmiş Ayarlar"
+      "advancedTitle": "Gelişmiş Ayarlar",
+      "trafficRatio": "Trafik Çarpanı",
+      "trafficRatioDesc": "İstemci kota tüketimine uygulanan çarpan, varsayılan: 1.0"
     },
     "clients": {
       "tabBasics": "Temel",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "Her N günde bir yerine, her takvim ayının bu gününde, panel saat diliminde gece yarısı yeniler. Seçilen gün için kısa olan aylarda ayın son gününde yeniler. 0 gün aralığı modunu korur.",
       "renewsUsed": "Kullanılan yenileme",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "Aramak için 32 karakterlik onaltılık etiket girin veya MTProto üzerinde temizlemek için 'none' yazın."
+      "bulkAdTagHint": "Aramak için 32 karakterlik onaltılık etiket girin veya MTProto üzerinde temizlemek için 'none' yazın.",
+      "tabRateLimit": "Hız Sınırı",
+      "downLimit": "İndirme Sınırı (Mbps)",
+      "downLimitDesc": "İstemci varsayılan indirme bant genişliği sınırı, 0 sınırsız demektir",
+      "inboundRateLimitOverrides": "Bağlı Düğüm Hız Sınırı Geçersiz Kılmaları",
+      "inheritGlobalLimit": "Varsayılan sınırı devral ({limit} Mbps)"
     },
     "groups": {
       "name": "İsim",

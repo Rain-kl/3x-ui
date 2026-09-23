@@ -1441,6 +1441,15 @@ export const SCHEMAS: Record<string, unknown> = {
         "format": "int64",
         "type": "integer"
       },
+      "downLimit": {
+        "type": "integer"
+      },
+      "downLimitByInbound": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "type": "object"
+      },
       "email": {
         "description": "Client email identifier",
         "type": "string"
@@ -1582,6 +1591,11 @@ export const SCHEMAS: Record<string, unknown> = {
         "format": "int64",
         "type": "integer"
       },
+      "downLimit": {
+        "example": 50,
+        "minimum": 0,
+        "type": "integer"
+      },
       "flowOverride": {
         "type": "string"
       },
@@ -1592,6 +1606,7 @@ export const SCHEMAS: Record<string, unknown> = {
     "required": [
       "clientId",
       "createdAt",
+      "downLimit",
       "flowOverride",
       "inboundId"
     ],
@@ -1663,6 +1678,11 @@ export const SCHEMAS: Record<string, unknown> = {
       },
       "createdAt": {
         "format": "int64",
+        "type": "integer"
+      },
+      "downLimit": {
+        "example": 100,
+        "minimum": 0,
         "type": "integer"
       },
       "email": {
@@ -1755,6 +1775,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "auth",
       "comment",
       "createdAt",
+      "downLimit",
       "email",
       "enable",
       "expiryTime",
@@ -1807,6 +1828,16 @@ export const SCHEMAS: Record<string, unknown> = {
         "example": 1735000000000,
         "format": "int64",
         "type": "integer"
+      },
+      "downLimit": {
+        "example": 100,
+        "type": "integer"
+      },
+      "downLimitByInbound": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "type": "object"
       },
       "email": {
         "example": "alice@example.com",
@@ -1880,6 +1911,7 @@ export const SCHEMAS: Record<string, unknown> = {
     },
     "required": [
       "createdAt",
+      "downLimit",
       "email",
       "enable",
       "expiryTime",
@@ -2773,6 +2805,12 @@ export const SCHEMAS: Record<string, unknown> = {
         "format": "int64",
         "type": "integer"
       },
+      "trafficRatio": {
+        "description": "TrafficRatio applies a multiplier when accounting client traffic (default: 1.0).",
+        "example": 1.5,
+        "minimum": 0,
+        "type": "number"
+      },
       "trafficReset": {
         "description": "Traffic reset schedule",
         "enum": [
@@ -2819,6 +2857,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "subSortIndex",
       "tag",
       "total",
+      "trafficRatio",
       "trafficReset",
       "trafficResetDay",
       "up"

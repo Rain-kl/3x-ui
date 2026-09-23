@@ -719,7 +719,9 @@
         "peerNumberConfig": "Cấu hình Peer {n}"
       },
       "sniffingDestOverride": "Ghi đè đích",
-      "advancedTitle": "Cài đặt nâng cao"
+      "advancedTitle": "Cài đặt nâng cao",
+      "trafficRatio": "Hệ số tính lưu lượng",
+      "trafficRatioDesc": "Hệ số áp dụng khi tính hạn mức của khách, mặc định: 1.0"
     },
     "clients": {
       "tabBasics": "Cơ bản",
@@ -954,7 +956,12 @@
       "renewOnDayDesc": "Gia hạn vào ngày này của mỗi tháng dương lịch, lúc nửa đêm theo múi giờ của bảng điều khiển, thay vì mỗi N ngày. Tháng không có ngày đã chọn sẽ gia hạn vào ngày cuối cùng của tháng. 0 giữ nguyên chế độ khoảng cách theo ngày.",
       "renewsUsed": "Số lần gia hạn đã dùng",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
-      "bulkAdTagHint": "Nhập thẻ hex 32 ký tự để đặt hoặc 'none' để xóa kênh tài trợ trên MTProto."
+      "bulkAdTagHint": "Nhập thẻ hex 32 ký tự để đặt hoặc 'none' để xóa kênh tài trợ trên MTProto.",
+      "tabRateLimit": "Giới hạn tốc độ",
+      "downLimit": "Giới hạn tải xuống (Mbps)",
+      "downLimitDesc": "Băng thông tải xuống mặc định của khách, 0 nghĩa là không giới hạn",
+      "inboundRateLimitOverrides": "Ghi đè giới hạn tốc độ cho cổng liên kết",
+      "inheritGlobalLimit": "Kế thừa giới hạn chung ({limit} Mbps)"
     },
     "groups": {
       "name": "Tên",
