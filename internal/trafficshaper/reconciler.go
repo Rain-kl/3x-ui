@@ -75,6 +75,11 @@ func NewReconciler(engine *Engine) *Reconciler {
 	}
 }
 
+// NewReconcilerWithExecutor creates a Reconciler with custom interface and executor.
+func NewReconcilerWithExecutor(iface string, executor CommandExecutor) *Reconciler {
+	return NewReconciler(NewEngineWithExecutor(iface, executor))
+}
+
 func (r *Reconciler) allocMinorLocked() (uint16, error) {
 	for count := 0; count < 0xffff; count++ {
 		r.nextMinor++
@@ -151,7 +156,7 @@ func (r *Reconciler) ApplyInbound(ctx context.Context, rule InboundRule) error {
 }
 
 func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) error {
-	if rule.InboundDownLimit <= 0 && rule.ClientDownLimit <= 0 {
+	if rule.InboundDownLimit <= 0 && !hasClientRateLimits(rule) {
 		return r.removeInboundLocked(ctx, rule.InboundID)
 	}
 
@@ -207,37 +212,48 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 		}
 	}
 
-	// Update existing client classes if per-client bandwidth limit changed.
-	if state.applied && state.rule.ClientDownLimit != rule.ClientDownLimit {
-		if rule.ClientDownLimit > 0 {
-			for _, client := range state.clients {
-				subClassID := fmt.Sprintf("1:%x", client.classMinor)
-				rateStr, ceilStr := clientRateParams(rule.InboundDownLimit, rule.ClientDownLimit)
-				_ = r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", rateStr, "ceil", ceilStr, "burst", "32k", "cburst", "32k")
+	// Update existing client classes if limits changed on active inbound.
+	if state.applied {
+		var toDelete []string
+		for email, client := range state.clients {
+			oldLimit := effectiveClientLimit(state.rule, email)
+			newLimit := effectiveClientLimit(rule, email)
+			if oldLimit == newLimit && state.rule.InboundDownLimit == rule.InboundDownLimit {
+				continue
 			}
-		} else {
-			for _, client := range state.clients {
-				subClassID := fmt.Sprintf("1:%x", client.classMinor)
+			subClassID := fmt.Sprintf("1:%x", client.classMinor)
+			if newLimit > 0 {
+				rateStr, ceilStr := clientRateParams(rule.InboundDownLimit, newLimit)
+				_ = r.engine.Execute(ctx, "tc", "class", "replace", "dev", iface, "parent", inboundClassID, "classid", subClassID, "htb", "rate", rateStr, "ceil", ceilStr, "burst", "32k", "cburst", "32k")
+			} else {
 				for _, h := range client.ipHandles {
 					_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
 				}
 				_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
 				r.freeMinorLocked(client.classMinor)
+				toDelete = append(toDelete, email)
 			}
-			state.clients = make(map[string]*clientState)
+		}
+		for _, email := range toDelete {
+			delete(state.clients, email)
 		}
 	}
 
 	state.rule = rule
 	state.applied = true
 
-	if len(rule.Clients) > 0 {
+	if len(rule.Clients) > 0 || len(rule.ClientLimits) > 0 {
 		for email, ibID := range r.emailToInbound {
 			if ibID == rule.InboundID {
 				delete(r.emailToInbound, email)
 			}
 		}
 		for _, email := range rule.Clients {
+			if email != "" {
+				r.emailToInbound[email] = rule.InboundID
+			}
+		}
+		for email := range rule.ClientLimits {
 			if email != "" {
 				r.emailToInbound[email] = rule.InboundID
 			}
@@ -300,15 +316,26 @@ func (r *Reconciler) syncClientIPsLocked(ctx context.Context, inboundID int, ema
 	if !exists || !state.applied {
 		return fmt.Errorf("inbound %d not found or not applied", inboundID)
 	}
-	if state.rule.ClientDownLimit <= 0 {
+
+	client, clientExists := state.clients[email]
+	clientLimit := effectiveClientLimit(state.rule, email)
+	if clientLimit <= 0 {
+		if clientExists {
+			iface := r.engine.Interface()
+			subClassID := fmt.Sprintf("1:%x", client.classMinor)
+			for _, h := range client.ipHandles {
+				_ = r.engine.Execute(ctx, "tc", "filter", "del", "dev", iface, "protocol", "ip", "parent", "1:0", "prio", "5", "handle", h, "u32")
+			}
+			_ = r.engine.Execute(ctx, "tc", "class", "del", "dev", iface, "classid", subClassID)
+			r.freeMinorLocked(client.classMinor)
+			delete(state.clients, email)
+		}
 		return nil
 	}
 
 	iface := r.engine.Interface()
 	inboundClassID := fmt.Sprintf("1:%x", state.classMinor)
-	rateStr, ceilStr := clientRateParams(state.rule.InboundDownLimit, state.rule.ClientDownLimit)
-
-	client, clientExists := state.clients[email]
+	rateStr, ceilStr := clientRateParams(state.rule.InboundDownLimit, clientLimit)
 
 	newIPs := make(map[string]string)
 	for _, raw := range ips {
@@ -452,7 +479,7 @@ func (r *Reconciler) SyncAllObserved(observed map[string]map[string]int64) {
 	}
 
 	for inboundID, state := range r.inbounds {
-		if !state.applied || state.rule.ClientDownLimit <= 0 {
+		if !state.applied || !hasClientRateLimits(state.rule) {
 			continue
 		}
 		syncedEmails := make(map[string]bool)
@@ -510,4 +537,25 @@ func clientRateParams(inboundLimit, clientLimit int) (string, string) {
 		return ceilStr, ceilStr
 	}
 	return "1mbit", ceilStr
+}
+
+func hasClientRateLimits(rule InboundRule) bool {
+	if rule.ClientDownLimit > 0 {
+		return true
+	}
+	for _, lim := range rule.ClientLimits {
+		if lim > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func effectiveClientLimit(rule InboundRule, email string) int {
+	if rule.ClientLimits != nil {
+		if custom, ok := rule.ClientLimits[email]; ok && custom > 0 {
+			return custom
+		}
+	}
+	return rule.ClientDownLimit
 }

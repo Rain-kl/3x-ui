@@ -9,12 +9,13 @@ const (
 
 // InboundRule holds rate limit parameters and active IP state for an inbound.
 type InboundRule struct {
-	InboundID        int      `json:"inboundId"`
-	Port             int      `json:"port"`
-	InboundDownLimit int      `json:"inboundDownLimit"`
-	ClientDownLimit  int      `json:"clientDownLimit"`
-	ActiveIPs        []string `json:"activeIps,omitempty"`
-	Clients          []string `json:"clients,omitempty"`
+	InboundID        int            `json:"inboundId"`
+	Port             int            `json:"port"`
+	InboundDownLimit int            `json:"inboundDownLimit"`
+	ClientDownLimit  int            `json:"clientDownLimit"`
+	ClientLimits     map[string]int `json:"clientLimits,omitempty"`
+	ActiveIPs        []string       `json:"activeIps,omitempty"`
+	Clients          []string       `json:"clients,omitempty"`
 }
 
 // ID returns InboundID for caller convenience.

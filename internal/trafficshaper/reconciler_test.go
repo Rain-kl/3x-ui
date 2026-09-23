@@ -568,3 +568,122 @@ func TestInitAndTeardownGraceful(t *testing.T) {
 	}
 	_ = Teardown()
 }
+
+type mockCommandExecutor = mockExecutor
+
+func assertCommandContains(t *testing.T, commands []string, substrs ...string) {
+	t.Helper()
+	for _, cmd := range commands {
+		allMatch := true
+		for _, s := range substrs {
+			if !strings.Contains(cmd, s) {
+				allMatch = false
+				break
+			}
+		}
+		if allMatch {
+			return
+		}
+	}
+	t.Fatalf("expected command containing %v, but not found in commands: %v", substrs, commands)
+}
+
+func TestReconciler_PerClientDifferentialDownLimits(t *testing.T) {
+	mock := &mockCommandExecutor{}
+	r := NewReconcilerWithExecutor("eth0", mock)
+	ctx := context.Background()
+
+	rule := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+		ClientLimits: map[string]int{
+			"alice@test.com": 20,
+			"bob@test.com":   50,
+		},
+	}
+	if err := r.ApplyInbound(ctx, rule); err != nil {
+		t.Fatalf("ApplyInbound failed: %v", err)
+	}
+
+	if err := r.SyncClientIPs(ctx, 1, "alice@test.com", []string{"192.168.1.101"}); err != nil {
+		t.Fatalf("SyncClientIPs alice: %v", err)
+	}
+	if err := r.SyncClientIPs(ctx, 1, "bob@test.com", []string{"192.168.1.102"}); err != nil {
+		t.Fatalf("SyncClientIPs bob: %v", err)
+	}
+	if err := r.SyncClientIPs(ctx, 1, "charlie@test.com", []string{"192.168.1.103"}); err != nil {
+		t.Fatalf("SyncClientIPs charlie: %v", err)
+	}
+
+	assertCommandContains(t, mock.commands, "rate", "20mbit")
+	assertCommandContains(t, mock.commands, "rate", "50mbit")
+	assertCommandContains(t, mock.commands, "rate", "10mbit")
+}
+
+func TestReconciler_PerClientDifferentialDownLimits_DynamicUpdate(t *testing.T) {
+	mock := &mockCommandExecutor{}
+	r := NewReconcilerWithExecutor("eth0", mock)
+	ctx := context.Background()
+
+	rule := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+		ClientLimits: map[string]int{
+			"alice@test.com": 20,
+			"bob@test.com":   50,
+		},
+	}
+	if err := r.ApplyInbound(ctx, rule); err != nil {
+		t.Fatalf("ApplyInbound failed: %v", err)
+	}
+
+	_ = r.SyncClientIPs(ctx, 1, "alice@test.com", []string{"192.168.1.101"})
+	_ = r.SyncClientIPs(ctx, 1, "bob@test.com", []string{"192.168.1.102"})
+
+	mock.commands = nil
+	rule.ClientLimits = map[string]int{
+		"alice@test.com": 35,
+	}
+	if err := r.ApplyInbound(ctx, rule); err != nil {
+		t.Fatalf("ApplyInbound update failed: %v", err)
+	}
+
+	assertCommandContains(t, mock.commands, "ceil", "35mbit")
+	assertCommandContains(t, mock.commands, "ceil", "10mbit")
+}
+
+func TestReconciler_SyncAllObserved_ZeroInboundClientLimitWithCustomLimits(t *testing.T) {
+	mock := &mockCommandExecutor{}
+	r := NewReconcilerWithExecutor("eth0", mock)
+	ctx := context.Background()
+
+	rule := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  0,
+		ClientLimits: map[string]int{
+			"alice@test.com": 20,
+		},
+	}
+	if err := r.ApplyInbound(ctx, rule); err != nil {
+		t.Fatalf("ApplyInbound failed: %v", err)
+	}
+
+	observed := map[string]map[string]int64{
+		"alice@test.com": {"192.168.1.101": 1000},
+		"bob@test.com":   {"192.168.1.102": 1000},
+	}
+	r.SyncAllObserved(observed)
+
+	assertCommandContains(t, mock.commands, "ceil", "20mbit")
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "192.168.1.102") {
+			t.Fatalf("bob has no limit and should not have filter, got: %s", cmd)
+		}
+	}
+}
