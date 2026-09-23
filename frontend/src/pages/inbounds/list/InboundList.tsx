@@ -32,7 +32,7 @@ import { activateOnKey } from '@/utils/a11y';
 
 import { buildRowActionsMenu } from './RowActions';
 import { useInboundColumns } from './useInboundColumns';
-import { buildHostRemarksByInboundId, formatHostRemarksLabel } from './helpers';
+import { buildHostRemarksByInboundId, formatHostRemarksLabel, formatRateLimit } from './helpers';
 import InboundStatsModal from './InboundStatsModal';
 import type { DBInboundRecord, GeneralAction, InboundListProps, RowAction } from './types';
 import './InboundList.css';
@@ -315,6 +315,14 @@ export default function InboundList({
                         <span className="inbound-remark">{record.remark}</span>
                         <HostRemarksSuffix remarks={hostRemarksByInboundId.get(record.id) ?? []} />
                       </span>
+                      {((record.inboundDownLimit ?? 0) > 0 ||
+                        (record.clientDownLimit ?? 0) > 0) && (
+                        <Tooltip title={t('pages.inbounds.list.rateLimit')}>
+                          <Tag color="cyan" style={{ marginInlineStart: 4 }}>
+                            {formatRateLimit(record.inboundDownLimit, record.clientDownLimit)}
+                          </Tag>
+                        </Tooltip>
+                      )}
                       <div className="card-actions">
                         <Tooltip title={t('pages.inbounds.inboundInfo')}>
                           <InfoCircleOutlined

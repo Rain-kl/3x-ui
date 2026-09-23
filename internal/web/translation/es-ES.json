@@ -469,7 +469,14 @@
         "invalidCertificate": "Certificado TLS {index}: {reason}",
         "moreIssues": "{message}  (+{count} más)"
       },
+      "list": {
+        "rateLimit": "Límite de velocidad (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "Límite de entrada (Mbps)",
+        "inboundDownLimitHint": "Limita el ancho de banda total de bajada para todas las conexiones en esta entrada. 0 significa sin límite.",
+        "clientDownLimit": "Límite por cliente (Mbps)",
+        "clientDownLimitHint": "Limita el ancho de banda de bajada individual para cada cliente en esta entrada. 0 significa sin límite.",
         "moveUp": "Subir",
         "moveDown": "Bajar",
         "addAll": "Añadir todo",

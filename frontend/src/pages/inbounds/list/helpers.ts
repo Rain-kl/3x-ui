@@ -144,3 +144,13 @@ export function formatHostRemarksLabel(
   const more = remarks.length - visibleLimit;
   return { display: `${visible}, +${more}`, full };
 }
+
+// Formats inbound/client rate limits (Mbps) for list badge display.
+export function formatRateLimit(inboundLimit?: number, clientLimit?: number): string | null {
+  const ib = inboundLimit ?? 0;
+  const cl = clientLimit ?? 0;
+  if (ib <= 0 && cl <= 0) return null;
+  if (ib > 0 && cl > 0) return `⚡ ${ib}M / ${cl}M`;
+  if (ib > 0) return `⚡ ${ib}M`;
+  return `⚡ ∞ / ${cl}M`;
+}

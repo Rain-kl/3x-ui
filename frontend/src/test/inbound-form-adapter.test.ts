@@ -276,6 +276,8 @@ describe('formValuesToWirePayload', () => {
       trafficResetDay: payload.trafficResetDay,
       lastTrafficResetTime: payload.lastTrafficResetTime,
       nodeId: payload.nodeId ?? null,
+      inboundDownLimit: payload.inboundDownLimit,
+      clientDownLimit: payload.clientDownLimit,
     });
     expect(replay.protocol).toBe(original.protocol);
     expect(replay.port).toBe(original.port);
@@ -283,6 +285,8 @@ describe('formValuesToWirePayload', () => {
     expect(replay.listen).toBe(original.listen);
     expect(replay.up).toBe(original.up);
     expect(replay.down).toBe(original.down);
+    expect(replay.inboundDownLimit).toBe(original.inboundDownLimit);
+    expect(replay.clientDownLimit).toBe(original.clientDownLimit);
     expect(replay.trafficResetDay).toBe(original.trafficResetDay);
     expect(replay.streamSettings).toEqual(original.streamSettings);
   });
@@ -291,6 +295,19 @@ describe('formValuesToWirePayload', () => {
     expect(
       rawInboundToFormValues({ ...vlessRow, trafficResetDay: undefined }).trafficResetDay,
     ).toBe(1);
+  });
+
+  it('round-trips inbound and client rate limits', () => {
+    const values = rawInboundToFormValues({
+      ...vlessRow,
+      inboundDownLimit: 100,
+      clientDownLimit: 10,
+    });
+    expect(values.inboundDownLimit).toBe(100);
+    expect(values.clientDownLimit).toBe(10);
+    const payload = formValuesToWirePayload(values);
+    expect(payload.inboundDownLimit).toBe(100);
+    expect(payload.clientDownLimit).toBe(10);
   });
 });
 

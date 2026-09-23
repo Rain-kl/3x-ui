@@ -470,7 +470,14 @@
         "invalidCertificate": "TLS certificate {index}: {reason}",
         "moreIssues": "{message}  (+{count} more)"
       },
+      "list": {
+        "rateLimit": "Rate Limit (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "Inbound limit (Mbps)",
+        "inboundDownLimitHint": "Cap the total downlink bandwidth across all connections for this inbound. 0 means unlimited.",
+        "clientDownLimit": "Per-client limit (Mbps)",
+        "clientDownLimitHint": "Cap the downlink bandwidth for each client on this inbound individually. 0 means unlimited.",
         "autoFill": "Auto Fill",
         "moveUp": "Move up",
         "moveDown": "Move down",

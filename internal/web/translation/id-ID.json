@@ -469,7 +469,14 @@
         "invalidCertificate": "Sertifikat TLS {index}: {reason}",
         "moreIssues": "{message}  (+{count} lainnya)"
       },
+      "list": {
+        "rateLimit": "Batas Kecepatan (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "Batas inbound (Mbps)",
+        "inboundDownLimitHint": "Batasi total bandwidth unduhan untuk semua koneksi pada inbound ini. 0 berarti tidak terbatas.",
+        "clientDownLimit": "Batas per klien (Mbps)",
+        "clientDownLimitHint": "Batasi bandwidth unduhan untuk setiap klien pada inbound ini secara independen. 0 berarti tidak terbatas.",
         "moveUp": "Naik",
         "moveDown": "Turun",
         "addAll": "Tambah semua",

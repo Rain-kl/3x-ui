@@ -469,7 +469,14 @@
         "invalidCertificate": "Certificado TLS {index}: {reason}",
         "moreIssues": "{message}  (+{count} mais)"
       },
+      "list": {
+        "rateLimit": "Limite de velocidade (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "Limite de entrada (Mbps)",
+        "inboundDownLimitHint": "Limita a largura de banda total de download para todas as conexões nesta entrada. 0 significa sem limite.",
+        "clientDownLimit": "Limite por cliente (Mbps)",
+        "clientDownLimitHint": "Limita a largura de banda de download individual para cada cliente nesta entrada. 0 significa sem limite.",
         "echSockopt": "Sockopt ECH",
         "echSockoptTip": "Opções de socket para a conexão que o Xray usa ao buscar a lista de configurações ECH (por exemplo, rotear a consulta por um outbound dialerProxy). Deixe desativado para usar os padrões.",
         "curvePreferences": "Preferências de curva",

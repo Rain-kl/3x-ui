@@ -469,7 +469,14 @@
         "invalidCertificate": "گواهی TLS شماره {index}: {reason}",
         "moreIssues": "{message}  (+{count} مورد دیگر)"
       },
+      "list": {
+        "rateLimit": "محدودیت سرعت (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "محدودیت ورودی (Mbps)",
+        "inboundDownLimitHint": "محدود کردن کل پهنای باند دانلود برای تمام اتصالات در این ورودی. ۰ یعنی بدون محدودیت.",
+        "clientDownLimit": "محدودیت هر کاربر (Mbps)",
+        "clientDownLimitHint": "محدود کردن پهنای باند دانلود هر کاربر به طور مستقل در این ورودی. ۰ یعنی بدون محدودیت.",
         "moveUp": "بالا",
         "moveDown": "پایین",
         "addAll": "افزودن همه",

@@ -469,7 +469,14 @@
         "invalidCertificate": "TLS 証明書 {index}: {reason}",
         "moreIssues": "{message}  (他 {count} 件)"
       },
+      "list": {
+        "rateLimit": "帯域制限 (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "インバウンド速度制限 (Mbps)",
+        "inboundDownLimitHint": "このインバウンドの全接続に対する合計下り帯域幅の上限を設定します。0で無制限。",
+        "clientDownLimit": "クライアント別制限 (Mbps)",
+        "clientDownLimitHint": "このインバウンドに接続する各クライアントの個別下り帯域幅の上限を設定します。0で無制限。",
         "echSockopt": "ECH Sockopt",
         "echSockoptTip": "Xray が ECH config リストを取得するために使用する接続のソケットオプション（例: ルックアップを dialerProxy アウトバウンド経由にする）。既定値を使う場合は無効のままにします。",
         "curvePreferences": "曲線の優先設定",

@@ -469,7 +469,14 @@
         "invalidCertificate": "Chứng chỉ TLS {index}: {reason}",
         "moreIssues": "{message}  (+{count} lỗi khác)"
       },
+      "list": {
+        "rateLimit": "Giới hạn tốc độ (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "Giới hạn cổng vào (Mbps)",
+        "inboundDownLimitHint": "Giới hạn tổng băng thông tải xuống cho tất cả các kết nối trên cổng vào này. 0 nghĩa là không giới hạn.",
+        "clientDownLimit": "Giới hạn theo từng người dùng (Mbps)",
+        "clientDownLimitHint": "Giới hạn băng thông tải xuống riêng lẻ cho từng người dùng trên cổng vào này. 0 nghĩa là không giới hạn.",
         "echSockopt": "ECH Sockopt",
         "echSockoptTip": "Tùy chọn socket cho kết nối mà Xray dùng để lấy danh sách cấu hình ECH (ví dụ định tuyến truy vấn qua một outbound dialerProxy). Để tắt để dùng giá trị mặc định.",
         "curvePreferences": "Ưu tiên đường cong",

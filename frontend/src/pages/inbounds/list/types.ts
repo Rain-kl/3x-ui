@@ -36,6 +36,8 @@ export interface DBInboundRecord extends ProtocolFlags {
   nodeId?: number | null;
   settings: unknown;
   streamSettings: unknown;
+  inboundDownLimit?: number;
+  clientDownLimit?: number;
 }
 
 export interface ClientCountEntry {

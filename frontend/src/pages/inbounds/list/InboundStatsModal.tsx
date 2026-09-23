@@ -13,6 +13,7 @@ import {
   shadowsocksNetworkLabel,
   tunnelNetworkLabel,
   mixedNetworkLabel,
+  formatRateLimit,
 } from './helpers';
 import { InboundSpeedTag, isActiveSpeed } from './InboundSpeedTag';
 import type { ClientCountEntry, DBInboundRecord, InboundSpeedEntry } from './types';
@@ -162,6 +163,14 @@ export default function InboundStatsModal({
               </Tag>
             )}
           </div>
+          {((record.inboundDownLimit ?? 0) > 0 || (record.clientDownLimit ?? 0) > 0) && (
+            <div className="stat-row">
+              <span className="stat-label">{t('pages.inbounds.list.rateLimit')}</span>
+              <Tag color="cyan">
+                {formatRateLimit(record.inboundDownLimit, record.clientDownLimit)}
+              </Tag>
+            </div>
+          )}
         </div>
       )}
     </Modal>

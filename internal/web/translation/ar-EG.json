@@ -469,7 +469,14 @@
         "invalidCertificate": "شهادة TLS رقم {index}: {reason}",
         "moreIssues": "{message}  (+{count} أخرى)"
       },
+      "list": {
+        "rateLimit": "حد السرعة (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "حد منفذ الدخول (Mbps)",
+        "inboundDownLimitHint": "تحديد إجمالي النطاق الترددي للتنزيل لجميع الاتصالات في منفذ الدخول هذا. 0 تعني بدون حد.",
+        "clientDownLimit": "الحد لكل عميل (Mbps)",
+        "clientDownLimitHint": "تحديد النطاق الترددي للتنزيل لكل عميل على حدة في منفذ الدخول هذا. 0 تعني بدون حد.",
         "moveUp": "أعلى",
         "moveDown": "أسفل",
         "addAll": "إضافة الكل",

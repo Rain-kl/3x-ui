@@ -4,6 +4,7 @@ import { QuestionCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
   Alert,
+  Card,
   Form,
   Input,
   InputNumber,
@@ -770,6 +771,30 @@ export default function InboundFormModal({
           onChange={(d) => setV('expiryTime', d ? d.valueOf() : 0)}
         />
       </Form.Item>
+
+      <Card size="small" title={t('pages.inbounds.list.rateLimit')} style={{ marginTop: 16 }}>
+        <FormField
+          name="inboundDownLimit"
+          label={labelWithHint(
+            t('pages.inbounds.form.inboundDownLimit'),
+            t('pages.inbounds.form.inboundDownLimitHint'),
+          )}
+          rules={{ validate: rhfZodValidate(InboundDbFieldsSchema.shape.inboundDownLimit) }}
+        >
+          <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
+        </FormField>
+
+        <FormField
+          name="clientDownLimit"
+          label={labelWithHint(
+            t('pages.inbounds.form.clientDownLimit'),
+            t('pages.inbounds.form.clientDownLimitHint'),
+          )}
+          rules={{ validate: rhfZodValidate(InboundDbFieldsSchema.shape.clientDownLimit) }}
+        >
+          <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
+        </FormField>
+      </Card>
     </>
   );
 

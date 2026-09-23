@@ -24,6 +24,7 @@ import {
   tunnelNetworkLabel,
   mixedNetworkLabel,
   formatHostRemarksLabel,
+  formatRateLimit,
 } from './helpers';
 import type { ClientCountEntry, DBInboundRecord, InboundSpeedEntry, RowAction } from './types';
 
@@ -274,6 +275,15 @@ export function useInboundColumns({
                   Reality
                 </Tag>,
               );
+          }
+          if ((record.inboundDownLimit ?? 0) > 0 || (record.clientDownLimit ?? 0) > 0) {
+            tags.push(
+              <Tooltip key="rate-limit" title={t('pages.inbounds.list.rateLimit')}>
+                <Tag color="cyan">
+                  {formatRateLimit(record.inboundDownLimit, record.clientDownLimit)}
+                </Tag>
+              </Tooltip>,
+            );
           }
           return <div className="protocol-tags">{tags}</div>;
         },

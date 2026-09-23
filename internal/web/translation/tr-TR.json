@@ -469,7 +469,14 @@
         "invalidCertificate": "TLS sertifikası {index}: {reason}",
         "moreIssues": "{message}  (+{count} tane daha)"
       },
+      "list": {
+        "rateLimit": "Hız Sınırı (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "Gelen bağlantı sınırı (Mbps)",
+        "inboundDownLimitHint": "Bu gelen bağlantıdaki tüm bağlantılar için toplam indirme bant genişliğini sınırlar. 0 sınırsız demektir.",
+        "clientDownLimit": "İstemci başına sınır (Mbps)",
+        "clientDownLimitHint": "Bu gelen bağlantıdaki her istemci için ayrı ayrı indirme bant genişliğini sınırlar. 0 sınırsız demektir.",
         "moveUp": "Yukarı Taşı",
         "moveDown": "Aşağı Taşı",
         "addAll": "Tümünü Ekle",

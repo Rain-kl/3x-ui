@@ -469,7 +469,14 @@
         "invalidCertificate": "第 {index} 組 TLS 憑證：{reason}",
         "moreIssues": "{message}  (另有 {count} 項)"
       },
+      "list": {
+        "rateLimit": "頻寬限速 (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "整入站下行限速 (Mbps)",
+        "inboundDownLimitHint": "限制此入站節點所有連線的總下行頻寬峰值，0 表示不限速。",
+        "clientDownLimit": "單用戶端下行限速 (Mbps)",
+        "clientDownLimitHint": "限制連線到此入站節點的每個用戶端獨立下行頻寬峰值，0 表示不限速。",
         "moveUp": "上移",
         "moveDown": "下移",
         "addAll": "全部新增",

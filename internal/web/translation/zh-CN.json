@@ -469,7 +469,14 @@
         "invalidCertificate": "第 {index} 组 TLS 证书：{reason}",
         "moreIssues": "{message}  (另有 {count} 项)"
       },
+      "list": {
+        "rateLimit": "带宽限速 (Mbps)"
+      },
       "form": {
+        "inboundDownLimit": "整入站下行限速 (Mbps)",
+        "inboundDownLimitHint": "限制此入站节点所有连接的总下行带宽峰值，0 表示不限速。",
+        "clientDownLimit": "单客户端下行限速 (Mbps)",
+        "clientDownLimitHint": "限制连接到此入站节点的每个客户端独立下行带宽峰值，0 表示不限速。",
         "echSockopt": "ECH Sockopt",
         "echSockoptTip": "Xray 获取 ECH 配置列表时所用连接的 Socket 选项（例如让该查询通过 dialerProxy 出站）。保持禁用则使用默认值。",
         "curvePreferences": "曲线偏好",
