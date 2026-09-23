@@ -119,6 +119,26 @@ func migrateInboundRateLimitColumns() error {
 			return err
 		}
 	}
+	if !migrator.HasColumn(&model.Inbound{}, "traffic_ratio") {
+		if err := migrator.AddColumn(&model.Inbound{}, "traffic_ratio"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func migrateClientDownLimitColumns() error {
+	migrator := db.Migrator()
+	if migrator.HasTable(&model.ClientRecord{}) && !migrator.HasColumn(&model.ClientRecord{}, "down_limit") {
+		if err := migrator.AddColumn(&model.ClientRecord{}, "down_limit"); err != nil {
+			return err
+		}
+	}
+	if migrator.HasTable(&model.ClientInbound{}) && !migrator.HasColumn(&model.ClientInbound{}, "down_limit") {
+		if err := migrator.AddColumn(&model.ClientInbound{}, "down_limit"); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -130,6 +150,9 @@ func initModels() error {
 		return err
 	}
 	if err := migrateInboundRateLimitColumns(); err != nil {
+		return err
+	}
+	if err := migrateClientDownLimitColumns(); err != nil {
 		return err
 	}
 	models := allModels()
@@ -168,6 +191,9 @@ func initModels() error {
 		return err
 	}
 	if err := normalizeInboundSubSortIndex(); err != nil {
+		return err
+	}
+	if err := normalizeInboundTrafficRatio(); err != nil {
 		return err
 	}
 	if err := normalizeClientExternalLinkEnable(); err != nil {
@@ -1062,6 +1088,23 @@ func normalizeInboundSubSortIndex() error {
 	}
 	if res.RowsAffected > 0 {
 		log.Printf("Normalized sub_sort_index on %d inbound(s)", res.RowsAffected)
+	}
+	return nil
+}
+
+// normalizeInboundTrafficRatio backfills default 1.0 multiplier where ratio <= 0.
+func normalizeInboundTrafficRatio() error {
+	migrator := db.Migrator()
+	if !migrator.HasTable(&model.Inbound{}) {
+		return nil
+	}
+	res := db.Exec("UPDATE inbounds SET traffic_ratio = 1.0 WHERE traffic_ratio <= 0 OR traffic_ratio IS NULL")
+	if res.Error != nil {
+		log.Printf("Error normalizing inbound traffic_ratio: %v", res.Error)
+		return res.Error
+	}
+	if res.RowsAffected > 0 {
+		log.Printf("Normalized traffic_ratio on %d inbound(s)", res.RowsAffected)
 	}
 	return nil
 }

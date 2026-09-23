@@ -78,6 +78,8 @@ type Inbound struct {
 	InboundDownLimit int `json:"inboundDownLimit" form:"inboundDownLimit" gorm:"column:inbound_down_limit;default:0" validate:"omitempty,gte=0" example:"100"`
 	// ClientDownLimit sets peak outbound bandwidth for each client on this inbound in Mbps (0 = unlimited).
 	ClientDownLimit int `json:"clientDownLimit" form:"clientDownLimit" gorm:"column:client_down_limit;default:0" validate:"omitempty,gte=0" example:"10"`
+	// TrafficRatio applies a multiplier when accounting client traffic (default: 1.0).
+	TrafficRatio float64 `json:"trafficRatio" form:"trafficRatio" gorm:"column:traffic_ratio;default:1.0" validate:"omitempty,gte=0" example:"1.5"`
 
 	// OriginNodeGuid is the panelGuid of the node that physically hosts this
 	// inbound, propagated up across hops (#4983). Empty for an inbound that
@@ -900,8 +902,10 @@ type Client struct {
 	ForwardedPorts      string           `json:"forwardedPorts,omitempty"` // AmneziaWG per-client port-forwarding spec, e.g. "80,443,8000-8100"
 	Secret              string           `json:"secret,omitempty" example:"ee1234567890abcdef1234567890abcd7777772e636c6f7564666c6172652e636f6d"`
 	AdTag               string           `json:"adTag,omitempty" example:"0123456789abcdef0123456789abcdef"`
-	Email               string           `json:"email"`                        // Client email identifier
-	LimitIP             int              `json:"limitIp"`                      // IP limit for this client
+	Email               string           `json:"email"`   // Client email identifier
+	LimitIP             int              `json:"limitIp"` // IP limit for this client
+	DownLimit           int              `json:"downLimit,omitempty"`
+	DownLimitByInbound  map[int]int      `json:"downLimitByInbound,omitempty"`
 	TotalGB             int64            `json:"totalGB" form:"totalGB"`       // Total traffic limit in GB
 	ExpiryTime          int64            `json:"expiryTime" form:"expiryTime"` // Expiration timestamp
 	Enable              bool             `json:"enable" form:"enable"`         // Whether the client is enabled
@@ -939,6 +943,7 @@ type ClientRecord struct {
 	AdTag           string `json:"adTag" gorm:"column:ad_tag;default:''"`
 	LimitIP         int    `json:"limitIp" gorm:"column:limit_ip"`
 	LimitHwid       int    `json:"limitHwid" gorm:"column:limit_hwid;default:0"`
+	DownLimit       int    `json:"downLimit" form:"downLimit" gorm:"column:down_limit;default:0" validate:"omitempty,gte=0" example:"100"`
 	TotalGB         int64  `json:"totalGB" gorm:"column:total_gb"`
 	ExpiryTime      int64  `json:"expiryTime" gorm:"column:expiry_time"`
 	Enable          bool   `json:"enable" gorm:"default:true"`
@@ -1005,6 +1010,7 @@ type ClientInbound struct {
 	ClientId     int    `json:"clientId" gorm:"primaryKey;column:client_id;index"`
 	InboundId    int    `json:"inboundId" gorm:"primaryKey;column:inbound_id;index"`
 	FlowOverride string `json:"flowOverride" gorm:"column:flow_override"`
+	DownLimit    int    `json:"downLimit" form:"downLimit" gorm:"column:down_limit;default:0" validate:"omitempty,gte=0" example:"50"`
 	CreatedAt    int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 }
 
@@ -1150,6 +1156,7 @@ func (c *Client) ToRecord() *ClientRecord {
 		Flow:            c.Flow,
 		Security:        c.Security,
 		LimitIP:         c.LimitIP,
+		DownLimit:       c.DownLimit,
 		TotalGB:         c.TotalGB,
 		ExpiryTime:      c.ExpiryTime,
 		Enable:          c.Enable,
@@ -1208,6 +1215,7 @@ func (r *ClientRecord) ToClient() *Client {
 		Flow:            r.Flow,
 		Security:        r.Security,
 		LimitIP:         r.LimitIP,
+		DownLimit:       r.DownLimit,
 		TotalGB:         r.TotalGB,
 		ExpiryTime:      r.ExpiryTime,
 		Enable:          r.Enable,
@@ -1373,6 +1381,16 @@ func MergeClientRecord(existing *ClientRecord, incoming *ClientRecord) []ClientM
 		if picked != existing.LimitHwid {
 			keep("limitHwid", existing.LimitHwid, incoming.LimitHwid, picked)
 			existing.LimitHwid = picked
+		}
+	}
+	if existing.DownLimit != incoming.DownLimit && incoming.DownLimit != 0 {
+		picked := existing.DownLimit
+		if existing.DownLimit == 0 || incoming.DownLimit > existing.DownLimit {
+			picked = incoming.DownLimit
+		}
+		if picked != existing.DownLimit {
+			keep("downLimit", existing.DownLimit, incoming.DownLimit, picked)
+			existing.DownLimit = picked
 		}
 	}
 	if existing.TgID != incoming.TgID && incoming.TgID != 0 {
