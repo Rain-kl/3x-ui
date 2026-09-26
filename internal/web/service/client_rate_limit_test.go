@@ -1,10 +1,13 @@
 package service
 
 import (
+	"context"
+	"strings"
 	"testing"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 )
 
 func TestClientRateLimit_ComputeEffectiveLimitPriority(t *testing.T) {
@@ -341,5 +344,81 @@ func TestClientRateLimit_SubNodeScopedUpdate(t *testing.T) {
 	limits1Cleared := svc.ClientLimitsByInbound(ib1.Id)
 	if limits1Cleared[rec.Email] != 0 {
 		t.Errorf("ClientLimitsByInbound(ib1) after clear = %d, want 0", limits1Cleared[rec.Email])
+	}
+}
+
+type mockTrafficShaperExecutor struct {
+	commands []string
+}
+
+func (m *mockTrafficShaperExecutor) Execute(_ context.Context, cmd string, args ...string) error {
+	m.commands = append(m.commands, cmd+" "+strings.Join(args, " "))
+	return nil
+}
+
+func TestClientService_UpdateSyncsTrafficShaper(t *testing.T) {
+	setupBulkDB(t)
+	svc := &ClientService{}
+	inboundSvc := &InboundService{}
+	db := database.GetDB()
+
+	mock := &mockTrafficShaperExecutor{}
+	eng := trafficshaper.NewEngineWithExecutor("eth0", mock)
+	rec := trafficshaper.NewReconciler(eng)
+	trafficshaper.SetReconciler(rec)
+	t.Cleanup(func() { trafficshaper.SetReconciler(nil) })
+
+	ib := mkInbound(t, 25432, model.VLESS, `{"clients":[]}`)
+	if err := db.Save(ib).Error; err != nil {
+		t.Fatalf("Save inbound: %v", err)
+	}
+
+	payload := &ClientCreatePayload{
+		Client: model.Client{
+			Email:     "user-shaper@test.com",
+			DownLimit: 50,
+			Enable:    true,
+		},
+		InboundIds: []int{ib.Id},
+	}
+	if _, err := svc.Create(inboundSvc, payload); err != nil {
+		t.Fatalf("Create client: %v", err)
+	}
+
+	hasPort25432 := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "sport 25432") {
+			hasPort25432 = true
+		}
+	}
+	if !hasPort25432 {
+		t.Errorf("expected trafficshaper to configure port 25432 on create, got: %v", mock.commands)
+	}
+
+	// Connect client to establish active IP and leaf class.
+	if err := rec.SyncClientIPs(context.Background(), ib.Id, "user-shaper@test.com", []string{"1.2.3.4"}); err != nil {
+		t.Fatalf("SyncClientIPs: %v", err)
+	}
+
+	mock.commands = nil
+	recObj := lookupClientRecord(t, "user-shaper@test.com")
+	updateClient := model.Client{
+		Email:              recObj.Email,
+		DownLimit:          120,
+		DownLimitByInbound: map[int]int{ib.Id: 120},
+		Enable:             true,
+	}
+	if _, err := svc.Update(inboundSvc, recObj.Id, updateClient, 0, ib.Id); err != nil {
+		t.Fatalf("Update client: %v", err)
+	}
+
+	has120mbit := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "ceil 120mbit") {
+			has120mbit = true
+		}
+	}
+	if !has120mbit {
+		t.Errorf("expected trafficshaper to update leaf class to ceil 120mbit on update, got: %v", mock.commands)
 	}
 }

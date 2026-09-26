@@ -572,7 +572,7 @@ func (r *Remote) AddClient(ctx context.Context, ib *model.Inbound, client model.
 		return fmt.Errorf("remote AddClient: resolve tag %q: %w", ib.Tag, err)
 	}
 	downLimit := client.DownLimit
-	if override, ok := client.DownLimitByInbound[ib.Id]; ok {
+	if override, ok := client.DownLimitByInbound[ib.Id]; ok && override > 0 {
 		downLimit = override
 	}
 	client.DownLimitByInbound = map[int]int{id: downLimit}
@@ -642,7 +642,7 @@ func (r *Remote) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail str
 		return err
 	}
 	downLimit := payload.DownLimit
-	if override, ok := payload.DownLimitByInbound[ib.Id]; ok {
+	if override, ok := payload.DownLimitByInbound[ib.Id]; ok && override > 0 {
 		downLimit = override
 	}
 	payload.DownLimitByInbound = map[int]int{id: downLimit}

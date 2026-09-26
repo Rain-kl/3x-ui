@@ -44,7 +44,10 @@ type inboundState struct {
 }
 
 func (s *inboundState) allocFilterHandle(inboundID int) string {
-	node := ((inboundID & 0x7) << 8) | (s.nextFilterHandle & 0xff)
+	if s.nextFilterHandle <= 0 {
+		s.nextFilterHandle = 1
+	}
+	node := ((inboundID & 0x7f) << 8) | (s.nextFilterHandle & 0xff)
 	s.nextFilterHandle++
 	return fmt.Sprintf("800::%x", node)
 }
@@ -59,7 +62,7 @@ type Reconciler struct {
 	pending        map[int]map[string][]string
 	usedMinors     map[uint16]bool
 	nextMinor      uint16
-	emailToInbound map[string]int
+	clientInbounds map[string]map[int]bool
 }
 
 // NewReconciler creates a Reconciler bound to the specified Engine.
@@ -71,7 +74,7 @@ func NewReconciler(engine *Engine) *Reconciler {
 		pending:        make(map[int]map[string][]string),
 		usedMinors:     map[uint16]bool{0: true, 1: true, 0x9999: true},
 		nextMinor:      0x0f,
-		emailToInbound: make(map[string]int),
+		clientInbounds: make(map[string]map[int]bool),
 	}
 }
 
@@ -163,9 +166,8 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 	state, exists := r.inbounds[rule.InboundID]
 	if !exists {
 		state = &inboundState{
-			rule:             rule,
-			clients:          make(map[string]*clientState),
-			nextFilterHandle: 1,
+			rule:    rule,
+			clients: make(map[string]*clientState),
 		}
 		r.inbounds[rule.InboundID] = state
 	}
@@ -243,19 +245,23 @@ func (r *Reconciler) applyInboundLocked(ctx context.Context, rule InboundRule) e
 	state.applied = true
 
 	if len(rule.Clients) > 0 || len(rule.ClientLimits) > 0 {
-		for email, ibID := range r.emailToInbound {
-			if ibID == rule.InboundID {
-				delete(r.emailToInbound, email)
-			}
+		if r.clientInbounds == nil {
+			r.clientInbounds = make(map[string]map[int]bool)
 		}
 		for _, email := range rule.Clients {
 			if email != "" {
-				r.emailToInbound[email] = rule.InboundID
+				if r.clientInbounds[email] == nil {
+					r.clientInbounds[email] = make(map[int]bool)
+				}
+				r.clientInbounds[email][rule.InboundID] = true
 			}
 		}
 		for email := range rule.ClientLimits {
 			if email != "" {
-				r.emailToInbound[email] = rule.InboundID
+				if r.clientInbounds[email] == nil {
+					r.clientInbounds[email] = make(map[int]bool)
+				}
+				r.clientInbounds[email][rule.InboundID] = true
 			}
 		}
 	}
@@ -273,9 +279,10 @@ func (r *Reconciler) removeInboundLocked(ctx context.Context, inboundID int) err
 		return nil
 	}
 
-	for email, ibID := range r.emailToInbound {
-		if ibID == inboundID {
-			delete(r.emailToInbound, email)
+	for email, inbounds := range r.clientInbounds {
+		delete(inbounds, inboundID)
+		if len(inbounds) == 0 {
+			delete(r.clientInbounds, email)
 		}
 	}
 
@@ -448,17 +455,36 @@ func (r *Reconciler) Flush(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-// RegisterClientInbound maps a client email to an inbound ID.
+// RegisterClientInbound maps a client email to a single inbound ID, replacing existing mappings.
 func (r *Reconciler) RegisterClientInbound(email string, inboundID int) {
 	if email == "" || inboundID <= 0 {
 		return
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.emailToInbound == nil {
-		r.emailToInbound = make(map[string]int)
+	if r.clientInbounds == nil {
+		r.clientInbounds = make(map[string]map[int]bool)
 	}
-	r.emailToInbound[email] = inboundID
+	r.clientInbounds[email] = map[int]bool{inboundID: true}
+}
+
+// RegisterClientInbounds maps a client email to multiple inbound IDs, replacing existing mappings.
+func (r *Reconciler) RegisterClientInbounds(email string, inboundIDs ...int) {
+	if email == "" || len(inboundIDs) == 0 {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.clientInbounds == nil {
+		r.clientInbounds = make(map[string]map[int]bool)
+	}
+	set := make(map[int]bool, len(inboundIDs))
+	for _, id := range inboundIDs {
+		if id > 0 {
+			set[id] = true
+		}
+	}
+	r.clientInbounds[email] = set
 }
 
 // SyncAllObserved reconciles observed active client IPs across all managed inbounds.
@@ -485,8 +511,10 @@ func (r *Reconciler) SyncAllObserved(observed map[string]map[string]int64) {
 		syncedEmails := make(map[string]bool)
 		for email, ips := range observedIPs {
 			belongs := false
-			if r.emailToInbound != nil && r.emailToInbound[email] != 0 {
-				belongs = r.emailToInbound[email] == inboundID
+			if r.clientInbounds != nil && len(r.clientInbounds[email]) > 0 {
+				belongs = r.clientInbounds[email][inboundID]
+			} else if state.hasClient(email) {
+				belongs = true
 			} else if _, exists := state.clients[email]; exists {
 				belongs = true
 			}
@@ -501,6 +529,20 @@ func (r *Reconciler) SyncAllObserved(observed map[string]map[string]int64) {
 			}
 		}
 	}
+}
+
+func (s *inboundState) hasClient(email string) bool {
+	if s.rule.ClientLimits != nil {
+		if _, ok := s.rule.ClientLimits[email]; ok {
+			return true
+		}
+	}
+	for _, c := range s.rule.Clients {
+		if c == email {
+			return true
+		}
+	}
+	return false
 }
 
 func parseCanonicalIPv4(raw string) (string, string, bool) {

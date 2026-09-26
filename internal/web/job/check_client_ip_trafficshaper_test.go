@@ -238,3 +238,74 @@ func TestCheckClientIpJob_LimitRemovalTeardown(t *testing.T) {
 		t.Fatalf("expected class del command when limits are cleared, got: %v", mockExec.commands)
 	}
 }
+
+func TestCheckClientIpJob_TrafficShaperMultipleInbounds(t *testing.T) {
+	dbDir := t.TempDir()
+	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
+		t.Fatalf("InitDB failed: %v", err)
+	}
+	t.Cleanup(func() { _ = database.CloseDB() })
+
+	mockExec := &mockJobCmdExecutor{}
+	eng := trafficshaper.NewEngineWithExecutor("eth0", mockExec)
+	rec := trafficshaper.NewReconciler(eng)
+	trafficshaper.SetReconciler(rec)
+	t.Cleanup(func() { trafficshaper.SetReconciler(nil) })
+
+	ib1 := &model.Inbound{
+		Port:     3543,
+		Protocol: model.VLESS,
+		Tag:      "in-multi-1",
+		Enable:   true,
+		Settings: `{"clients":[{"id":"c1","email":"bob@test.com","enable":true}]}`,
+	}
+	ib2 := &model.Inbound{
+		Port:     4543,
+		Protocol: model.VLESS,
+		Tag:      "in-multi-2",
+		Enable:   true,
+		Settings: `{"clients":[{"id":"c1","email":"bob@test.com","enable":true}]}`,
+	}
+	if err := database.GetDB().Create(ib1).Error; err != nil {
+		t.Fatalf("Create ib1 failed: %v", err)
+	}
+	if err := database.GetDB().Create(ib2).Error; err != nil {
+		t.Fatalf("Create ib2 failed: %v", err)
+	}
+	cr := &model.ClientRecord{Email: "bob@test.com", DownLimit: 0}
+	if err := database.GetDB().Create(cr).Error; err != nil {
+		t.Fatalf("Create clientRecord failed: %v", err)
+	}
+	ci1 := &model.ClientInbound{ClientId: cr.Id, InboundId: ib1.Id, DownLimit: 50}
+	ci2 := &model.ClientInbound{ClientId: cr.Id, InboundId: ib2.Id, DownLimit: 100}
+	if err := database.GetDB().Create(ci1).Error; err != nil {
+		t.Fatalf("Create ci1 failed: %v", err)
+	}
+	if err := database.GetDB().Create(ci2).Error; err != nil {
+		t.Fatalf("Create ci2 failed: %v", err)
+	}
+
+	j := NewCheckClientIpJob()
+	observed := map[string]map[string]int64{
+		"bob@test.com": {"5.6.7.8": 12345},
+	}
+
+	j.syncTrafficShaper(rec, observed)
+
+	hasPort3543Filter := false
+	hasPort4543Filter := false
+	for _, cmd := range mockExec.commands {
+		if strings.Contains(cmd, "sport 3543") && strings.Contains(cmd, "5.6.7.8/32") {
+			hasPort3543Filter = true
+		}
+		if strings.Contains(cmd, "sport 4543") && strings.Contains(cmd, "5.6.7.8/32") {
+			hasPort4543Filter = true
+		}
+	}
+	if !hasPort3543Filter {
+		t.Errorf("missing filter for port 3543: %v", mockExec.commands)
+	}
+	if !hasPort4543Filter {
+		t.Errorf("missing filter for port 4543: %v", mockExec.commands)
+	}
+}

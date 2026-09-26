@@ -563,6 +563,19 @@ func TestRemoteAddClient_RateLimitAndQuotaMapping(t *testing.T) {
 	if int64(quotaMap["42"].(float64)) != (10<<30) || len(quotaMap) != 1 {
 		t.Fatalf("client.totalGBByInbound = %v, want {42: %d}", quotaMap, int64(10<<30))
 	}
+
+	// Verify inherit limit (DownLimit = 50, DownLimitByInbound = 0) passes 50.
+	inheritClient := client
+	inheritClient.DownLimit = 50
+	inheritClient.DownLimitByInbound = map[int]int{10: 0}
+	if err := r.AddClient(context.Background(), ib, inheritClient); err != nil {
+		t.Fatalf("AddClient (inherit): %v", err)
+	}
+	inheritClientMap, _ := postedBody["client"].(map[string]any)
+	inheritDownMap, _ := inheritClientMap["downLimitByInbound"].(map[string]any)
+	if int(inheritDownMap["42"].(float64)) != 50 {
+		t.Fatalf("inherit client.downLimitByInbound = %v, want {42: 50}", inheritDownMap)
+	}
 }
 
 func TestRemoteUpdateUser_RateLimitAndQuotaMapping(t *testing.T) {
@@ -624,5 +637,16 @@ func TestRemoteUpdateUser_RateLimitAndQuotaMapping(t *testing.T) {
 	}
 	if postedClient.DownLimitByInbound[42] != 0 {
 		t.Fatalf("cleared postedClient.DownLimitByInbound = %v, want map[42:0]", postedClient.DownLimitByInbound)
+	}
+
+	// Verify inherit limit (DownLimit = 100, DownLimitByInbound = 0) passes 100.
+	inheritClient := client
+	inheritClient.DownLimit = 100
+	inheritClient.DownLimitByInbound = map[int]int{10: 0}
+	if err := r.UpdateUser(context.Background(), ib, "user@test.com", inheritClient); err != nil {
+		t.Fatalf("UpdateUser (inherit): %v", err)
+	}
+	if postedClient.DownLimitByInbound[42] != 100 {
+		t.Fatalf("inherit postedClient.DownLimitByInbound = %v, want map[42:100]", postedClient.DownLimitByInbound)
 	}
 }

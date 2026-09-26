@@ -687,3 +687,54 @@ func TestReconciler_SyncAllObserved_ZeroInboundClientLimitWithCustomLimits(t *te
 		}
 	}
 }
+
+func TestReconciler_MultipleInboundsPerClient(t *testing.T) {
+	mock := &mockCommandExecutor{}
+	r := NewReconcilerWithExecutor("eth0", mock)
+	ctx := context.Background()
+
+	rule1 := InboundRule{
+		InboundID:        1,
+		Port:             443,
+		InboundDownLimit: 100,
+		ClientDownLimit:  10,
+		Clients:          []string{"user@test.com"},
+	}
+	rule2 := InboundRule{
+		InboundID:        2,
+		Port:             8443,
+		InboundDownLimit: 200,
+		ClientDownLimit:  20,
+		Clients:          []string{"user@test.com"},
+	}
+	if err := r.ApplyInbound(ctx, rule1); err != nil {
+		t.Fatalf("ApplyInbound rule1 failed: %v", err)
+	}
+	if err := r.ApplyInbound(ctx, rule2); err != nil {
+		t.Fatalf("ApplyInbound rule2 failed: %v", err)
+	}
+
+	r.RegisterClientInbounds("user@test.com", 1, 2)
+
+	observed := map[string]map[string]int64{
+		"user@test.com": {"1.2.3.4": 1000},
+	}
+	r.SyncAllObserved(observed)
+
+	hasPort443Filter := false
+	hasPort8443Filter := false
+	for _, cmd := range mock.commands {
+		if strings.Contains(cmd, "sport 443") && strings.Contains(cmd, "1.2.3.4/32") {
+			hasPort443Filter = true
+		}
+		if strings.Contains(cmd, "sport 8443") && strings.Contains(cmd, "1.2.3.4/32") {
+			hasPort8443Filter = true
+		}
+	}
+	if !hasPort443Filter {
+		t.Fatalf("expected filter on port 443, got: %v", mock.commands)
+	}
+	if !hasPort8443Filter {
+		t.Fatalf("expected filter on port 8443, got: %v", mock.commands)
+	}
+}
