@@ -280,7 +280,6 @@ export default function ClientFormModal({
   const password = useWatch({ control: methods.control, name: 'password' });
   const subId = useWatch({ control: methods.control, name: 'subId' });
   const limitHwid = useWatch({ control: methods.control, name: 'limitHwid' });
-  const totalGB = useWatch({ control: methods.control, name: 'totalGB' }) || 0;
   const totalGBByInboundVal =
     useWatch({ control: methods.control, name: 'totalGBByInbound' }) || {};
   const downLimit = useWatch({ control: methods.control, name: 'downLimit' }) || 0;
@@ -1249,16 +1248,6 @@ export default function ClientFormModal({
                               ),
                             },
                             {
-                              title: `${t('pages.inbounds.protocol')} / ${t('pages.inbounds.port')}`,
-                              key: 'protoPort',
-                              render: (_v, ib) => (
-                                <Space>
-                                  <Tag color="blue">{ib.protocol?.toUpperCase() || '-'}</Tag>
-                                  <span>{ib.port || '-'}</span>
-                                </Space>
-                              ),
-                            },
-                            {
                               title: t('pages.clients.nodeUsed'),
                               key: 'used',
                               render: (_v, ib) => {
@@ -1293,39 +1282,12 @@ export default function ClientFormModal({
                               ),
                             },
                             {
-                              title: t('pages.clients.nodeRemained'),
-                              key: 'remained',
-                              render: (_v, ib) => {
-                                if (!isEdit) {
-                                  const quotaGB = totalGBByInboundVal[ib.id];
-                                  if (quotaGB && quotaGB > 0) return `${quotaGB} GB`;
-                                  return totalGB > 0 ? `${totalGB} GB` : '∞';
-                                }
-                                const info = client?.inboundTraffics?.[ib.id];
-                                const quotaGB = totalGBByInboundVal[ib.id];
-                                const usedBytes = info?.used ?? 0;
-                                if (quotaGB && quotaGB > 0) {
-                                  const quotaBytes = gbToBytes(quotaGB);
-                                  const remained = Math.max(0, quotaBytes - usedBytes);
-                                  return SizeFormatter.sizeFormat(remained);
-                                }
-                                if (totalGB > 0) {
-                                  const globalQuotaBytes = gbToBytes(totalGB);
-                                  const globalUsedBytes =
-                                    (client?.traffic?.up ?? 0) + (client?.traffic?.down ?? 0);
-                                  const remained = Math.max(0, globalQuotaBytes - globalUsedBytes);
-                                  return SizeFormatter.sizeFormat(remained);
-                                }
-                                return '∞';
-                              },
-                            },
-                            {
                               title: t('status'),
                               key: 'status',
                               width: 100,
                               render: (_v, ib) => {
                                 if (!isEdit) {
-                                  return <Tag color="success">{t('pages.inbounds.enabled')}</Tag>;
+                                  return <Tag color="success">{t('pages.clients.enabled')}</Tag>;
                                 }
                                 const info = client?.inboundTraffics?.[ib.id];
                                 const quotaGB = totalGBByInboundVal[ib.id];
@@ -1339,7 +1301,7 @@ export default function ClientFormModal({
                                 return isDepleted ? (
                                   <Tag color="error">{t('pages.clients.depleted')}</Tag>
                                 ) : (
-                                  <Tag color="success">{t('pages.inbounds.enabled')}</Tag>
+                                  <Tag color="success">{t('pages.clients.enabled')}</Tag>
                                 );
                               },
                             },

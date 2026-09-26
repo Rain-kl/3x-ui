@@ -119,7 +119,7 @@ describe('ClientFormModal Traffic tab', () => {
       expect(document.body.textContent).toContain('Inbound Traffic Quotas');
       expect(document.body.textContent).toContain('Node-1');
       expect(document.body.textContent).toContain('15.00 GB');
-      expect(document.body.textContent).toContain('35.00 GB');
+      expect(document.body.textContent).toContain('Enabled');
     });
   });
 });
