@@ -238,6 +238,7 @@ jobs:
   # =================================
   build-windows:
     name: Build for Windows
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     strategy:
@@ -387,7 +388,7 @@ jobs:
   # channel is unaffected.
   publish-dev:
     name: Publish rolling dev release
-    needs: [build, build-windows]
+    needs: [build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -441,4 +442,8 @@ jobs:
               --target "${COMMIT}" --title "Dev build ${short}" --notes "${notes}"
           fi
 
-          retry gh release upload dev-latest dev-artifacts/*.tar.gz dev-artifacts/*.zip dev-artifacts/*.sha256 --clobber
+          # Ensure dev-latest does not retain legacy Windows assets.
+          gh release delete-asset dev-latest x-ui-windows-amd64.zip -y 2>/dev/null || true
+          gh release delete-asset dev-latest x-ui-windows-amd64.zip.sha256 -y 2>/dev/null || true
+
+          retry gh release upload dev-latest dev-artifacts/*.tar.gz dev-artifacts/*.sha256 --clobber
