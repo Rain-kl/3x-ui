@@ -35,6 +35,31 @@ func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inboun
 		return
 	}
 	clientsByInbound := s.backfillClientStats(db, inbounds)
+	inboundIds := make([]int, 0, len(inbounds))
+	for _, ib := range inbounds {
+		if ib != nil && ib.Id > 0 {
+			inboundIds = append(inboundIds, ib.Id)
+		}
+	}
+	type ciStat struct {
+		Email     string
+		InboundId int
+		Up        int64
+		Down      int64
+	}
+	ciStatsMap := make(map[string]ciStat)
+	if len(inboundIds) > 0 {
+		var rows []ciStat
+		if err := db.Table("client_inbounds").
+			Select("LOWER(clients.email) AS email, client_inbounds.inbound_id, client_inbounds.up, client_inbounds.down").
+			Joins("JOIN clients ON clients.id = client_inbounds.client_id").
+			Where("client_inbounds.inbound_id IN ?", inboundIds).
+			Scan(&rows).Error; err == nil {
+			for _, r := range rows {
+				ciStatsMap[fmt.Sprintf("%d:%s", r.InboundId, r.Email)] = r
+			}
+		}
+	}
 	for i, inbound := range inbounds {
 		clients := clientsByInbound[i]
 		if len(clients) == 0 || len(inbound.ClientStats) == 0 {
@@ -46,9 +71,14 @@ func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inboun
 		}
 		for j := range inbound.ClientStats {
 			email := strings.ToLower(inbound.ClientStats[j].Email)
+			inbound.ClientStats[j].InboundId = inbound.Id
 			if c, ok := cMap[email]; ok {
 				inbound.ClientStats[j].UUID = c.ID
 				inbound.ClientStats[j].SubId = c.SubID
+			}
+			if st, ok := ciStatsMap[fmt.Sprintf("%d:%s", inbound.Id, email)]; ok {
+				inbound.ClientStats[j].Up = st.Up
+				inbound.ClientStats[j].Down = st.Down
 			}
 		}
 	}

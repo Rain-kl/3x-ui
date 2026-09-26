@@ -349,6 +349,59 @@ if [[ "$REC_DOWN_CLEARED" != "0" ]]; then
     exit 1
 fi
 
+# Step 10: Simulate distinct per-inbound traffic on Sub-node and verify Master sync
+echo ""
+echo "[Step 10/10] Verifying per-inbound traffic sync from Sub-node to Master..."
+echo "==> Waiting for Master to establish initial baseline for Client A..."
+for i in {1..30}; do
+    BASE_CNT=$(sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT count(*) FROM node_client_traffics WHERE email='clientA@test.com';" || echo "0")
+    if [[ "$BASE_CNT" -gt 0 ]]; then
+        break
+    fi
+    sleep 0.5
+done
+echo "==> Initial baseline established. Injecting per-inbound traffic on Sub-node..."
+sqlite3 "${TMP_DIR}/subnode/x-ui.db" "UPDATE client_inbounds SET up = 1000000, down = 2000000 WHERE inbound_id=${SUBNODE_IB1_ID};"
+sqlite3 "${TMP_DIR}/subnode/x-ui.db" "UPDATE client_inbounds SET up = 30000000, down = 40000000 WHERE inbound_id=${SUBNODE_IB2_ID};"
+sqlite3 "${TMP_DIR}/subnode/x-ui.db" "UPDATE client_traffics SET up = 31000000, down = 42000000 WHERE email='clientA@test.com';"
+
+echo "==> Waiting for Master NodeTrafficSyncJob to poll Sub-node (up to 15s)..."
+SYNCED=false
+for i in {1..30}; do
+    M_IB1_UP=$(sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT up FROM client_inbounds WHERE inbound_id=${MASTER_IB1_ID};" || echo "0")
+    M_IB1_DOWN=$(sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT down FROM client_inbounds WHERE inbound_id=${MASTER_IB1_ID};" || echo "0")
+    M_IB2_UP=$(sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT up FROM client_inbounds WHERE inbound_id=${MASTER_IB2_ID};" || echo "0")
+    M_IB2_DOWN=$(sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT down FROM client_inbounds WHERE inbound_id=${MASTER_IB2_ID};" || echo "0")
+    M_TOTAL_UP=$(sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT up FROM client_traffics WHERE email='clientA@test.com';" || echo "0")
+    M_TOTAL_DOWN=$(sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT down FROM client_traffics WHERE email='clientA@test.com';" || echo "0")
+
+    if [[ "$M_IB1_UP" == "1000000" && "$M_IB1_DOWN" == "2000000" && \
+          "$M_IB2_UP" == "30000000" && "$M_IB2_DOWN" == "40000000" && \
+          "$M_TOTAL_UP" == "31000000" && "$M_TOTAL_DOWN" == "42000000" ]]; then
+        SYNCED=true
+        break
+    fi
+    sleep 0.5
+done
+
+echo "  Master client_inbounds[IB1]: up=${M_IB1_UP}, down=${M_IB1_DOWN} (expected: 1000000 / 2000000)"
+echo "  Master client_inbounds[IB2]: up=${M_IB2_UP}, down=${M_IB2_DOWN} (expected: 30000000 / 40000000)"
+echo "  Master client_traffics: up=${M_TOTAL_UP}, down=${M_TOTAL_DOWN} (expected: 31000000 / 42000000)"
+
+if [[ "$SYNCED" != "true" ]]; then
+    echo "FAIL: Master per-inbound traffic or global traffic did not sync correctly!" >&2
+    echo "--- Master node_client_traffics ---"
+    sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT * FROM node_client_traffics;"
+    echo "--- Master client_traffics ---"
+    sqlite3 "${TMP_DIR}/master/x-ui.db" "SELECT email, up, down, enable FROM client_traffics;"
+    echo "--- Subnode inbounds list ClientStats ---"
+    curl -s "http://127.0.0.1:2054/panel/api/inbounds/list" -H "Authorization: Bearer ${SUBNODE_TOKEN}" | jq '.obj[] | {id: .id, tag: .tag, clientStats: .clientStats}'
+    echo "--- Master log tail ---"
+    tail -n 80 "${TMP_DIR}/master.log"
+    exit 1
+fi
+echo "==> Per-inbound traffic sync verification PASSED."
+
 echo ""
 echo "======================================================="
 echo "  ALL TESTS PASSED: Master + Sub-node sync is consistent!"
@@ -357,4 +410,6 @@ echo "  - Inbound 1 and 2 had independent limits (100M and 200M)"
 echo "  - Modification correctly synced (80M and 150M)"
 echo "  - Clearing limit on Inbound 1 cleanly reset to 0 while keeping Inbound 2 intact"
 echo "  - Per-inbound quotas (10GB and 20GB) correctly mapped across panels"
+echo "  - Distinct per-inbound client traffic (IB1=3MB, IB2=70MB) accurately synced to Master"
 echo "======================================================="
+

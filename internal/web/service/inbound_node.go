@@ -581,19 +581,50 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 	// the reset clamp re-add a lower sibling as fresh traffic (#5274).
 	snapEmailsAll := make(map[string]struct{})
 	nodeEmailTotals := make(map[string]nodeTrafficCounter)
+	emailInboundCounts := make(map[string]int)
+	emailMatchedInboundCounts := make(map[string]int)
 	for _, snapIb := range snap.Inbounds {
 		if snapIb == nil {
 			continue
 		}
 		for i := range snapIb.ClientStats {
 			email := snapIb.ClientStats[i].Email
+			emailInboundCounts[email]++
+			if snapIb.Id > 0 && snapIb.ClientStats[i].InboundId == snapIb.Id {
+				emailMatchedInboundCounts[email]++
+			}
+		}
+	}
+	for _, snapIb := range snap.Inbounds {
+		if snapIb == nil {
+			continue
+		}
+		c := tagToCentral[snapIb.Tag]
+		ratio := 1.0
+		if c != nil && c.TrafficRatio >= 0 && c.TrafficRatio != 1.0 {
+			ratio = c.TrafficRatio
+		}
+		for i := range snapIb.ClientStats {
+			email := snapIb.ClientStats[i].Email
 			snapEmailsAll[email] = struct{}{}
 			cur := nodeEmailTotals[email]
-			if snapIb.ClientStats[i].Up > cur.Up {
-				cur.Up = snapIb.ClientStats[i].Up
-			}
-			if snapIb.ClientStats[i].Down > cur.Down {
-				cur.Down = snapIb.ClientStats[i].Down
+			isPerInbound := snapIb.Id > 0 && emailMatchedInboundCounts[email] == emailInboundCounts[email]
+			if isPerInbound {
+				up := snapIb.ClientStats[i].Up
+				down := snapIb.ClientStats[i].Down
+				if ratio != 1.0 {
+					up = int64(float64(up) * ratio)
+					down = int64(float64(down) * ratio)
+				}
+				cur.Up += up
+				cur.Down += down
+			} else {
+				if snapIb.ClientStats[i].Up > cur.Up {
+					cur.Up = snapIb.ClientStats[i].Up
+				}
+				if snapIb.ClientStats[i].Down > cur.Down {
+					cur.Down = snapIb.ClientStats[i].Down
+				}
 			}
 			nodeEmailTotals[email] = cur
 		}
@@ -932,7 +963,8 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 				if deltaDown = canon.Down - base.Down; deltaDown < 0 {
 					deltaDown = 0
 				}
-				if c.TrafficRatio >= 0 && c.TrafficRatio != 1.0 {
+				isPerInbound := snapIb.Id > 0 && emailMatchedInboundCounts[cs.Email] == emailInboundCounts[cs.Email]
+				if !isPerInbound && c.TrafficRatio >= 0 && c.TrafficRatio != 1.0 {
 					deltaUp = int64(float64(deltaUp) * c.TrafficRatio)
 					deltaDown = int64(float64(deltaDown) * c.TrafficRatio)
 				}
@@ -1095,17 +1127,34 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 					existing.Reset = cs.Reset
 				}
 			}
-			if c.Id > 0 && (deltaUp > 0 || deltaDown > 0) {
-				if err := tx.Exec(
-					fmt.Sprintf(
-						`UPDATE client_inbounds SET up = %s, down = %s
+			if c.Id > 0 {
+				isPerInbound := snapIb.Id > 0 && emailMatchedInboundCounts[cs.Email] == emailInboundCounts[cs.Email]
+				if isPerInbound {
+					targetUp := cs.Up
+					targetDown := cs.Down
+					if c.TrafficRatio >= 0 && c.TrafficRatio != 1.0 {
+						targetUp = int64(float64(targetUp) * c.TrafficRatio)
+						targetDown = int64(float64(targetDown) * c.TrafficRatio)
+					}
+					if err := tx.Exec(
+						`UPDATE client_inbounds SET up = ?, down = ?
 						 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
-						database.ClampedAddExpr("up"),
-						database.ClampedAddExpr("down"),
-					),
-					deltaUp, deltaDown, c.Id, cs.Email,
-				).Error; err != nil {
-					logger.Warning("setRemoteTrafficLocked update client_inbounds ", err)
+						targetUp, targetDown, c.Id, cs.Email,
+					).Error; err != nil {
+						logger.Warning("setRemoteTrafficLocked update client_inbounds ", err)
+					}
+				} else if deltaUp > 0 || deltaDown > 0 {
+					if err := tx.Exec(
+						fmt.Sprintf(
+							`UPDATE client_inbounds SET up = %s, down = %s
+							 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
+							database.ClampedAddExpr("up"),
+							database.ClampedAddExpr("down"),
+						),
+						deltaUp, deltaDown, c.Id, cs.Email,
+					).Error; err != nil {
+						logger.Warning("setRemoteTrafficLocked update client_inbounds ", err)
+					}
 				}
 			}
 			// A dip plus a lagging longer expiry mimics nodeClientRenewed and would

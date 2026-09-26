@@ -629,3 +629,157 @@ func TestClientInboundTraffic_FallbackToAttachedInboundWhenInboundIdZero(t *test
 		t.Fatalf("stat.Used = %d, want %d", stat.Used, 25<<30)
 	}
 }
+
+func TestClientInboundTraffic_SubNodeMultiInboundSyncSeparateTraffic(t *testing.T) {
+	db := initTrafficTestDB(t)
+	svc := &InboundService{}
+	cs := &ClientService{}
+
+	if err := db.Create(&model.Node{Id: 2, Name: "node-2", Address: "127.0.0.1", Port: 2054, ConfigDirty: false}).Error; err != nil {
+		t.Fatalf("create node: %v", err)
+	}
+	createNodeInbound(t, db, 2, "n2-in1", 48001)
+	createNodeInbound(t, db, 2, "n2-in2", 48002)
+	createNodeInbound(t, db, 2, "n2-in3", 48003)
+
+	var ib1, ib2, ib3 model.Inbound
+	if err := db.Where("tag = ?", "n2-in1").First(&ib1).Error; err != nil {
+		t.Fatalf("find ib1: %v", err)
+	}
+	if err := db.Where("tag = ?", "n2-in2").First(&ib2).Error; err != nil {
+		t.Fatalf("find ib2: %v", err)
+	}
+	if err := db.Where("tag = ?", "n2-in3").First(&ib3).Error; err != nil {
+		t.Fatalf("find ib3: %v", err)
+	}
+
+	cr := &model.ClientRecord{Email: "multiuser@test.com", TotalGB: 100 << 30, Enable: true}
+	if err := db.Create(cr).Error; err != nil {
+		t.Fatalf("create cr: %v", err)
+	}
+	for _, ib := range []*model.Inbound{&ib1, &ib2, &ib3} {
+		ci := &model.ClientInbound{ClientId: cr.Id, InboundId: ib.Id, TotalGB: 0}
+		if err := db.Create(ci).Error; err != nil {
+			t.Fatalf("create ci: %v", err)
+		}
+	}
+
+	// Sub-node has 3 inbounds with distinct client traffic
+	const up1 = int64(952 * 1024)
+	const up2 = int64(430 * 1024 * 1024)
+	const up3 = int64(1070 * 1024 * 1024)
+
+	snap0 := &runtime.TrafficSnapshot{
+		Inbounds: []*model.Inbound{
+			{
+				Id: 101, Tag: "n2-in1", Settings: `{"clients": [{"email": "multiuser@test.com", "enable": true}]}`,
+				ClientStats: []xray.ClientTraffic{{InboundId: 101, Email: "multiuser@test.com", Up: 0, Down: 0, Enable: true}},
+			},
+			{
+				Id: 102, Tag: "n2-in2", Settings: `{"clients": [{"email": "multiuser@test.com", "enable": true}]}`,
+				ClientStats: []xray.ClientTraffic{{InboundId: 102, Email: "multiuser@test.com", Up: 0, Down: 0, Enable: true}},
+			},
+			{
+				Id: 103, Tag: "n2-in3", Settings: `{"clients": [{"email": "multiuser@test.com", "enable": true}]}`,
+				ClientStats: []xray.ClientTraffic{{InboundId: 103, Email: "multiuser@test.com", Up: 0, Down: 0, Enable: true}},
+			},
+		},
+	}
+	if _, err := svc.setRemoteTrafficLocked(2, snap0, false, false); err != nil {
+		t.Fatalf("setRemoteTrafficLocked snap0: %v", err)
+	}
+
+	snap := &runtime.TrafficSnapshot{
+		Inbounds: []*model.Inbound{
+			{
+				Id: 101, Tag: "n2-in1", Settings: `{"clients": [{"email": "multiuser@test.com", "enable": true}]}`,
+				ClientStats: []xray.ClientTraffic{{InboundId: 101, Email: "multiuser@test.com", Up: up1, Down: 0, Enable: true}},
+			},
+			{
+				Id: 102, Tag: "n2-in2", Settings: `{"clients": [{"email": "multiuser@test.com", "enable": true}]}`,
+				ClientStats: []xray.ClientTraffic{{InboundId: 102, Email: "multiuser@test.com", Up: up2, Down: 0, Enable: true}},
+			},
+			{
+				Id: 103, Tag: "n2-in3", Settings: `{"clients": [{"email": "multiuser@test.com", "enable": true}]}`,
+				ClientStats: []xray.ClientTraffic{{InboundId: 103, Email: "multiuser@test.com", Up: up3, Down: 0, Enable: true}},
+			},
+		},
+	}
+
+	if _, err := svc.setRemoteTrafficLocked(2, snap, false, false); err != nil {
+		t.Fatalf("setRemoteTrafficLocked snap: %v", err)
+	}
+
+	trafficsMap, err := cs.InboundTrafficsByClientId(cr.Id)
+	if err != nil {
+		t.Fatalf("InboundTrafficsByClientId: %v", err)
+	}
+
+	if st1, ok := trafficsMap[ib1.Id]; !ok || st1.Used != up1 {
+		t.Errorf("Inbound 1 traffic mismatch: got %v, want %d", st1.Used, up1)
+	}
+	if st2, ok := trafficsMap[ib2.Id]; !ok || st2.Used != up2 {
+		t.Errorf("Inbound 2 traffic mismatch: got %v, want %d", st2.Used, up2)
+	}
+	if st3, ok := trafficsMap[ib3.Id]; !ok || st3.Used != up3 {
+		t.Errorf("Inbound 3 traffic mismatch: got %v, want %d", st3.Used, up3)
+	}
+
+	var ct xray.ClientTraffic
+	if err := db.Where("email = ?", "multiuser@test.com").First(&ct).Error; err != nil {
+		t.Fatalf("find client_traffics: %v", err)
+	}
+	wantTotal := up1 + up2 + up3
+	if ct.Up != wantTotal {
+		t.Errorf("client_traffics.Up mismatch: got %d, want %d", ct.Up, wantTotal)
+	}
+}
+
+func TestClientInboundTraffic_EnrichClientStatsFromClientInbounds(t *testing.T) {
+	db := initTrafficTestDB(t)
+	svc := &InboundService{}
+
+	ib1 := &model.Inbound{UserId: 1, Tag: "ib1", Enable: true, Port: 51001, Protocol: model.VLESS}
+	ib2 := &model.Inbound{UserId: 1, Tag: "ib2", Enable: true, Port: 51002, Protocol: model.VLESS}
+	if err := db.Create(ib1).Error; err != nil {
+		t.Fatalf("create ib1: %v", err)
+	}
+	if err := db.Create(ib2).Error; err != nil {
+		t.Fatalf("create ib2: %v", err)
+	}
+
+	cr := &model.ClientRecord{Email: "user@test.com", TotalGB: 100 << 30, Enable: true}
+	if err := db.Create(cr).Error; err != nil {
+		t.Fatalf("create cr: %v", err)
+	}
+	ci1 := &model.ClientInbound{ClientId: cr.Id, InboundId: ib1.Id, Up: 1000, Down: 2000}
+	ci2 := &model.ClientInbound{ClientId: cr.Id, InboundId: ib2.Id, Up: 3000, Down: 4000}
+	if err := db.Create(ci1).Error; err != nil {
+		t.Fatalf("create ci1: %v", err)
+	}
+	if err := db.Create(ci2).Error; err != nil {
+		t.Fatalf("create ci2: %v", err)
+	}
+	// Global client_traffics has sum
+	ct := &xray.ClientTraffic{Email: "user@test.com", InboundId: ib1.Id, Up: 4000, Down: 6000, Enable: true}
+	if err := db.Create(ct).Error; err != nil {
+		t.Fatalf("create ct: %v", err)
+	}
+
+	inbounds, err := svc.GetInbounds(1)
+	if err != nil {
+		t.Fatalf("GetInbounds: %v", err)
+	}
+	for _, ib := range inbounds {
+		if ib.Id == ib1.Id {
+			if len(ib.ClientStats) == 0 || ib.ClientStats[0].Up != 1000 || ib.ClientStats[0].Down != 2000 {
+				t.Fatalf("ib1 ClientStats mismatch: %+v", ib.ClientStats)
+			}
+		}
+		if ib.Id == ib2.Id {
+			if len(ib.ClientStats) == 0 || ib.ClientStats[0].Up != 3000 || ib.ClientStats[0].Down != 4000 {
+				t.Fatalf("ib2 ClientStats mismatch: %+v", ib.ClientStats)
+			}
+		}
+	}
+}
