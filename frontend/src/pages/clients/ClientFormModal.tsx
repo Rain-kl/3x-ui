@@ -51,7 +51,12 @@ import type {
   ExternalLinkInput,
 } from '@/hooks/useClients';
 import { useFail2banStatusQuery, getLimitIpNotice } from '@/api/queries/useFail2banStatusQuery';
-import { ClientFormSchema, ClientCreateFormSchema, type ClientFormValues } from '@/schemas/client';
+import {
+  ClientFormSchema,
+  ClientCreateFormSchema,
+  type ClientFormValues,
+  type ClientInboundTraffic,
+} from '@/schemas/client';
 import './ClientFormModal.css';
 
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
@@ -120,6 +125,7 @@ interface ClientFormModalProps {
   tunnelAllowedIPs?: Record<number, string>;
   downLimitByInbound?: Record<number, number>;
   totalGBByInbound?: Record<number, number>;
+  inboundTraffics?: Record<number, ClientInboundTraffic>;
   tgBotEnable?: boolean;
   groups?: string[];
   save: (
@@ -256,6 +262,7 @@ export default function ClientFormModal({
   tunnelAllowedIPs = {},
   downLimitByInbound = {},
   totalGBByInbound = {},
+  inboundTraffics = {},
   tgBotEnable = false,
   groups = [],
   save,
@@ -731,7 +738,10 @@ export default function ClientFormModal({
         const numGB = Number(gbVal) || 0;
         if (numGB > 0) {
           const origBytes =
-            client?.totalGBByInbound?.[ibId] ?? client?.inboundTraffics?.[ibId]?.total ?? null;
+            client?.totalGBByInbound?.[ibId] ??
+            inboundTraffics?.[ibId]?.total ??
+            client?.inboundTraffics?.[ibId]?.total ??
+            null;
           totalGBByInboundBytes[ibId] = resolveTotalBytes(origBytes, numGB);
         } else {
           totalGBByInboundBytes[ibId] = 0;
@@ -1252,7 +1262,8 @@ export default function ClientFormModal({
                               key: 'used',
                               render: (_v, ib) => {
                                 if (!isEdit) return '-';
-                                const info = client?.inboundTraffics?.[ib.id];
+                                const info =
+                                  inboundTraffics?.[ib.id] ?? client?.inboundTraffics?.[ib.id];
                                 return SizeFormatter.sizeFormat(info?.used ?? 0);
                               },
                             },
@@ -1289,7 +1300,8 @@ export default function ClientFormModal({
                                 if (!isEdit) {
                                   return <Tag color="success">{t('pages.clients.enabled')}</Tag>;
                                 }
-                                const info = client?.inboundTraffics?.[ib.id];
+                                const info =
+                                  inboundTraffics?.[ib.id] ?? client?.inboundTraffics?.[ib.id];
                                 const quotaGB = totalGBByInboundVal[ib.id];
                                 const usedBytes = info?.used ?? 0;
                                 let isDepleted = false;

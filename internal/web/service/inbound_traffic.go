@@ -170,6 +170,25 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 			trafficByEmail[traffics[i].Email] = traffics[i]
 		}
 	}
+	// Load attached inbound IDs for clients to attribute traffic accurately even
+	// when ct.InboundId is 0 or points to an obsolete inbound (#6478).
+	type clientInboundLink struct {
+		Email     string
+		InboundId int
+	}
+	var clientInboundLinks []clientInboundLink
+	if err := tx.Table("client_inbounds").
+		Select("clients.email, client_inbounds.inbound_id").
+		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
+		Where("clients.email IN ?", emails).
+		Scan(&clientInboundLinks).Error; err != nil {
+		logger.Warning("AddClientTraffic query client_inbounds links ", err)
+	}
+	linksByEmail := make(map[string][]int, len(clientInboundLinks))
+	for _, l := range clientInboundLinks {
+		linksByEmail[l.Email] = append(linksByEmail[l.Email], l.InboundId)
+	}
+
 	// Load traffic ratios for inbounds referenced by the clients.
 	inboundRatios := make(map[int]float64)
 	idSet := make(map[int]struct{})
@@ -181,6 +200,11 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 	for _, t := range traffics {
 		if t != nil && t.InboundId > 0 {
 			idSet[t.InboundId] = struct{}{}
+		}
+	}
+	for _, l := range clientInboundLinks {
+		if l.InboundId > 0 {
+			idSet[l.InboundId] = struct{}{}
 		}
 	}
 	if len(idSet) > 0 {
@@ -205,7 +229,16 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 		}
 		ibId := t.InboundId
 		if ibId == 0 {
-			ibId = ct.InboundId
+			attached := linksByEmail[ct.Email]
+			if len(attached) == 1 {
+				ibId = attached[0]
+			} else if slices.Contains(attached, ct.InboundId) {
+				ibId = ct.InboundId
+			} else if len(attached) > 0 {
+				ibId = attached[0]
+			} else {
+				ibId = ct.InboundId
+			}
 		}
 		ratio, okRatio := inboundRatios[ibId]
 		if okRatio && ratio >= 0 && ratio != 1.0 {

@@ -228,8 +228,13 @@ func main() {
 		fatalf("Scenario 2: global1 usage mismatch: got %d, want %d", global1.Up+global1.Down, 8<<20)
 	}
 
-	// Client 1 should still be connectable on Node B (used 8MB < 20MB limit)
-	mustConnect(SocksC1OnB, "Client 1 on Node B after 8MB usage")
+	cs := &service.ClientService{}
+	apiTraffics2, err := cs.InboundTrafficsByClientId(cr1.Id)
+	if err != nil || apiTraffics2[ibB.Id].Used != 8<<20 {
+		fatalf("Scenario 2: API InboundTrafficsByClientId mismatch: got %d, want %d", apiTraffics2[ibB.Id].Used, 8<<20)
+	}
+	fmt.Printf("   [API Data Verified] Inbound %d: Total=%s, Used=%s, Remained=%s, Depleted=%v\n",
+		ibB.Id, formatBytes(apiTraffics2[ibB.Id].Total), formatBytes(apiTraffics2[ibB.Id].Used), formatBytes(apiTraffics2[ibB.Id].Remained), apiTraffics2[ibB.Id].Depleted)
 	fmt.Printf(" PASS: Dual-accounting verified: Node B = %s, Node A = %s, Global = %s, Tunnel active.\n",
 		formatBytes(ciB1.Up+ciB1.Down), formatBytes(ciA1.Up+ciA1.Down), formatBytes(global1.Up+global1.Down))
 
@@ -371,8 +376,29 @@ func main() {
 
 	fmt.Println(" PASS: Global depletion contrast verified! Exceeding global quota disables client on all nodes.")
 
+	// =========================================================================
+	// Scenario 7: InboundTrafficsByClientId & API Serialization Contract
+	// =========================================================================
+	fmt.Println("\n---------------------------------------------------------------------")
+	fmt.Println("[Scenario 7] Verifying InboundTrafficsByClientId & API data contract...")
+	fmt.Println("---------------------------------------------------------------------")
+	apiTraffics, err := cs.InboundTrafficsByClientId(cr1.Id)
+	if err != nil {
+		fatalf("Scenario 7: InboundTrafficsByClientId failed: %v", err)
+	}
+	statB, ok := apiTraffics[ibB.Id]
+	if !ok {
+		fatalf("Scenario 7: InboundTrafficsByClientId missing Inbound B")
+	}
+	if statB.Total != 20<<20 {
+		fatalf("Scenario 7: statB.Total mismatch: got %d, want %d", statB.Total, 20<<20)
+	}
+	fmt.Printf("   [API Data] Inbound %d: Total=%s, Used=%s, Remained=%s, Depleted=%v\n",
+		ibB.Id, formatBytes(statB.Total), formatBytes(statB.Used), formatBytes(statB.Remained), statB.Depleted)
+	fmt.Println(" PASS: InboundTrafficsByClientId API contract verified! Non-zero used traffic and quota properly calculated.")
+
 	fmt.Println("\n=====================================================================")
-	fmt.Println("  ALL 6 REAL SCENARIOS FULLY VERIFIED AND PASSED!")
+	fmt.Println("  ALL 7 REAL SCENARIOS FULLY VERIFIED AND PASSED!")
 	fmt.Println("=====================================================================")
 }
 

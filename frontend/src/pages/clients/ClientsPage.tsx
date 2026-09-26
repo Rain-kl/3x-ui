@@ -67,6 +67,7 @@ import type {
   ExternalLink,
   ExternalLinkInput,
 } from '@/hooks/useClients';
+import type { ClientInboundTraffic } from '@/schemas/client';
 import ClientTrafficCell from '@/components/clients/ClientTrafficCell';
 import ClientSpeedTag, { isActiveSpeed } from '@/components/clients/ClientSpeedTag';
 import ClientCardComment from '@/components/clients/ClientCardComment';
@@ -397,6 +398,9 @@ export default function ClientsPage() {
   const [editingTotalGBByInbound, setEditingTotalGBByInbound] = useState<Record<number, number>>(
     {},
   );
+  const [editingInboundTraffics, setEditingInboundTraffics] = useState<
+    Record<number, ClientInboundTraffic>
+  >({});
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoClient, setInfoClient] = useState<ClientRecord | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
@@ -687,6 +691,7 @@ export default function ClientsPage() {
     setEditingTunnelAllowedIPs({});
     setEditingDownLimitByInbound({});
     setEditingTotalGBByInbound({});
+    setEditingInboundTraffics({});
     setFormOpen(true);
   }
 
@@ -698,7 +703,9 @@ export default function ClientsPage() {
       // Paged list omits per-client secrets to keep the row payload tiny;
       // edit needs them, so fetch the full record first.
       const full = await hydrate(row.email);
-      const merged: ClientRecord = full ? { ...row, ...full.client } : { ...row };
+      const merged: ClientRecord = full
+        ? { ...row, ...full.client, inboundTraffics: full.inboundTraffics }
+        : { ...row };
       setEditingClient(merged);
       const ids = full?.inboundIds ?? (Array.isArray(row.inboundIds) ? row.inboundIds : []);
       setEditingAttachedIds([...ids]);
@@ -708,6 +715,7 @@ export default function ClientsPage() {
       setEditingTotalGBByInbound(
         full?.totalGBByInbound ?? full?.client?.totalGBByInbound ?? row.totalGBByInbound ?? {},
       );
+      setEditingInboundTraffics(full?.inboundTraffics ?? {});
       setFormOpen(true);
     },
     [hydrate],
@@ -1976,6 +1984,7 @@ export default function ClientsPage() {
             tunnelAllowedIPs={editingTunnelAllowedIPs}
             downLimitByInbound={editingDownLimitByInbound}
             totalGBByInbound={editingTotalGBByInbound}
+            inboundTraffics={editingInboundTraffics}
             inbounds={inbounds}
             tgBotEnable={tgBotEnable}
             groups={allGroups}

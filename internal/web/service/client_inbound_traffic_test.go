@@ -584,3 +584,48 @@ func TestClientInboundTraffic_MasterSubNodeSyncAndModify(t *testing.T) {
 		t.Fatalf("expected count2 == 0 after quota increase, got %d", count2)
 	}
 }
+
+func TestClientInboundTraffic_FallbackToAttachedInboundWhenInboundIdZero(t *testing.T) {
+	db := initTrafficTestDB(t)
+	svc := &InboundService{}
+	cs := &ClientService{}
+
+	settings, _ := json.Marshal(map[string]any{
+		"clients": []map[string]any{{"email": "realuser@test.com", "enable": true}},
+	})
+	ib := &model.Inbound{UserId: 1, Tag: "target-ib", Enable: true, Port: 42001, Protocol: model.VLESS, Settings: string(settings)}
+	if err := db.Create(ib).Error; err != nil {
+		t.Fatalf("create ib: %v", err)
+	}
+
+	cr := &model.ClientRecord{Email: "realuser@test.com", TotalGB: 100 << 30, Enable: true}
+	if err := db.Create(cr).Error; err != nil {
+		t.Fatalf("create cr: %v", err)
+	}
+	ci := &model.ClientInbound{ClientId: cr.Id, InboundId: ib.Id, TotalGB: 50 << 30}
+	if err := db.Create(ci).Error; err != nil {
+		t.Fatalf("create ci: %v", err)
+	}
+	// Simulate ct with InboundId: 0 or stale inbound 999.
+	if err := db.Create(&xray.ClientTraffic{Email: "realuser@test.com", InboundId: 999, Enable: true, Total: 100 << 30}).Error; err != nil {
+		t.Fatalf("create ct: %v", err)
+	}
+
+	// Incoming traffic from Xray has InboundId: 0 (Xray only reports email).
+	traffics := []*xray.ClientTraffic{{Email: "realuser@test.com", InboundId: 0, Up: 10 << 30, Down: 15 << 30}}
+	if _, _, err := svc.AddTraffic(nil, traffics); err != nil {
+		t.Fatalf("AddTraffic: %v", err)
+	}
+
+	trafficsMap, err := cs.InboundTrafficsByClientId(cr.Id)
+	if err != nil {
+		t.Fatalf("InboundTrafficsByClientId: %v", err)
+	}
+	stat, ok := trafficsMap[ib.Id]
+	if !ok {
+		t.Fatalf("stat for inbound %d not found in map", ib.Id)
+	}
+	if stat.Used != 25<<30 {
+		t.Fatalf("stat.Used = %d, want %d", stat.Used, 25<<30)
+	}
+}
