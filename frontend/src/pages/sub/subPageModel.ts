@@ -2,6 +2,42 @@ const DAY_MS = 86_400_000;
 
 export type SubStatus = 'active' | 'unlimited' | 'expired' | 'depleted' | 'disabled';
 
+export interface SubNodeLimit {
+  name: string;
+  used: string;
+  total: string;
+  remained: string;
+  percent: number;
+  depleted: boolean;
+}
+
+export interface SubPageData {
+  sId?: string;
+  enabled?: boolean;
+  download?: string;
+  upload?: string;
+  total?: string;
+  used?: string;
+  remained?: string;
+  totalByte?: string | number;
+  expire?: string | number;
+  lastOnline?: string | number;
+  subUrl?: string;
+  subJsonUrl?: string;
+  subClashUrl?: string;
+  subTitle?: string;
+  subSupportUrl?: string;
+  subUpdates?: number;
+  links?: string[];
+  emails?: string[];
+  datepicker?: 'gregorian' | 'jalalian';
+  announce?: string;
+  downloadByte?: string | number;
+  uploadByte?: string | number;
+  usedByte?: string | number;
+  limitedNodes?: SubNodeLimit[];
+}
+
 export interface SubUsage {
   enabled: boolean;
   usedByte: number;
@@ -90,4 +126,18 @@ export function buildSubApps({
       incy,
     ],
   };
+}
+
+export function filterLimitedNodes(nodes?: SubNodeLimit[] | null): SubNodeLimit[] {
+  if (!Array.isArray(nodes)) return [];
+  return nodes.filter((n) => Boolean(n && typeof n.name === 'string'));
+}
+
+export function hasLimitedNodes(nodes?: SubNodeLimit[] | null): boolean {
+  return Array.isArray(nodes) && nodes.length > 0;
+}
+
+export function nodePercent(percent: number): number {
+  if (!Number.isFinite(percent)) return 0;
+  return Math.min(100, Math.max(0, Math.round(percent)));
 }

@@ -105,7 +105,8 @@
     "support": "Dukungan",
     "qrTitle": "Pindai. Impor. Terhubung.",
     "qrHint": "Pindai dengan aplikasi klien Anda. Jaga kerahasiaan kode ini.",
-    "saveQr": "Simpan QR"
+    "saveQr": "Simpan QR",
+    "nodeQuota": "Kuota Trafik Node"
   },
   "menu": {
     "theme": "Tema",

@@ -105,7 +105,8 @@
     "support": "Support",
     "qrTitle": "Scan. Import. Connect.",
     "qrHint": "Scan with your client app. Keep this code private.",
-    "saveQr": "Save QR"
+    "saveQr": "Save QR",
+    "nodeQuota": "Node Traffic Quota"
   },
   "menu": {
     "theme": "Theme",

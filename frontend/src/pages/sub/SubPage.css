@@ -403,6 +403,68 @@
   margin: 0;
 }
 
+/* limited nodes card */
+.sub-limited-nodes-card {
+  margin-top: 24px;
+  background: var(--sub-tile-bg);
+  border: 1px solid var(--sub-tile-border);
+  border-radius: 12px;
+}
+
+.sub-limited-nodes-card .ant-card-head {
+  border-bottom: 1px solid var(--sub-tile-border);
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sub-limited-nodes-card .ant-card-body {
+  padding: 16px;
+}
+
+.sub-limited-nodes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sub-node-limit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sub-node-limit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.sub-node-limit-name {
+  font-weight: 500;
+  color: var(--ant-color-text);
+}
+
+.sub-node-limit-item.is-depleted .sub-node-limit-name {
+  color: var(--ant-color-error);
+}
+
+.sub-node-limit-usage {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ant-color-text-secondary);
+}
+
+.sub-node-depleted-tag {
+  margin: 0;
+  font-size: 11px;
+  line-height: 18px;
+}
+
 /* tabs */
 .sub-tabs {
   margin-top: 28px;

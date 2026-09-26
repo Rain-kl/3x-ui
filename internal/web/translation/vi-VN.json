@@ -105,7 +105,8 @@
     "support": "Hỗ trợ",
     "qrTitle": "Quét. Nhập. Kết nối.",
     "qrHint": "Quét bằng ứng dụng khách. Không chia sẻ mã này cho người khác.",
-    "saveQr": "Lưu QR"
+    "saveQr": "Lưu QR",
+    "nodeQuota": "Hạn mức lưu lượng nút"
   },
   "menu": {
     "theme": "Chủ đề",

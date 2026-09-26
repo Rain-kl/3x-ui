@@ -105,7 +105,8 @@
     "support": "Destek",
     "qrTitle": "Tara. İçe aktar. Bağlan.",
     "qrHint": "İstemci uygulamanızla tarayın. Bu kodu kimseyle paylaşmayın.",
-    "saveQr": "QR'ı kaydet"
+    "saveQr": "QR'ı kaydet",
+    "nodeQuota": "Düğüm Trafik Kotası"
   },
   "menu": {
     "theme": "Tema",

@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+interface SubNodeLimit {
+  name: string;
+  used: string;
+  total: string;
+  remained: string;
+  percent: number;
+  depleted: boolean;
+}
+
 interface SubPageData {
   sId?: string;
   enabled?: boolean;
@@ -24,6 +33,7 @@ interface SubPageData {
   downloadByte?: string | number;
   uploadByte?: string | number;
   usedByte?: string | number;
+  limitedNodes?: SubNodeLimit[];
 }
 
 interface Window {

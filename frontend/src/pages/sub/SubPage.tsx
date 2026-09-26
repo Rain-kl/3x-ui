@@ -17,6 +17,7 @@ import SubAppsTab from './SubAppsTab';
 import SubConfigsTab from './SubConfigsTab';
 import SubHeader from './SubHeader';
 import SubHero from './SubHero';
+import SubLimitedNodes from './SubLimitedNodes';
 import SubLinksTab from './SubLinksTab';
 import { buildSubApps, daysUntil, detectPlatform, resolveSubStatus } from './subPageModel';
 import './SubPage.css';
@@ -24,6 +25,7 @@ import './SubPage.css';
 const subData = window.__SUB_PAGE_DATA__ || {};
 
 const sId = subData.sId || '';
+const limitedNodes = Array.isArray(subData.limitedNodes) ? subData.limitedNodes : [];
 const subUrl = subData.subUrl || '';
 const subJsonUrl = subData.subJsonUrl || '';
 const subClashUrl = subData.subClashUrl || '';
@@ -191,6 +193,7 @@ export default function SubPage() {
             />
             {announce && <Alert type="info" showIcon title={announce} className="sub-announce" />}
             <SubHero {...heroData} lang={lang} />
+            <SubLimitedNodes limitedNodes={limitedNodes} />
             {tabs.length > 0 && <Tabs className="sub-tabs" tabBarGutter={24} items={tabs} />}
             {(updateHours > 0 || subSupportUrl) && (
               <footer className="sub-footer">

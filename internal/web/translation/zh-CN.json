@@ -105,7 +105,8 @@
     "support": "支持",
     "qrTitle": "扫码。导入。连接。",
     "qrHint": "使用客户端应用扫描。请勿泄露此二维码。",
-    "saveQr": "保存二维码"
+    "saveQr": "保存二维码",
+    "nodeQuota": "节点流量配额"
   },
   "menu": {
     "theme": "主题",

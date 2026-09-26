@@ -105,7 +105,8 @@
     "support": "支援",
     "qrTitle": "掃描。匯入。連線。",
     "qrHint": "使用用戶端應用程式掃描。請勿外洩此 QR 碼。",
-    "saveQr": "儲存 QR 碼"
+    "saveQr": "儲存 QR 碼",
+    "nodeQuota": "節點流量配額"
   },
   "menu": {
     "theme": "主題",

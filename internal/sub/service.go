@@ -2919,8 +2919,17 @@ func searchHost(headers any) string {
 	return ""
 }
 
-// PageData is a view model for subpage.html
-// PageData contains data for rendering the subscription information page.
+// SubNodeLimit holds quota and usage stats for a single limited inbound node.
+type SubNodeLimit struct {
+	Name     string  `json:"name"`
+	Used     string  `json:"used"`
+	Total    string  `json:"total"`
+	Remained string  `json:"remained"`
+	Percent  float64 `json:"percent"`
+	Depleted bool    `json:"depleted"`
+}
+
+// PageData is a view model for subpage.html and subscription metadata.
 type PageData struct {
 	Host          string
 	BasePath      string
@@ -2946,6 +2955,7 @@ type PageData struct {
 	SubAnnounce   string
 	Result        []string
 	Emails        []string
+	LimitedNodes  []SubNodeLimit
 }
 
 // ResolveRequest extracts scheme and host info from request/headers consistently.
@@ -3122,7 +3132,67 @@ func (s *SubService) BuildPageData(subId string, hostHeader string, traffic xray
 		SubSupportUrl: subSupportUrl,
 		Result:        pageLinks,
 		Emails:        pageEmails,
+		LimitedNodes:  s.getLimitedNodes(subId),
 	}
+}
+
+// getLimitedNodes queries inbounds with per-node quota configured for subscriber's clients.
+func (s *SubService) getLimitedNodes(subId string) []SubNodeLimit {
+	if strings.TrimSpace(subId) == "" {
+		return nil
+	}
+	db := database.GetDB()
+	if db == nil {
+		return nil
+	}
+	type nodeLimitRow struct {
+		InboundId int    `gorm:"column:inbound_id"`
+		Remark    string `gorm:"column:remark"`
+		Tag       string `gorm:"column:tag"`
+		TotalGB   int64  `gorm:"column:total_gb"`
+		Up        int64  `gorm:"column:up"`
+		Down      int64  `gorm:"column:down"`
+	}
+	var rows []nodeLimitRow
+	err := db.Table("client_inbounds").
+		Select("client_inbounds.inbound_id, inbounds.remark, inbounds.tag, client_inbounds.total_gb, client_inbounds.up, client_inbounds.down").
+		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
+		Joins("JOIN inbounds ON inbounds.id = client_inbounds.inbound_id").
+		Where("clients.sub_id = ? AND client_inbounds.total_gb > 0 AND inbounds.enable = ?", subId, true).
+		Order("inbounds.sub_sort_index ASC, inbounds.id ASC").
+		Scan(&rows).Error
+	if err != nil || len(rows) == 0 {
+		return nil
+	}
+	result := make([]SubNodeLimit, 0, len(rows))
+	for _, r := range rows {
+		name := r.Remark
+		if name == "" {
+			name = r.Tag
+		}
+		if name == "" {
+			name = fmt.Sprintf("Inbound-%d", r.InboundId)
+		}
+		used := r.Up + r.Down
+		total := r.TotalGB
+		var remained int64
+		if total > used {
+			remained = total - used
+		}
+		var pct float64
+		if total > 0 {
+			pct = (float64(used) / float64(total)) * 100.0
+		}
+		result = append(result, SubNodeLimit{
+			Name:     name,
+			Used:     common.FormatTraffic(used),
+			Total:    common.FormatTraffic(total),
+			Remained: common.FormatTraffic(remained),
+			Percent:  pct,
+			Depleted: used >= total,
+		})
+	}
+	return result
 }
 
 func subIsOnline(subEmails, onlineEmails []string) bool {

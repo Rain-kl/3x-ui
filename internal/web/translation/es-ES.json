@@ -105,7 +105,8 @@
     "support": "Soporte",
     "qrTitle": "Escanea. Importa. Conéctate.",
     "qrHint": "Escanéalo con tu aplicación cliente. Mantén este código en privado.",
-    "saveQr": "Guardar QR"
+    "saveQr": "Guardar QR",
+    "nodeQuota": "Cuota de tráfico del nodo"
   },
   "menu": {
     "theme": "Tema",

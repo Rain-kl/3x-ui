@@ -688,6 +688,7 @@ func (a *SUBController) subPageContext(page PageData) map[string]any {
 		"emails":        page.Emails,
 		"datepicker":    datepicker,
 		"announce":      page.SubAnnounce,
+		"limitedNodes":  page.LimitedNodes,
 	}
 }
 
