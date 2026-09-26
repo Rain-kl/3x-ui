@@ -571,6 +571,12 @@ func (r *Remote) AddClient(ctx context.Context, ib *model.Inbound, client model.
 	if err != nil {
 		return fmt.Errorf("remote AddClient: resolve tag %q: %w", ib.Tag, err)
 	}
+	if client.DownLimit > 0 {
+		if client.DownLimitByInbound == nil {
+			client.DownLimitByInbound = make(map[int]int)
+		}
+		client.DownLimitByInbound[id] = client.DownLimit
+	}
 	payload := map[string]any{
 		"client":     client,
 		"inboundIds": []int{id},
@@ -628,6 +634,12 @@ func (r *Remote) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail str
 	id, err := r.resolveRemoteID(ctx, ib.Tag)
 	if err != nil {
 		return err
+	}
+	if payload.DownLimit > 0 {
+		if payload.DownLimitByInbound == nil {
+			payload.DownLimitByInbound = make(map[int]int)
+		}
+		payload.DownLimitByInbound[id] = payload.DownLimit
 	}
 	path := "panel/api/clients/update/" + url.PathEscape(oldEmail) +
 		"?inboundIds=" + strconv.Itoa(id)

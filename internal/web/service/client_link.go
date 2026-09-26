@@ -139,6 +139,7 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 		// ToRecord copies the raw email; store the trimmed key this function
 		// looks up by, or a padded email is inserted and never found again.
 		incoming.Email = email
+		incoming.DownLimit = 0
 		row, ok := existing[email]
 		if !ok {
 			if _, dup := pending[email]; !dup {

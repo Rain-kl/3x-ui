@@ -868,15 +868,30 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 		return needRestart, err
 	}
 
-	if err := database.GetDB().Model(&model.ClientRecord{}).
-		Where("id = ?", id).
-		UpdateColumn("down_limit", updated.DownLimit).Error; err != nil {
-		return needRestart, err
-	}
-
-	if updated.DownLimitByInbound != nil {
-		for _, ibId := range attachedIds {
-			limit := updated.DownLimitByInbound[ibId]
+	if len(inboundFilter) == 0 {
+		if err := database.GetDB().Model(&model.ClientRecord{}).
+			Where("id = ?", id).
+			UpdateColumn("down_limit", updated.DownLimit).Error; err != nil {
+			return needRestart, err
+		}
+		if updated.DownLimitByInbound != nil {
+			for _, ibId := range attachedIds {
+				limit := updated.DownLimitByInbound[ibId]
+				if err := database.GetDB().Model(&model.ClientInbound{}).
+					Where("client_id = ? AND inbound_id = ?", id, ibId).
+					UpdateColumn("down_limit", limit).Error; err != nil {
+					return needRestart, err
+				}
+			}
+		}
+	} else {
+		for _, ibId := range inboundFilter {
+			limit := updated.DownLimit
+			if updated.DownLimitByInbound != nil {
+				if l, ok := updated.DownLimitByInbound[ibId]; ok {
+					limit = l
+				}
+			}
 			if err := database.GetDB().Model(&model.ClientInbound{}).
 				Where("client_id = ? AND inbound_id = ?", id, ibId).
 				UpdateColumn("down_limit", limit).Error; err != nil {
@@ -886,7 +901,11 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 	}
 
 	if updated.TotalGBByInbound != nil {
-		for _, ibId := range attachedIds {
+		targetIds := attachedIds
+		if len(inboundFilter) > 0 {
+			targetIds = inboundFilter
+		}
+		for _, ibId := range targetIds {
 			quota := updated.TotalGBByInbound[ibId]
 			if err := database.GetDB().Model(&model.ClientInbound{}).
 				Where("client_id = ? AND inbound_id = ?", id, ibId).

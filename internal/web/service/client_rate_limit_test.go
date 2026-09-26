@@ -223,3 +223,102 @@ func TestClientRateLimit_SaveClientDownLimitAndByInbound(t *testing.T) {
 		t.Errorf("ib2 embedded client DownLimit after update = %d, want 80", c2After[0].DownLimit)
 	}
 }
+
+func TestClientRateLimit_SubNodeScopedUpdate(t *testing.T) {
+	setupBulkDB(t)
+	svc := &ClientService{}
+	inboundSvc := &InboundService{}
+	db := database.GetDB()
+
+	ib1 := mkInbound(t, 24001, model.VLESS, `{"clients":[]}`)
+	if err := db.Save(ib1).Error; err != nil {
+		t.Fatalf("Save ib1: %v", err)
+	}
+
+	ib2 := mkInbound(t, 24002, model.VLESS, `{"clients":[]}`)
+	if err := db.Save(ib2).Error; err != nil {
+		t.Fatalf("Save ib2: %v", err)
+	}
+
+	_, err := svc.Create(inboundSvc, &ClientCreatePayload{
+		Client: model.Client{
+			Email:     "user-subnode@test.com",
+			ID:        "33333333-4444-5555-6666-777777777777",
+			SubID:     "sub-scoped-update",
+			Enable:    true,
+			DownLimit: 0,
+		},
+		InboundIds: []int{ib1.Id, ib2.Id},
+	})
+	if err != nil {
+		t.Fatalf("Create client: %v", err)
+	}
+
+	rec := lookupClientRecord(t, "user-subnode@test.com")
+	if rec.DownLimit != 0 {
+		t.Fatalf("initial ClientRecord.DownLimit = %d, want 0", rec.DownLimit)
+	}
+
+	// Simulates master pushing UpdateUser for ib1 with effective DownLimit = 100.
+	updateIb1 := model.Client{
+		Email:     rec.Email,
+		DownLimit: 100,
+		Enable:    true,
+	}
+	if _, err := svc.Update(inboundSvc, rec.Id, updateIb1, 0, ib1.Id); err != nil {
+		t.Fatalf("Update ib1: %v", err)
+	}
+
+	recAfter1 := lookupClientRecord(t, "user-subnode@test.com")
+	if recAfter1.DownLimit != 0 {
+		t.Errorf("ClientRecord.DownLimit after ib1 update = %d, want 0", recAfter1.DownLimit)
+	}
+
+	var ci1 model.ClientInbound
+	if err := db.Where("client_id = ? AND inbound_id = ?", rec.Id, ib1.Id).First(&ci1).Error; err != nil {
+		t.Fatalf("find ci1: %v", err)
+	}
+	if ci1.DownLimit != 100 {
+		t.Errorf("ci1.DownLimit = %d, want 100", ci1.DownLimit)
+	}
+
+	var ci2 model.ClientInbound
+	if err := db.Where("client_id = ? AND inbound_id = ?", rec.Id, ib2.Id).First(&ci2).Error; err != nil {
+		t.Fatalf("find ci2: %v", err)
+	}
+	if ci2.DownLimit != 0 {
+		t.Errorf("ci2.DownLimit = %d, want 0", ci2.DownLimit)
+	}
+
+	// Simulates master pushing UpdateUser for ib2 with effective DownLimit = 200.
+	updateIb2 := model.Client{
+		Email:     rec.Email,
+		DownLimit: 200,
+		Enable:    true,
+	}
+	if _, err := svc.Update(inboundSvc, rec.Id, updateIb2, 0, ib2.Id); err != nil {
+		t.Fatalf("Update ib2: %v", err)
+	}
+
+	recAfter2 := lookupClientRecord(t, "user-subnode@test.com")
+	if recAfter2.DownLimit != 0 {
+		t.Errorf("ClientRecord.DownLimit after ib2 update = %d, want 0", recAfter2.DownLimit)
+	}
+
+	if err := db.Where("client_id = ? AND inbound_id = ?", rec.Id, ib2.Id).First(&ci2).Error; err != nil {
+		t.Fatalf("find ci2 after update: %v", err)
+	}
+	if ci2.DownLimit != 200 {
+		t.Errorf("ci2.DownLimit = %d, want 200", ci2.DownLimit)
+	}
+
+	// Verify ClientLimitsByInbound produces independent limits for ib1 and ib2.
+	limits1 := svc.ClientLimitsByInbound(ib1.Id)
+	if limits1[rec.Email] != 100 {
+		t.Errorf("ClientLimitsByInbound(ib1) = %d, want 100", limits1[rec.Email])
+	}
+	limits2 := svc.ClientLimitsByInbound(ib2.Id)
+	if limits2[rec.Email] != 200 {
+		t.Errorf("ClientLimitsByInbound(ib2) = %d, want 200", limits2[rec.Email])
+	}
+}
