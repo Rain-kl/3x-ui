@@ -461,3 +461,126 @@ func TestClientInboundTraffic_ResetByEmail(t *testing.T) {
 		t.Errorf("remote node was not marked dirty")
 	}
 }
+
+func TestClientInboundTraffic_MasterSubNodeSyncAndModify(t *testing.T) {
+	db := initTrafficTestDB(t)
+	svc := &InboundService{}
+	cs := ClientService{}
+
+	if err := db.Create(&model.Node{Id: 1, Name: "node-1", Address: "127.0.0.1", Port: 2053, ConfigDirty: false}).Error; err != nil {
+		t.Fatalf("create node: %v", err)
+	}
+	createNodeInbound(t, db, 1, "n1-in", 47001)
+	var nodeIb model.Inbound
+	if err := db.Where("tag = ?", "n1-in").First(&nodeIb).Error; err != nil {
+		t.Fatalf("find nodeIb: %v", err)
+	}
+
+	cr := &model.ClientRecord{Email: "syncuser@test.com", TotalGB: 100 << 30, Enable: true}
+	if err := db.Create(cr).Error; err != nil {
+		t.Fatalf("create cr: %v", err)
+	}
+	ci := &model.ClientInbound{ClientId: cr.Id, InboundId: nodeIb.Id, TotalGB: 20 << 30}
+	if err := db.Create(ci).Error; err != nil {
+		t.Fatalf("create ci: %v", err)
+	}
+
+	settings, _ := json.Marshal(map[string]any{
+		"clients": []map[string]any{
+			{"email": "syncuser@test.com", "id": "uuid-1", "enable": true},
+		},
+	})
+	if err := db.Model(&model.Inbound{}).Where("id = ?", nodeIb.Id).Update("settings", string(settings)).Error; err != nil {
+		t.Fatalf("update nodeIb settings: %v", err)
+	}
+
+	// 1. Sub-node reports baseline then traffic delta (12GB up, 13GB down = 25GB > 20GB limit).
+	snap0 := &runtime.TrafficSnapshot{
+		Inbounds: []*model.Inbound{{Tag: "n1-in", Settings: string(settings), ClientStats: []xray.ClientTraffic{
+			{Email: "syncuser@test.com", Up: 0, Down: 0, Enable: true},
+		}}},
+	}
+	if _, err := svc.setRemoteTrafficLocked(1, snap0, false, false); err != nil {
+		t.Fatalf("setRemoteTrafficLocked snap0: %v", err)
+	}
+
+	snap1 := &runtime.TrafficSnapshot{
+		Inbounds: []*model.Inbound{{Tag: "n1-in", Settings: string(settings), ClientStats: []xray.ClientTraffic{
+			{Email: "syncuser@test.com", Up: 12 << 30, Down: 13 << 30, Enable: true},
+		}}},
+	}
+	if _, err := svc.setRemoteTrafficLocked(1, snap1, false, false); err != nil {
+		t.Fatalf("setRemoteTrafficLocked snap1: %v", err)
+	}
+
+	// 2. Traffic depletion check runs on master.
+	batch := newTrafficMutationBatch()
+	if _, count, nodeIDs, err := svc.disableInvalidClients(db, batch); err != nil || count == 0 {
+		t.Fatalf("disableInvalidClients expected count > 0, got %d, err %v", count, err)
+	} else if len(nodeIDs) == 0 || nodeIDs[0] != 1 {
+		t.Fatalf("expected nodeID 1 disabled, got %v", nodeIDs)
+	}
+
+	// Verify client is disabled in inbound settings on master DB.
+	var afterDisable model.Inbound
+	if err := db.First(&afterDisable, nodeIb.Id).Error; err != nil {
+		t.Fatalf("find afterDisable: %v", err)
+	}
+	clients, _ := svc.GetClients(&afterDisable)
+	if len(clients) == 0 || clients[0].Enable {
+		t.Fatalf("client should be disabled in settings after depletion: %+v", clients)
+	}
+
+	// 3. Admin modifies client comment without increasing quota (quota still 20GB).
+	clientModel, err := cs.GetClient("syncuser@test.com")
+	if err != nil {
+		t.Fatalf("GetClient: %v", err)
+	}
+	clientModel.Comment = "vip customer"
+	if _, err := cs.Update(svc, cr.Id, *clientModel, 0); err != nil {
+		t.Fatalf("cs.Update (comment edit): %v", err)
+	}
+
+	// Client should still remain disabled on nodeIb because 25GB > 20GB.
+	var afterCommentEdit model.Inbound
+	if err := db.First(&afterCommentEdit, nodeIb.Id).Error; err != nil {
+		t.Fatalf("find afterCommentEdit: %v", err)
+	}
+	clientsAfterComment, _ := svc.GetClients(&afterCommentEdit)
+	if len(clientsAfterComment) == 0 || clientsAfterComment[0].Enable {
+		t.Fatalf("client should remain disabled after unrelated edit, but was re-enabled: %+v", clientsAfterComment)
+	}
+
+	// 4. Admin increases quota on this node to 50GB.
+	clientModel.TotalGBByInbound = map[int]int64{nodeIb.Id: 50 << 30}
+	if _, err := cs.Update(svc, cr.Id, *clientModel, 0); err != nil {
+		t.Fatalf("cs.Update (quota expansion): %v", err)
+	}
+
+	// Client should now be re-enabled in nodeIb settings because 25GB < 50GB.
+	var afterQuotaEdit model.Inbound
+	if err := db.First(&afterQuotaEdit, nodeIb.Id).Error; err != nil {
+		t.Fatalf("find afterQuotaEdit: %v", err)
+	}
+	clientsAfterQuota, _ := svc.GetClients(&afterQuotaEdit)
+	if len(clientsAfterQuota) == 0 || !clientsAfterQuota[0].Enable {
+		t.Fatalf("client should be re-enabled after quota expansion: %+v", clientsAfterQuota)
+	}
+
+	// Verify node is marked dirty so sync pushes to sub-node.
+	var n model.Node
+	if err := db.First(&n, 1).Error; err != nil {
+		t.Fatalf("query node: %v", err)
+	}
+	if !n.ConfigDirty {
+		t.Errorf("node should be marked dirty after quota expansion")
+	}
+
+	// 5. Subsequent disableInvalidClients tick does NOT disable the client.
+	batch2 := newTrafficMutationBatch()
+	if _, count2, _, err := svc.disableInvalidClients(db, batch2); err != nil {
+		t.Fatalf("disableInvalidClients 2: %v", err)
+	} else if count2 != 0 {
+		t.Fatalf("expected count2 == 0 after quota increase, got %d", count2)
+	}
+}

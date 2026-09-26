@@ -16,6 +16,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/sub"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
@@ -142,7 +143,7 @@ func main() {
 	// 5. Start real Xray Server Process
 	serverCfgPath := filepath.Join(tmpDir, "server.json")
 	createServerConfig(serverCfgPath)
-	serverCmd := exec.Command(xrayBin, "run", "-c", serverCfgPath)
+	serverCmd := exec.CommandContext(context.Background(), xrayBin, "run", "-c", serverCfgPath)
 	serverCmd.Stdout = os.Stdout
 	serverCmd.Stderr = os.Stderr
 	if err := serverCmd.Start(); err != nil {
@@ -164,7 +165,7 @@ func main() {
 	// 6. Start real Xray Client Proxies Process
 	clientCfgPath := filepath.Join(tmpDir, "client.json")
 	createClientConfig(clientCfgPath)
-	clientCmd := exec.Command(xrayBin, "run", "-c", clientCfgPath)
+	clientCmd := exec.CommandContext(context.Background(), xrayBin, "run", "-c", clientCfgPath)
 	clientCmd.Stdout = os.Stdout
 	clientCmd.Stderr = os.Stderr
 	if err := clientCmd.Start(); err != nil {
@@ -440,7 +441,7 @@ func testProxyGet(socksPort int, targetURL string, timeout time.Duration) (int, 
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		return 0, 0, fmt.Errorf("%v (curl stderr: %s)", err, stderr.String())
+		return 0, 0, fmt.Errorf("%w (curl stderr: %s)", err, stderr.String())
 	}
 	parts := strings.Split(strings.TrimSpace(stdout.String()), ":")
 	if len(parts) != 2 {
@@ -488,12 +489,12 @@ func startTargetServer(port int) {
 	server := &http.Server{
 		Handler: mux,
 	}
-	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	listener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		fatalf("target server listen: %v", err)
 	}
 	go func() {
-		_ = server.Serve(listener)
+		network.ServeHTTP(server, listener, "simtest-target")
 	}()
 }
 
@@ -656,7 +657,7 @@ func writeJSON(path string, data any) {
 func waitForTCP(addr string, timeout time.Duration) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+		conn, err := (&net.Dialer{Timeout: 200 * time.Millisecond}).DialContext(context.Background(), "tcp", addr)
 		if err == nil {
 			_ = conn.Close()
 			return

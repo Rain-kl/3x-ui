@@ -690,6 +690,13 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 		return false, tcErr
 	}
 
+	var clientInbounds []model.ClientInbound
+	_ = database.GetDB().Where("client_id = ? AND inbound_id IN ?", id, inboundIds).Find(&clientInbounds).Error
+	ciMap := make(map[int]model.ClientInbound, len(clientInbounds))
+	for _, ci := range clientInbounds {
+		ciMap[ci.InboundId] = ci
+	}
+
 	// Built before any inbound is written, as in Create: fillProtocolDefaults
 	// mints the shared credentials on the first inbound, later ones reuse them.
 	applies := make([]inboundApply, 0, len(inboundIds))
@@ -743,6 +750,22 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 			effectiveDownLimit = inbound.ClientDownLimit
 		}
 		clientForInbound.DownLimit = effectiveDownLimit
+		effectiveQuota := int64(0)
+		if ci, ok := ciMap[ibId]; ok {
+			effectiveQuota = ci.TotalGB
+		}
+		if updated.TotalGBByInbound != nil {
+			if override, ok := updated.TotalGBByInbound[ibId]; ok {
+				effectiveQuota = override
+			}
+		}
+		if updated.Enable {
+			if ci, ok := ciMap[ibId]; ok {
+				if effectiveQuota > 0 && (ci.Up+ci.Down) >= effectiveQuota {
+					clientForInbound.Enable = false
+				}
+			}
+		}
 		settingsPayload, mErr := json.Marshal(map[string][]model.Client{"clients": {clientWithInboundFlow(clientForInbound, inbound)}})
 		if mErr != nil {
 			return false, mErr
