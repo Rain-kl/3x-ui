@@ -962,7 +962,14 @@
       "downLimit": "下行限速 (Mbps)",
       "downLimitDesc": "客户端默认带宽上限，0 为不限速",
       "inboundRateLimitOverrides": "关联节点限速覆盖",
-      "inheritGlobalLimit": "继承总限速 ({limit} Mbps)"
+      "inheritGlobalLimit": "继承总限速 ({limit} Mbps)",
+      "tabTraffic": "流量",
+      "inboundTrafficLimits": "节点流量上限",
+      "nodeQuota": "节点配额 (GB)",
+      "nodeUsed": "已用流量",
+      "nodeRemained": "剩余流量",
+      "inheritGlobalQuota": "跟随总配额",
+      "depleted": "已用尽"
     },
     "groups": {
       "name": "名称",

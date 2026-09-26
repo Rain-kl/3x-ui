@@ -362,6 +362,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "forwardedPorts": "",
     "group": "",
     "id": "",
+    "inboundTraffics": {},
     "keepAlive": null,
     "limitIp": 0,
     "password": "",
@@ -377,6 +378,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "subId": "",
     "tgId": 0,
     "totalGB": 0,
+    "totalGBByInbound": {},
     "trafficReset": "never",
     "trafficResetDay": 1,
     "updated_at": 0
@@ -384,9 +386,21 @@ export const EXAMPLES: Record<string, unknown> = {
   "ClientInbound": {
     "clientId": 0,
     "createdAt": 0,
+    "down": 0,
     "downLimit": 50,
     "flowOverride": "",
-    "inboundId": 0
+    "inboundId": 0,
+    "totalGB": 53687091200,
+    "up": 0
+  },
+  "ClientInboundTraffic": {
+    "depleted": false,
+    "down": 0,
+    "inboundId": 0,
+    "remained": 0,
+    "total": 0,
+    "up": 0,
+    "used": 0
   },
   "ClientPageResponse": {
     "filtered": 47,

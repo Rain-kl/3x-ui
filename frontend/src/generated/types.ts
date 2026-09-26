@@ -357,6 +357,7 @@ export interface Client {
   forwardedPorts?: string;
   group?: string;
   id?: string;
+  inboundTraffics?: Record<number, ClientInboundTraffic>;
   keepAlive?: number | null;
   limitIp: number;
   password?: string;
@@ -372,6 +373,7 @@ export interface Client {
   subId: string;
   tgId: number;
   totalGB: number;
+  totalGBByInbound?: Record<number, number>;
   trafficReset?: string;
   trafficResetDay?: number;
   updated_at?: number;
@@ -380,9 +382,22 @@ export interface Client {
 export interface ClientInbound {
   clientId: number;
   createdAt: number;
+  down: number;
   downLimit: number;
   flowOverride: string;
   inboundId: number;
+  totalGB: number;
+  up: number;
+}
+
+export interface ClientInboundTraffic {
+  depleted: boolean;
+  down: number;
+  inboundId: number;
+  remained: number;
+  total: number;
+  up: number;
+  used: number;
 }
 
 export interface ClientPageResponse {

@@ -962,7 +962,14 @@
       "downLimit": "Лимит загрузки (Мбит/с)",
       "downLimitDesc": "Лимит скорости клиента по умолчанию, 0 — без ограничений",
       "inboundRateLimitOverrides": "Переопределение скорости для узлов",
-      "inheritGlobalLimit": "Наследовать общий лимит ({limit} Мбит/с)"
+      "inheritGlobalLimit": "Наследовать общий лимит ({limit} Мбит/с)",
+      "tabTraffic": "Трафик",
+      "inboundTrafficLimits": "Лимиты трафика для входящих",
+      "nodeQuota": "Лимит узла (ГБ)",
+      "nodeUsed": "Использовано",
+      "nodeRemained": "Осталось",
+      "inheritGlobalQuota": "По общему лимиту",
+      "depleted": "Исчерпан"
     },
     "groups": {
       "name": "Имя",

@@ -71,3 +71,55 @@ describe('ClientFormModal credential tooltips', () => {
     });
   });
 });
+
+describe('ClientFormModal Traffic tab', () => {
+  it('renders traffic tab with top card and inbound quotas table in edit mode', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const client = {
+      id: 1,
+      email: 'test@example.com',
+      totalGB: 100 * 1024 * 1024 * 1024,
+      enable: true,
+      traffic: { up: 10 * 1024 * 1024 * 1024, down: 15 * 1024 * 1024 * 1024 },
+      totalGBByInbound: { 1: 50 * 1024 * 1024 * 1024 },
+      inboundTraffics: {
+        1: {
+          inboundId: 1,
+          up: 5 * 1024 * 1024 * 1024,
+          down: 10 * 1024 * 1024 * 1024,
+          total: 50 * 1024 * 1024 * 1024,
+          used: 15 * 1024 * 1024 * 1024,
+          remained: 35 * 1024 * 1024 * 1024,
+          depleted: false,
+        },
+      },
+    };
+    const inbounds = [{ id: 1, remark: 'Node-1', protocol: 'vless', port: 443, tag: 'in-vless' }];
+    renderWithProviders(
+      <QueryClientProvider client={queryClient}>
+        <ClientFormModal
+          open
+          mode="edit"
+          client={client}
+          attachedIds={[1]}
+          inbounds={inbounds}
+          save={vi.fn().mockResolvedValue(null)}
+          onOpenChange={() => {}}
+        />
+      </QueryClientProvider>,
+    );
+
+    const trafficTab = Array.from(document.querySelectorAll('.ant-tabs-tab')).find(
+      (t) => (t.textContent ?? '').trim() === 'Traffic',
+    );
+    expect(trafficTab).toBeDefined();
+    fireEvent.click(trafficTab!);
+
+    await waitFor(() => {
+      expect(document.body.textContent).toContain('Inbound Traffic Quotas');
+      expect(document.body.textContent).toContain('Node-1');
+      expect(document.body.textContent).toContain('15.00 GB');
+      expect(document.body.textContent).toContain('35.00 GB');
+    });
+  });
+});

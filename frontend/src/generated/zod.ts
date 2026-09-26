@@ -376,6 +376,7 @@ export const ClientSchema = z.object({
   forwardedPorts: z.string().optional(),
   group: z.string().optional(),
   id: z.string().optional(),
+  inboundTraffics: z.record(z.number().int(), z.lazy(() => ClientInboundTrafficSchema)).optional(),
   keepAlive: z.number().int().nullable().optional(),
   limitIp: z.number().int(),
   password: z.string().optional(),
@@ -391,6 +392,7 @@ export const ClientSchema = z.object({
   subId: z.string(),
   tgId: z.number().int(),
   totalGB: z.number().int(),
+  totalGBByInbound: z.record(z.number().int(), z.number().int()).optional(),
   trafficReset: z.enum(['never', 'hourly', 'daily', 'weekly', 'monthly']).optional(),
   trafficResetDay: z.number().int().min(1).max(31).optional(),
   updated_at: z.number().int().optional(),
@@ -400,11 +402,25 @@ export type Client = z.infer<typeof ClientSchema>;
 export const ClientInboundSchema = z.object({
   clientId: z.number().int(),
   createdAt: z.number().int(),
+  down: z.number().int(),
   downLimit: z.number().int().min(0),
   flowOverride: z.string(),
   inboundId: z.number().int(),
+  totalGB: z.number().int().min(0),
+  up: z.number().int(),
 });
 export type ClientInbound = z.infer<typeof ClientInboundSchema>;
+
+export const ClientInboundTrafficSchema = z.object({
+  depleted: z.boolean(),
+  down: z.number().int(),
+  inboundId: z.number().int(),
+  remained: z.number().int(),
+  total: z.number().int(),
+  up: z.number().int(),
+  used: z.number().int(),
+});
+export type ClientInboundTraffic = z.infer<typeof ClientInboundTrafficSchema>;
 
 export const ClientPageResponseSchema = z.object({
   filtered: z.number().int(),

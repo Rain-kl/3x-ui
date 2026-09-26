@@ -962,7 +962,14 @@
       "downLimit": "Batas Unduhan (Mbps)",
       "downLimitDesc": "Batas bandwidth unduhan default klien, 0 berarti tanpa batas",
       "inboundRateLimitOverrides": "Pengabaian Batas Kecepatan Node Terhubung",
-      "inheritGlobalLimit": "Warisi batas default ({limit} Mbps)"
+      "inheritGlobalLimit": "Warisi batas default ({limit} Mbps)",
+      "tabTraffic": "Lalu Lintas",
+      "inboundTrafficLimits": "Kuota Lalu Lintas Masuk",
+      "nodeQuota": "Kuota Simpul (GB)",
+      "nodeUsed": "Digunakan",
+      "nodeRemained": "Tersisa",
+      "inheritGlobalQuota": "Ikuti kuota umum",
+      "depleted": "Habis"
     },
     "groups": {
       "name": "Nama",

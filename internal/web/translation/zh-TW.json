@@ -962,7 +962,14 @@
       "downLimit": "下行限速 (Mbps)",
       "downLimitDesc": "用戶端預設頻寬上限，0 為不限速",
       "inboundRateLimitOverrides": "關聯節點限速覆蓋",
-      "inheritGlobalLimit": "繼承總限速 ({limit} Mbps)"
+      "inheritGlobalLimit": "繼承總限速 ({limit} Mbps)",
+      "tabTraffic": "流量",
+      "inboundTrafficLimits": "節點流量上限",
+      "nodeQuota": "節點配額 (GB)",
+      "nodeUsed": "已用流量",
+      "nodeRemained": "剩餘流量",
+      "inheritGlobalQuota": "跟隨總配額",
+      "depleted": "已用盡"
     },
     "groups": {
       "name": "名稱",

@@ -21,6 +21,17 @@ export const ClientTrafficSchema = z.object({
   resetCount: z.number().optional(),
 });
 
+export const ClientInboundTrafficSchema = z.object({
+  inboundId: z.number().int(),
+  up: z.number().int(),
+  down: z.number().int(),
+  total: z.number().int(),
+  used: z.number().int(),
+  remained: z.number().int(),
+  depleted: z.boolean(),
+});
+export type ClientInboundTraffic = z.infer<typeof ClientInboundTrafficSchema>;
+
 export const ClientRecordSchema = z
   .object({
     id: z.number().optional(),
@@ -37,6 +48,8 @@ export const ClientRecordSchema = z
     limitHwid: z.number().optional(),
     downLimit: z.number().optional(),
     downLimitByInbound: z.record(z.coerce.number().int(), z.number()).optional(),
+    totalGBByInbound: z.record(z.coerce.number().int(), z.number()).optional(),
+    inboundTraffics: z.record(z.coerce.number().int(), ClientInboundTrafficSchema).optional(),
     tgId: z.union([z.number(), z.string()]).optional(),
     group: z.string().optional(),
     comment: z.string().optional(),
@@ -214,6 +227,8 @@ export const ClientHydrateSchema = z.object({
   externalLinks: ExternalLinkListSchema.optional(),
   tunnelAllowedIPs: z.record(z.number().int(), z.string()).optional(),
   downLimitByInbound: z.record(z.coerce.number().int(), z.number().int()).optional(),
+  totalGBByInbound: z.record(z.coerce.number().int(), z.number()).optional(),
+  inboundTraffics: z.record(z.coerce.number().int(), ClientInboundTrafficSchema).optional(),
 });
 
 export const BulkAdjustResultSchema = z.object({
@@ -338,6 +353,7 @@ export const ClientFormSchema = z.object({
   limitHwid: z.number().int().min(0),
   downLimit: z.number().int().min(0).default(0),
   downLimitByInbound: z.record(z.coerce.number().int(), z.number().int()).optional().default({}),
+  totalGBByInbound: z.record(z.coerce.number(), z.number().min(0)).optional().default({}),
   tgId: z.number().int().min(0),
   group: z.string(),
   comment: z.string(),

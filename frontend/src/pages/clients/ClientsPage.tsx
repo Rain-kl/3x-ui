@@ -394,6 +394,9 @@ export default function ClientsPage() {
   const [editingDownLimitByInbound, setEditingDownLimitByInbound] = useState<
     Record<number, number>
   >({});
+  const [editingTotalGBByInbound, setEditingTotalGBByInbound] = useState<Record<number, number>>(
+    {},
+  );
   const [infoOpen, setInfoOpen] = useState(false);
   const [infoClient, setInfoClient] = useState<ClientRecord | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
@@ -683,6 +686,7 @@ export default function ClientsPage() {
     setEditingExternalLinks([]);
     setEditingTunnelAllowedIPs({});
     setEditingDownLimitByInbound({});
+    setEditingTotalGBByInbound({});
     setFormOpen(true);
   }
 
@@ -701,6 +705,9 @@ export default function ClientsPage() {
       setEditingExternalLinks(Array.isArray(full?.externalLinks) ? [...full.externalLinks] : []);
       setEditingTunnelAllowedIPs(full?.tunnelAllowedIPs ?? {});
       setEditingDownLimitByInbound(full?.downLimitByInbound ?? row.downLimitByInbound ?? {});
+      setEditingTotalGBByInbound(
+        full?.totalGBByInbound ?? full?.client?.totalGBByInbound ?? row.totalGBByInbound ?? {},
+      );
       setFormOpen(true);
     },
     [hydrate],
@@ -1968,6 +1975,7 @@ export default function ClientsPage() {
             attachedExternalLinks={editingExternalLinks}
             tunnelAllowedIPs={editingTunnelAllowedIPs}
             downLimitByInbound={editingDownLimitByInbound}
+            totalGBByInbound={editingTotalGBByInbound}
             inbounds={inbounds}
             tgBotEnable={tgBotEnable}
             groups={allGroups}

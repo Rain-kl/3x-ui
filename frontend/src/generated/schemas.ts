@@ -1479,6 +1479,12 @@ export const SCHEMAS: Record<string, unknown> = {
         "description": "Unique client identifier",
         "type": "string"
       },
+      "inboundTraffics": {
+        "additionalProperties": {
+          "$ref": "#/components/schemas/ClientInboundTraffic"
+        },
+        "type": "object"
+      },
       "keepAlive": {
         "description": "Seconds between PersistentKeepalive packets; 0 sends none, omit to keep the stored value",
         "nullable": true,
@@ -1544,6 +1550,13 @@ export const SCHEMAS: Record<string, unknown> = {
         "format": "int64",
         "type": "integer"
       },
+      "totalGBByInbound": {
+        "additionalProperties": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "type": "object"
+      },
       "trafficReset": {
         "description": "Per-client traffic reset cycle, independent of the inbound's own (#5497).",
         "enum": [
@@ -1591,6 +1604,10 @@ export const SCHEMAS: Record<string, unknown> = {
         "format": "int64",
         "type": "integer"
       },
+      "down": {
+        "format": "int64",
+        "type": "integer"
+      },
       "downLimit": {
         "example": 50,
         "minimum": 0,
@@ -1601,14 +1618,67 @@ export const SCHEMAS: Record<string, unknown> = {
       },
       "inboundId": {
         "type": "integer"
+      },
+      "totalGB": {
+        "example": 53687091200,
+        "format": "int64",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "up": {
+        "format": "int64",
+        "type": "integer"
       }
     },
     "required": [
       "clientId",
       "createdAt",
+      "down",
       "downLimit",
       "flowOverride",
-      "inboundId"
+      "inboundId",
+      "totalGB",
+      "up"
+    ],
+    "type": "object"
+  },
+  "ClientInboundTraffic": {
+    "properties": {
+      "depleted": {
+        "type": "boolean"
+      },
+      "down": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "inboundId": {
+        "type": "integer"
+      },
+      "remained": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "up": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "used": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "depleted",
+      "down",
+      "inboundId",
+      "remained",
+      "total",
+      "up",
+      "used"
     ],
     "type": "object"
   },

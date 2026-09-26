@@ -962,7 +962,14 @@
       "downLimit": "حد التنزيل (Mbps)",
       "downLimitDesc": "الحد الأقصى الافتراضي للنطاق الترددي للعميل، 0 يعني بدون حد",
       "inboundRateLimitOverrides": "تجاوز حد السرعة للمنافذ المرتبطة",
-      "inheritGlobalLimit": "وراثة الحد العام ({limit} Mbps)"
+      "inheritGlobalLimit": "وراثة الحد العام ({limit} Mbps)",
+      "tabTraffic": "حركة المرور",
+      "inboundTrafficLimits": "حصص حركة المرور الواردة",
+      "nodeQuota": "حصة العقدة (جيجابايت)",
+      "nodeUsed": "المستخدم",
+      "nodeRemained": "المتبقي",
+      "inheritGlobalQuota": "اتباع الحصة العامة",
+      "depleted": "مستنفد"
     },
     "groups": {
       "name": "الاسم",

@@ -962,7 +962,14 @@
       "downLimit": "Limite de download (Mbps)",
       "downLimitDesc": "Limite de largura de banda padrão do cliente, 0 significa sem limite",
       "inboundRateLimitOverrides": "Substituições de limite de nós vinculados",
-      "inheritGlobalLimit": "Herdar limite padrão ({limit} Mbps)"
+      "inheritGlobalLimit": "Herdar limite padrão ({limit} Mbps)",
+      "tabTraffic": "Tráfego",
+      "inboundTrafficLimits": "Limites de tráfego de entrada",
+      "nodeQuota": "Cota do nó (GB)",
+      "nodeUsed": "Usado",
+      "nodeRemained": "Restante",
+      "inheritGlobalQuota": "Herdar cota global",
+      "depleted": "Esgotado"
     },
     "groups": {
       "name": "Nome",

@@ -141,6 +141,8 @@ func (a *ClientController) buildClientPayload(rec *model.ClientRecord) (gin.H, e
 	if err != nil {
 		return nil, err
 	}
+	totalGBByInbound, _ := a.clientService.TotalGBsByClientId(rec.Id)
+	inboundTraffics, _ := a.clientService.InboundTrafficsByClientId(rec.Id)
 	return gin.H{
 		"client":             rec,
 		"inboundIds":         inboundIds,
@@ -148,6 +150,8 @@ func (a *ClientController) buildClientPayload(rec *model.ClientRecord) (gin.H, e
 		"usedTraffic":        usedTraffic,
 		"tunnelAllowedIPs":   tunnelAllowedIPs,
 		"downLimitByInbound": downLimitByInbound,
+		"totalGBByInbound":   totalGBByInbound,
+		"inboundTraffics":    inboundTraffics,
 	}, nil
 }
 

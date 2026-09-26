@@ -962,7 +962,14 @@
       "downLimit": "Ліміт завантаження (Мбіт/с)",
       "downLimitDesc": "Типовий ліміт швидкості клієнта, 0 — без обмежень",
       "inboundRateLimitOverrides": "Перевизначення швидкості для прив'язаних вузлів",
-      "inheritGlobalLimit": "Успадкувати типовий ліміт ({limit} Мбіт/с)"
+      "inheritGlobalLimit": "Успадкувати типовий ліміт ({limit} Мбіт/с)",
+      "tabTraffic": "Трафік",
+      "inboundTrafficLimits": "Ліміти трафіку для вхідних",
+      "nodeQuota": "Квота вузла (ГБ)",
+      "nodeUsed": "Використано",
+      "nodeRemained": "Залишилось",
+      "inheritGlobalQuota": "За загальною квотою",
+      "depleted": "Вичерпано"
     },
     "groups": {
       "name": "Назва",

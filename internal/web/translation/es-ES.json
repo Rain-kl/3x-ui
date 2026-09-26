@@ -962,7 +962,14 @@
       "downLimit": "Límite de bajada (Mbps)",
       "downLimitDesc": "Límite de ancho de banda predeterminado del cliente, 0 significa sin límite",
       "inboundRateLimitOverrides": "Sobrescritura de límite por nodo",
-      "inheritGlobalLimit": "Heredar límite predeterminado ({limit} Mbps)"
+      "inheritGlobalLimit": "Heredar límite predeterminado ({limit} Mbps)",
+      "tabTraffic": "Tráfico",
+      "inboundTrafficLimits": "Límites de tráfico de entrada",
+      "nodeQuota": "Cuota de nodo (GB)",
+      "nodeUsed": "Usado",
+      "nodeRemained": "Restante",
+      "inheritGlobalQuota": "Heredar cuota global",
+      "depleted": "Agotado"
     },
     "groups": {
       "name": "Nombre",

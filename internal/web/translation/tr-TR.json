@@ -962,7 +962,14 @@
       "downLimit": "İndirme Sınırı (Mbps)",
       "downLimitDesc": "İstemci varsayılan indirme bant genişliği sınırı, 0 sınırsız demektir",
       "inboundRateLimitOverrides": "Bağlı Düğüm Hız Sınırı Geçersiz Kılmaları",
-      "inheritGlobalLimit": "Varsayılan sınırı devral ({limit} Mbps)"
+      "inheritGlobalLimit": "Varsayılan sınırı devral ({limit} Mbps)",
+      "tabTraffic": "Trafik",
+      "inboundTrafficLimits": "Gelen Trafik Kotaları",
+      "nodeQuota": "Düğüm Kotası (GB)",
+      "nodeUsed": "Kullanılan",
+      "nodeRemained": "Kalan",
+      "inheritGlobalQuota": "Genel kotayı devral",
+      "depleted": "Tükendi"
     },
     "groups": {
       "name": "İsim",

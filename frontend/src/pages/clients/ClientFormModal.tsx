@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   AutoComplete,
   Button,
+  Card,
   Col,
   Form,
   Input,
@@ -31,7 +32,7 @@ import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { Controller, FormProvider, useForm, useWatch, useFieldArray } from 'react-hook-form';
 
-import { HttpUtil, IntlUtil, RandomUtil, Wireguard } from '@/utils';
+import { HttpUtil, IntlUtil, RandomUtil, SizeFormatter, Wireguard } from '@/utils';
 import { formatInboundLabel } from '@/lib/inbounds/label';
 import { generateMtprotoSecret } from '@/lib/xray/inbound-defaults';
 import { normalizeClientIps, type ClientIpInfo } from '@/lib/clients/ip-log';
@@ -118,6 +119,7 @@ interface ClientFormModalProps {
   attachedIds?: number[];
   tunnelAllowedIPs?: Record<number, string>;
   downLimitByInbound?: Record<number, number>;
+  totalGBByInbound?: Record<number, number>;
   tgBotEnable?: boolean;
   groups?: string[];
   save: (
@@ -165,6 +167,7 @@ const EMPTY: Values = {
   limitHwid: 0,
   downLimit: 0,
   downLimitByInbound: {},
+  totalGBByInbound: {},
   tgId: 0,
   group: '',
   comment: '',
@@ -252,6 +255,7 @@ export default function ClientFormModal({
   attachedIds = [],
   tunnelAllowedIPs = {},
   downLimitByInbound = {},
+  totalGBByInbound = {},
   tgBotEnable = false,
   groups = [],
   save,
@@ -276,6 +280,9 @@ export default function ClientFormModal({
   const password = useWatch({ control: methods.control, name: 'password' });
   const subId = useWatch({ control: methods.control, name: 'subId' });
   const limitHwid = useWatch({ control: methods.control, name: 'limitHwid' });
+  const totalGB = useWatch({ control: methods.control, name: 'totalGB' }) || 0;
+  const totalGBByInboundVal =
+    useWatch({ control: methods.control, name: 'totalGBByInbound' }) || {};
   const downLimit = useWatch({ control: methods.control, name: 'downLimit' }) || 0;
   const downLimitByInboundVal =
     useWatch({ control: methods.control, name: 'downLimitByInbound' }) || {};
@@ -365,6 +372,17 @@ export default function ClientFormModal({
         attachedWireguardId != null ? tunnelAllowedIPs[attachedWireguardId] : undefined;
       const awgTunnelIPs =
         attachedAmneziawgId != null ? tunnelAllowedIPs[attachedAmneziawgId] : undefined;
+      const rawTotalGBByInbound =
+        totalGBByInbound && Object.keys(totalGBByInbound).length > 0
+          ? totalGBByInbound
+          : (client.totalGBByInbound ?? {});
+      const seededTotalGBByInbound: Record<number, number> = {};
+      for (const [ibIdStr, bytesVal] of Object.entries(rawTotalGBByInbound)) {
+        const num = Number(bytesVal);
+        if (num > 0) {
+          seededTotalGBByInbound[Number(ibIdStr)] = bytesToGB(num);
+        }
+      }
       const seed: Values = {
         ...EMPTY,
         email: client.email || '',
@@ -391,6 +409,7 @@ export default function ClientFormModal({
           downLimitByInbound && Object.keys(downLimitByInbound).length > 0
             ? downLimitByInbound
             : (client.downLimitByInbound ?? {}),
+        totalGBByInbound: seededTotalGBByInbound,
         tgId: Number(client.tgId) || 0,
         group: client.group || '',
         comment: client.comment || '',
@@ -690,6 +709,7 @@ export default function ClientFormModal({
       limitHwid: values.limitHwid,
       downLimit: values.downLimit,
       downLimitByInbound: values.downLimitByInbound,
+      totalGBByInbound: values.totalGBByInbound,
       tgId: values.tgId,
       group: values.group,
       comment: values.comment,
@@ -705,6 +725,20 @@ export default function ClientFormModal({
       ? -86400000 * (Number(values.delayedDays) || 0)
       : values.expiryDate || 0;
     const totalBytes = resolveTotalBytes(client ? (client.totalGB ?? 0) : null, values.totalGB);
+    const totalGBByInboundBytes: Record<number, number> = {};
+    if (values.totalGBByInbound) {
+      for (const [ibIdStr, gbVal] of Object.entries(values.totalGBByInbound)) {
+        const ibId = Number(ibIdStr);
+        const numGB = Number(gbVal) || 0;
+        if (numGB > 0) {
+          const origBytes =
+            client?.totalGBByInbound?.[ibId] ?? client?.inboundTraffics?.[ibId]?.total ?? null;
+          totalGBByInboundBytes[ibId] = resolveTotalBytes(origBytes, numGB);
+        } else {
+          totalGBByInboundBytes[ibId] = 0;
+        }
+      }
+    }
     const clientPayload: Record<string, unknown> = {
       email: values.email.trim(),
       subId: values.subId,
@@ -725,6 +759,7 @@ export default function ClientFormModal({
       limitHwid: Number(values.limitHwid) || 0,
       downLimit: Number(values.downLimit) || 0,
       downLimitByInbound: values.downLimitByInbound || {},
+      totalGBByInbound: totalGBByInboundBytes,
       tgId: Number(values.tgId) || 0,
       group: values.group,
       comment: values.comment,
@@ -899,20 +934,6 @@ export default function ClientFormModal({
                           </Form.Item>
                         </Col>
                         <Col xs={24} md={12}>
-                          <FormField
-                            name="totalGB"
-                            label={t('pages.clients.totalGB')}
-                            tooltip={
-                              hasTuic
-                                ? t('pages.clients.tuicTotalGBDesc')
-                                : t('pages.clients.totalGBDesc')
-                            }
-                            transform={{ output: (v) => Number(v) || 0 }}
-                          >
-                            <InputNumber min={0} step={1} style={{ width: '100%' }} />
-                          </FormField>
-                        </Col>
-                        <Col xs={24} md={12}>
                           <Form.Item
                             label={t('pages.clients.limitIp')}
                             tooltip={t('pages.clients.limitIpDesc')}
@@ -1039,30 +1060,6 @@ export default function ClientFormModal({
                             <InputNumber min={0} style={{ width: '100%' }} />
                           </FormField>
                         </Col>
-                        <Col xs={12} md={6}>
-                          <FormField
-                            name="trafficReset"
-                            label={t('pages.inbounds.periodicTrafficResetTitle')}
-                          >
-                            <Select
-                              options={TRAFFIC_RESETS.map((r) => ({
-                                value: r,
-                                label: t(`pages.inbounds.periodicTrafficReset.${r}`),
-                              }))}
-                            />
-                          </FormField>
-                        </Col>
-                        {trafficReset === 'monthly' && (
-                          <Col xs={12} md={6}>
-                            <FormField
-                              name="trafficResetDay"
-                              label={t('pages.inbounds.periodicTrafficResetDay')}
-                              transform={{ output: (v) => Number(v) || 1 }}
-                            >
-                              <InputNumber min={1} max={31} style={{ width: '100%' }} />
-                            </FormField>
-                          </Col>
-                        )}
                       </Row>
 
                       <Row gutter={16}>
@@ -1147,6 +1144,208 @@ export default function ClientFormModal({
                         />
                         <span style={{ marginLeft: 8 }}>{t('enable')}</span>
                       </Form.Item>
+                    </>
+                  ),
+                },
+                {
+                  key: 'traffic',
+                  label: t('pages.clients.tabTraffic'),
+                  children: (
+                    <>
+                      <Card size="small" style={{ marginBottom: 16 }}>
+                        <Row gutter={16}>
+                          <Col xs={24} md={12}>
+                            <FormField
+                              name="totalGB"
+                              label={t('pages.clients.totalGB')}
+                              tooltip={
+                                hasTuic
+                                  ? t('pages.clients.tuicTotalGBDesc')
+                                  : t('pages.clients.totalGBDesc')
+                              }
+                              transform={{ output: (v) => Number(v) || 0 }}
+                            >
+                              <InputNumber min={0} step={1} style={{ width: '100%' }} />
+                            </FormField>
+                          </Col>
+                          <Col xs={12} md={trafficReset === 'monthly' ? 6 : 12}>
+                            <FormField
+                              name="trafficReset"
+                              label={t('pages.inbounds.periodicTrafficResetTitle')}
+                            >
+                              <Select
+                                options={TRAFFIC_RESETS.map((r) => ({
+                                  value: r,
+                                  label: t(`pages.inbounds.periodicTrafficReset.${r}`),
+                                }))}
+                              />
+                            </FormField>
+                          </Col>
+                          {trafficReset === 'monthly' && (
+                            <Col xs={12} md={6}>
+                              <FormField
+                                name="trafficResetDay"
+                                label={t('pages.inbounds.periodicTrafficResetDay')}
+                                transform={{ output: (v) => Number(v) || 1 }}
+                              >
+                                <InputNumber min={1} max={31} style={{ width: '100%' }} />
+                              </FormField>
+                            </Col>
+                          )}
+                        </Row>
+                        {isEdit && client && (
+                          <div style={{ marginTop: 8, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                            <Typography.Text type="secondary">
+                              {t('pages.clients.nodeUsed')}:{' '}
+                              <Typography.Text strong>
+                                {SizeFormatter.sizeFormat(
+                                  (client.traffic?.up ?? 0) + (client.traffic?.down ?? 0),
+                                )}
+                              </Typography.Text>
+                            </Typography.Text>
+                            <Typography.Text type="secondary">
+                              {t('pages.clients.nodeRemained')}:{' '}
+                              <Typography.Text strong>
+                                {(client.totalGB ?? 0) > 0
+                                  ? SizeFormatter.sizeFormat(
+                                      Math.max(
+                                        0,
+                                        (client.totalGB ?? 0) -
+                                          ((client.traffic?.up ?? 0) + (client.traffic?.down ?? 0)),
+                                      ),
+                                    )
+                                  : '∞'}
+                              </Typography.Text>
+                            </Typography.Text>
+                          </div>
+                        )}
+                      </Card>
+                      <div>
+                        <Typography.Text strong>
+                          {t('pages.clients.inboundTrafficLimits')}
+                        </Typography.Text>
+                        <Table
+                          size="small"
+                          rowKey="id"
+                          pagination={false}
+                          dataSource={attachedInbounds}
+                          locale={{ emptyText: t('pages.clients.selectInbound') }}
+                          style={{ marginTop: 8 }}
+                          columns={[
+                            {
+                              title: `${t('pages.inbounds.node')} / ${t('pages.inbounds.remark')}`,
+                              key: 'nodeRemark',
+                              render: (_v, ib) => (
+                                <Space>
+                                  {ib.nodeId == null ? (
+                                    <Tag>{t('pages.clients.filters.localPanel')}</Tag>
+                                  ) : (
+                                    <Tag color="purple">
+                                      {nodesById.get(ib.nodeId) || `Node ${ib.nodeId}`}
+                                    </Tag>
+                                  )}
+                                  <span>{ib.remark || ib.tag || '-'}</span>
+                                </Space>
+                              ),
+                            },
+                            {
+                              title: `${t('pages.inbounds.protocol')} / ${t('pages.inbounds.port')}`,
+                              key: 'protoPort',
+                              render: (_v, ib) => (
+                                <Space>
+                                  <Tag color="blue">{ib.protocol?.toUpperCase() || '-'}</Tag>
+                                  <span>{ib.port || '-'}</span>
+                                </Space>
+                              ),
+                            },
+                            {
+                              title: t('pages.clients.nodeUsed'),
+                              key: 'used',
+                              render: (_v, ib) => {
+                                if (!isEdit) return '-';
+                                const info = client?.inboundTraffics?.[ib.id];
+                                return SizeFormatter.sizeFormat(info?.used ?? 0);
+                              },
+                            },
+                            {
+                              title: t('pages.clients.nodeQuota'),
+                              key: 'quota',
+                              width: 200,
+                              render: (_v, ib) => (
+                                <InputNumber
+                                  min={0}
+                                  step={1}
+                                  precision={2}
+                                  value={totalGBByInboundVal[ib.id] || undefined}
+                                  placeholder={t('pages.clients.inheritGlobalQuota')}
+                                  style={{ width: '100%' }}
+                                  onChange={(val) => {
+                                    const next = { ...totalGBByInboundVal };
+                                    const num = Number(val) || 0;
+                                    if (num > 0) {
+                                      next[ib.id] = num;
+                                    } else {
+                                      delete next[ib.id];
+                                    }
+                                    methods.setValue('totalGBByInbound', next);
+                                  }}
+                                />
+                              ),
+                            },
+                            {
+                              title: t('pages.clients.nodeRemained'),
+                              key: 'remained',
+                              render: (_v, ib) => {
+                                if (!isEdit) {
+                                  const quotaGB = totalGBByInboundVal[ib.id];
+                                  if (quotaGB && quotaGB > 0) return `${quotaGB} GB`;
+                                  return totalGB > 0 ? `${totalGB} GB` : '∞';
+                                }
+                                const info = client?.inboundTraffics?.[ib.id];
+                                const quotaGB = totalGBByInboundVal[ib.id];
+                                const usedBytes = info?.used ?? 0;
+                                if (quotaGB && quotaGB > 0) {
+                                  const quotaBytes = gbToBytes(quotaGB);
+                                  const remained = Math.max(0, quotaBytes - usedBytes);
+                                  return SizeFormatter.sizeFormat(remained);
+                                }
+                                if (totalGB > 0) {
+                                  const globalQuotaBytes = gbToBytes(totalGB);
+                                  const globalUsedBytes =
+                                    (client?.traffic?.up ?? 0) + (client?.traffic?.down ?? 0);
+                                  const remained = Math.max(0, globalQuotaBytes - globalUsedBytes);
+                                  return SizeFormatter.sizeFormat(remained);
+                                }
+                                return '∞';
+                              },
+                            },
+                            {
+                              title: t('status'),
+                              key: 'status',
+                              width: 100,
+                              render: (_v, ib) => {
+                                if (!isEdit) {
+                                  return <Tag color="success">{t('pages.inbounds.enabled')}</Tag>;
+                                }
+                                const info = client?.inboundTraffics?.[ib.id];
+                                const quotaGB = totalGBByInboundVal[ib.id];
+                                const usedBytes = info?.used ?? 0;
+                                let isDepleted = false;
+                                if (quotaGB && quotaGB > 0) {
+                                  isDepleted = usedBytes >= gbToBytes(quotaGB);
+                                } else if (info) {
+                                  isDepleted = info.depleted;
+                                }
+                                return isDepleted ? (
+                                  <Tag color="error">{t('pages.clients.depleted')}</Tag>
+                                ) : (
+                                  <Tag color="success">{t('pages.inbounds.enabled')}</Tag>
+                                );
+                              },
+                            },
+                          ]}
+                        />
+                      </div>
                     </>
                   ),
                 },

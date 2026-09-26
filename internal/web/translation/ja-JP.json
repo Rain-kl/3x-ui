@@ -962,7 +962,14 @@
       "downLimit": "下り速度制限 (Mbps)",
       "downLimitDesc": "クライアントのデフォルト下り帯域上限、0で無制限",
       "inboundRateLimitOverrides": "関連ノードの速度制限上書き",
-      "inheritGlobalLimit": "全体制限を継承 ({limit} Mbps)"
+      "inheritGlobalLimit": "全体制限を継承 ({limit} Mbps)",
+      "tabTraffic": "トラフィック",
+      "inboundTrafficLimits": "インバウンドトラフィック上限",
+      "nodeQuota": "ノード上限 (GB)",
+      "nodeUsed": "使用済み",
+      "nodeRemained": "残り",
+      "inheritGlobalQuota": "全体上限に従う",
+      "depleted": "上限到達"
     },
     "groups": {
       "name": "名前",

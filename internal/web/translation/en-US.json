@@ -962,7 +962,14 @@
       "downLimit": "Downlink Limit (Mbps)",
       "downLimitDesc": "Client default downlink bandwidth cap, 0 means unlimited",
       "inboundRateLimitOverrides": "Inbound Rate Limit Overrides",
-      "inheritGlobalLimit": "Inherit default limit ({limit} Mbps)"
+      "inheritGlobalLimit": "Inherit default limit ({limit} Mbps)",
+      "tabTraffic": "Traffic",
+      "inboundTrafficLimits": "Inbound Traffic Quotas",
+      "nodeQuota": "Quota (GB)",
+      "nodeUsed": "Used",
+      "nodeRemained": "Remaining",
+      "inheritGlobalQuota": "Inherit global quota",
+      "depleted": "Depleted"
     },
     "groups": {
       "name": "Name",

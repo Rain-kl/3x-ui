@@ -962,7 +962,14 @@
       "downLimit": "محدودیت دانلود (Mbps)",
       "downLimitDesc": "حداکثر پهنای باند پیش‌فرض کلاینت، ۰ یعنی بدون محدودیت",
       "inboundRateLimitOverrides": "بازنویسی محدودیت سرعت گره‌های متصل",
-      "inheritGlobalLimit": "ارث‌بری از محدودیت پیش‌فرض ({limit} Mbps)"
+      "inheritGlobalLimit": "ارث‌بری از محدودیت پیش‌فرض ({limit} Mbps)",
+      "tabTraffic": "ترافیک",
+      "inboundTrafficLimits": "سهمیه ترافیک ورودی",
+      "nodeQuota": "سهمیه نود (گیگابایت)",
+      "nodeUsed": "مصرف شده",
+      "nodeRemained": "باقی‌مانده",
+      "inheritGlobalQuota": "پیروی از سهمیه کلی",
+      "depleted": "تمام شده"
     },
     "groups": {
       "name": "نام",

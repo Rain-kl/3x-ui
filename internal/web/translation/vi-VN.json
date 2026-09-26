@@ -962,7 +962,14 @@
       "downLimit": "Giới hạn tải xuống (Mbps)",
       "downLimitDesc": "Băng thông tải xuống mặc định của khách, 0 nghĩa là không giới hạn",
       "inboundRateLimitOverrides": "Ghi đè giới hạn tốc độ cho cổng liên kết",
-      "inheritGlobalLimit": "Kế thừa giới hạn chung ({limit} Mbps)"
+      "inheritGlobalLimit": "Kế thừa giới hạn chung ({limit} Mbps)",
+      "tabTraffic": "Lưu lượng",
+      "inboundTrafficLimits": "Hạn mức lưu lượng inbound",
+      "nodeQuota": "Hạn mức nút (GB)",
+      "nodeUsed": "Đã dùng",
+      "nodeRemained": "Còn lại",
+      "inheritGlobalQuota": "Theo hạn mức chung",
+      "depleted": "Đã hết"
     },
     "groups": {
       "name": "Tên",

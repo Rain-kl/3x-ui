@@ -37,6 +37,7 @@ func run(root, outDir string) error {
 				"Client",
 				"ClientRecord",
 				"ClientInbound",
+				"ClientInboundTraffic",
 				"InboundFallback",
 				"Host",
 				"SubBalancer",
