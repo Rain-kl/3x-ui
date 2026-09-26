@@ -52,7 +52,7 @@ func (s *InboundService) addTrafficLocked(inboundTraffics []*xray.Traffic, clien
 		if err := s.addInboundTraffic(tx, inboundTraffics); err != nil {
 			return err
 		}
-		return s.addClientTraffic(tx, clientTraffics)
+		return s.addClientTraffic(tx, clientTraffics, inboundTraffics)
 	}); err != nil {
 		return false, false, nil, nil, err
 	}
@@ -127,7 +127,7 @@ func (s *InboundService) addInboundTraffic(tx *gorm.DB, traffics []*xray.Traffic
 	return nil
 }
 
-func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTraffic) (err error) {
+func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTraffic, inboundTraffics ...[]*xray.Traffic) (err error) {
 	if len(traffics) == 0 {
 		return nil
 	}
@@ -189,6 +189,32 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 		linksByEmail[l.Email] = append(linksByEmail[l.Email], l.InboundId)
 	}
 
+	type inboundStat struct {
+		Up   int64
+		Down int64
+	}
+	inboundTrafficMap := make(map[int]inboundStat)
+	if len(inboundTraffics) > 0 && len(inboundTraffics[0]) > 0 {
+		var activeTags []string
+		tagStatMap := make(map[string]inboundStat)
+		for _, it := range inboundTraffics[0] {
+			if it != nil && it.IsInbound && (it.Up > 0 || it.Down > 0) {
+				activeTags = append(activeTags, it.Tag)
+				tagStatMap[it.Tag] = inboundStat{Up: it.Up, Down: it.Down}
+			}
+		}
+		if len(activeTags) > 0 {
+			var activeIbs []model.Inbound
+			if err := tx.Model(&model.Inbound{}).Where("tag IN ?", activeTags).Find(&activeIbs).Error; err == nil {
+				for _, ib := range activeIbs {
+					if st, ok := tagStatMap[ib.Tag]; ok {
+						inboundTrafficMap[ib.Id] = st
+					}
+				}
+			}
+		}
+	}
+
 	// Load traffic ratios for inbounds referenced by the clients.
 	inboundRatios := make(map[int]float64)
 	idSet := make(map[int]struct{})
@@ -232,10 +258,33 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 			attached := linksByEmail[ct.Email]
 			if len(attached) == 1 {
 				ibId = attached[0]
-			} else if slices.Contains(attached, ct.InboundId) {
-				ibId = ct.InboundId
-			} else if len(attached) > 0 {
-				ibId = attached[0]
+			} else if len(attached) > 1 {
+				bestIbId := 0
+				var bestScore int64 = -1
+				for _, aid := range attached {
+					st, ok := inboundTrafficMap[aid]
+					if !ok || (st.Up == 0 && st.Down == 0) {
+						continue
+					}
+					if t.Down > 0 && st.Down == 0 {
+						continue
+					}
+					if t.Up > 0 && st.Up == 0 {
+						continue
+					}
+					score := st.Up + st.Down
+					if score > bestScore {
+						bestScore = score
+						bestIbId = aid
+					}
+				}
+				if bestIbId > 0 {
+					ibId = bestIbId
+				} else if slices.Contains(attached, ct.InboundId) {
+					ibId = ct.InboundId
+				} else {
+					ibId = attached[0]
+				}
 			} else {
 				ibId = ct.InboundId
 			}
