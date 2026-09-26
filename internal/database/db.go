@@ -142,6 +142,29 @@ func migrateClientDownLimitColumns() error {
 	return nil
 }
 
+func migrateClientInboundTrafficColumns() error {
+	migrator := db.Migrator()
+	if !migrator.HasTable(&model.ClientInbound{}) {
+		return nil
+	}
+	if !migrator.HasColumn(&model.ClientInbound{}, "total_gb") {
+		if err := migrator.AddColumn(&model.ClientInbound{}, "total_gb"); err != nil {
+			return err
+		}
+	}
+	if !migrator.HasColumn(&model.ClientInbound{}, "up") {
+		if err := migrator.AddColumn(&model.ClientInbound{}, "up"); err != nil {
+			return err
+		}
+	}
+	if !migrator.HasColumn(&model.ClientInbound{}, "down") {
+		if err := migrator.AddColumn(&model.ClientInbound{}, "down"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func initModels() error {
 	if err := migrateClientTrafficLastSubFetchColumn(); err != nil {
 		return err
@@ -153,6 +176,9 @@ func initModels() error {
 		return err
 	}
 	if err := migrateClientDownLimitColumns(); err != nil {
+		return err
+	}
+	if err := migrateClientInboundTrafficColumns(); err != nil {
 		return err
 	}
 	models := allModels()

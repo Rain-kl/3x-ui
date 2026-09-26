@@ -896,26 +896,28 @@ type Client struct {
 	// being broadcast to every attached tunnel inbound. Absent/unset for a
 	// given inbound id falls back to the shared AllowedIPs exactly as
 	// before -- fully backward compatible for callers that never set this.
-	AllowedIPsByInbound map[int][]string `json:"allowedIPsByInbound,omitempty"`
-	PreSharedKey        string           `json:"preSharedKey,omitempty"`
-	KeepAlive           *int             `json:"keepAlive,omitempty"`      // Seconds between PersistentKeepalive packets; 0 sends none, omit to keep the stored value
-	ForwardedPorts      string           `json:"forwardedPorts,omitempty"` // AmneziaWG per-client port-forwarding spec, e.g. "80,443,8000-8100"
-	Secret              string           `json:"secret,omitempty" example:"ee1234567890abcdef1234567890abcd7777772e636c6f7564666c6172652e636f6d"`
-	AdTag               string           `json:"adTag,omitempty" example:"0123456789abcdef0123456789abcdef"`
-	Email               string           `json:"email"`   // Client email identifier
-	LimitIP             int              `json:"limitIp"` // IP limit for this client
-	DownLimit           int              `json:"downLimit,omitempty"`
-	DownLimitByInbound  map[int]int      `json:"downLimitByInbound,omitempty"`
-	TotalGB             int64            `json:"totalGB" form:"totalGB"`       // Total traffic limit in GB
-	ExpiryTime          int64            `json:"expiryTime" form:"expiryTime"` // Expiration timestamp
-	Enable              bool             `json:"enable" form:"enable"`         // Whether the client is enabled
-	TgID                int64            `json:"tgId" form:"tgId"`             // Telegram user ID for notifications
-	SubID               string           `json:"subId" form:"subId"`           // Subscription identifier
-	Group               string           `json:"group,omitempty" form:"group"` // Logical grouping label
-	Comment             string           `json:"comment" form:"comment"`       // Client comment
-	Reset               int              `json:"reset" form:"reset"`           // Reset period in days
-	ResetDay            int              `json:"resetDay" form:"resetDay"`     // Calendar renewal day 1-31, 0 = interval mode
-	ResetMax            int              `json:"resetMax" form:"resetMax"`     // Max auto-renew count, 0 = unlimited
+	AllowedIPsByInbound map[int][]string             `json:"allowedIPsByInbound,omitempty"`
+	PreSharedKey        string                       `json:"preSharedKey,omitempty"`
+	KeepAlive           *int                         `json:"keepAlive,omitempty"`      // Seconds between PersistentKeepalive packets; 0 sends none, omit to keep the stored value
+	ForwardedPorts      string                       `json:"forwardedPorts,omitempty"` // AmneziaWG per-client port-forwarding spec, e.g. "80,443,8000-8100"
+	Secret              string                       `json:"secret,omitempty" example:"ee1234567890abcdef1234567890abcd7777772e636c6f7564666c6172652e636f6d"`
+	AdTag               string                       `json:"adTag,omitempty" example:"0123456789abcdef0123456789abcdef"`
+	Email               string                       `json:"email"`   // Client email identifier
+	LimitIP             int                          `json:"limitIp"` // IP limit for this client
+	DownLimit           int                          `json:"downLimit,omitempty"`
+	DownLimitByInbound  map[int]int                  `json:"downLimitByInbound,omitempty"`
+	TotalGB             int64                        `json:"totalGB" form:"totalGB"` // Total traffic limit in GB
+	TotalGBByInbound    map[int]int64                `json:"totalGBByInbound,omitempty"`
+	InboundTraffics     map[int]ClientInboundTraffic `json:"inboundTraffics,omitempty"`
+	ExpiryTime          int64                        `json:"expiryTime" form:"expiryTime"` // Expiration timestamp
+	Enable              bool                         `json:"enable" form:"enable"`         // Whether the client is enabled
+	TgID                int64                        `json:"tgId" form:"tgId"`             // Telegram user ID for notifications
+	SubID               string                       `json:"subId" form:"subId"`           // Subscription identifier
+	Group               string                       `json:"group,omitempty" form:"group"` // Logical grouping label
+	Comment             string                       `json:"comment" form:"comment"`       // Client comment
+	Reset               int                          `json:"reset" form:"reset"`           // Reset period in days
+	ResetDay            int                          `json:"resetDay" form:"resetDay"`     // Calendar renewal day 1-31, 0 = interval mode
+	ResetMax            int                          `json:"resetMax" form:"resetMax"`     // Max auto-renew count, 0 = unlimited
 	// Per-client traffic reset cycle, independent of the inbound's own (#5497).
 	TrafficReset    string `json:"trafficReset,omitempty" form:"trafficReset" validate:"omitempty,oneof=never hourly daily weekly monthly"`
 	TrafficResetDay int    `json:"trafficResetDay,omitempty" form:"trafficResetDay" validate:"omitempty,gte=1,lte=31"`
@@ -1011,10 +1013,23 @@ type ClientInbound struct {
 	InboundId    int    `json:"inboundId" gorm:"primaryKey;column:inbound_id;index"`
 	FlowOverride string `json:"flowOverride" gorm:"column:flow_override"`
 	DownLimit    int    `json:"downLimit" form:"downLimit" gorm:"column:down_limit;default:0" validate:"omitempty,gte=0" example:"50"`
+	TotalGB      int64  `json:"totalGB" form:"totalGB" gorm:"column:total_gb;default:0" validate:"omitempty,gte=0" example:"53687091200"`
+	Up           int64  `json:"up" form:"up" gorm:"column:up;default:0"`
+	Down         int64  `json:"down" form:"down" gorm:"column:down;default:0"`
 	CreatedAt    int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
 }
 
 func (ClientInbound) TableName() string { return "client_inbounds" }
+
+type ClientInboundTraffic struct {
+	InboundID int   `json:"inboundId"`
+	Up        int64 `json:"up"`
+	Down      int64 `json:"down"`
+	Total     int64 `json:"total"`
+	Used      int64 `json:"used"`
+	Remained  int64 `json:"remained"`
+	Depleted  bool  `json:"depleted"`
+}
 
 type ClientHwid struct {
 	Id          int    `json:"id" gorm:"primaryKey;autoIncrement"`
