@@ -175,18 +175,21 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 	type clientInboundLink struct {
 		Email     string
 		InboundId int
+		ClientId  int
 	}
 	var clientInboundLinks []clientInboundLink
 	if err := tx.Table("client_inbounds").
-		Select("clients.email, client_inbounds.inbound_id").
+		Select("clients.email, client_inbounds.inbound_id, client_inbounds.client_id").
 		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
 		Where("clients.email IN ?", emails).
 		Scan(&clientInboundLinks).Error; err != nil {
 		logger.Warning("AddClientTraffic query client_inbounds links ", err)
 	}
 	linksByEmail := make(map[string][]int, len(clientInboundLinks))
+	clientIdByEmail := make(map[string]int, len(clientInboundLinks))
 	for _, l := range clientInboundLinks {
 		linksByEmail[l.Email] = append(linksByEmail[l.Email], l.InboundId)
+		clientIdByEmail[l.Email] = l.ClientId
 	}
 
 	type inboundStat struct {
@@ -306,16 +309,31 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 			logger.Warning("AddClientTraffic update data ", err)
 		}
 		if ibId > 0 {
-			if err = tx.Exec(
-				fmt.Sprintf(
-					`UPDATE client_inbounds SET up = %s, down = %s
-					 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
-					database.ClampedAddExpr("up"),
-					database.ClampedAddExpr("down"),
-				),
-				t.Up, t.Down, ibId, ct.Email,
-			).Error; err != nil {
-				logger.Warning("AddClientTraffic update client_inbounds ", err)
+			cid, hasCid := clientIdByEmail[ct.Email]
+			if hasCid {
+				if err = tx.Exec(
+					fmt.Sprintf(
+						`UPDATE client_inbounds SET up = %s, down = %s
+						 WHERE inbound_id = ? AND client_id = ?`,
+						database.ClampedAddExpr("up"),
+						database.ClampedAddExpr("down"),
+					),
+					t.Up, t.Down, ibId, cid,
+				).Error; err != nil {
+					logger.Warning("AddClientTraffic update client_inbounds ", err)
+				}
+			} else {
+				if err = tx.Exec(
+					fmt.Sprintf(
+						`UPDATE client_inbounds SET up = %s, down = %s
+						 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
+						database.ClampedAddExpr("up"),
+						database.ClampedAddExpr("down"),
+					),
+					t.Up, t.Down, ibId, ct.Email,
+				).Error; err != nil {
+					logger.Warning("AddClientTraffic update client_inbounds ", err)
+				}
 			}
 		}
 	}
