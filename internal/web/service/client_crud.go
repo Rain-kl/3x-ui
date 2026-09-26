@@ -262,6 +262,13 @@ func (s *ClientService) Create(inboundSvc *InboundService, payload *ClientCreate
 			return needRestart, err
 		}
 	}
+	for ibId, quota := range client.TotalGBByInbound {
+		if err := database.GetDB().Model(&model.ClientInbound{}).
+			Where("client_id = ? AND inbound_id = ?", rec.Id, ibId).
+			UpdateColumn("total_gb", quota).Error; err != nil {
+			return needRestart, err
+		}
+	}
 	return needRestart, s.setClientLimitHwidByEmail(nil, client.Email, payload.LimitHwid)
 }
 
@@ -850,6 +857,17 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 			if err := database.GetDB().Model(&model.ClientInbound{}).
 				Where("client_id = ? AND inbound_id = ?", id, ibId).
 				UpdateColumn("down_limit", limit).Error; err != nil {
+				return needRestart, err
+			}
+		}
+	}
+
+	if updated.TotalGBByInbound != nil {
+		for _, ibId := range attachedIds {
+			quota := updated.TotalGBByInbound[ibId]
+			if err := database.GetDB().Model(&model.ClientInbound{}).
+				Where("client_id = ? AND inbound_id = ?", id, ibId).
+				UpdateColumn("total_gb", quota).Error; err != nil {
 				return needRestart, err
 			}
 		}

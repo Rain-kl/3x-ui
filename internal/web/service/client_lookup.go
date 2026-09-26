@@ -188,6 +188,9 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 	}
 
 	attachments := make(map[int][]int, len(rows))
+	downLimits := make(map[int]map[int]int, len(rows))
+	totalGBs := make(map[int]map[int]int64, len(rows))
+	inboundTraffics := make(map[int]map[int]model.ClientInboundTraffic, len(rows))
 	for _, batch := range chunkInts(clientIds, sqlInChunk) {
 		var links []model.ClientInbound
 		if err := db.Where("client_id IN ?", batch).Find(&links).Error; err != nil {
@@ -195,6 +198,36 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 		}
 		for _, l := range links {
 			attachments[l.ClientId] = append(attachments[l.ClientId], l.InboundId)
+			if l.DownLimit > 0 {
+				if downLimits[l.ClientId] == nil {
+					downLimits[l.ClientId] = make(map[int]int)
+				}
+				downLimits[l.ClientId][l.InboundId] = l.DownLimit
+			}
+			if l.TotalGB > 0 {
+				if totalGBs[l.ClientId] == nil {
+					totalGBs[l.ClientId] = make(map[int]int64)
+				}
+				totalGBs[l.ClientId][l.InboundId] = l.TotalGB
+			}
+			used := l.Up + l.Down
+			var remained int64
+			if l.TotalGB > 0 && l.TotalGB > used {
+				remained = l.TotalGB - used
+			}
+			depleted := l.TotalGB > 0 && used >= l.TotalGB
+			if inboundTraffics[l.ClientId] == nil {
+				inboundTraffics[l.ClientId] = make(map[int]model.ClientInboundTraffic)
+			}
+			inboundTraffics[l.ClientId][l.InboundId] = model.ClientInboundTraffic{
+				InboundID: l.InboundId,
+				Up:        l.Up,
+				Down:      l.Down,
+				Total:     l.TotalGB,
+				Used:      used,
+				Remained:  remained,
+				Depleted:  depleted,
+			}
 		}
 	}
 
@@ -217,9 +250,12 @@ func (s *ClientService) List() ([]ClientWithAttachments, error) {
 	out := make([]ClientWithAttachments, 0, len(rows))
 	for i := range rows {
 		out = append(out, ClientWithAttachments{
-			ClientRecord: rows[i],
-			InboundIds:   attachments[rows[i].Id],
-			Traffic:      trafficByEmail[rows[i].Email],
+			ClientRecord:       rows[i],
+			InboundIds:         attachments[rows[i].Id],
+			DownLimitByInbound: downLimits[rows[i].Id],
+			TotalGBByInbound:   totalGBs[rows[i].Id],
+			InboundTraffics:    inboundTraffics[rows[i].Id],
+			Traffic:            trafficByEmail[rows[i].Email],
 		})
 	}
 	return out, nil
@@ -428,4 +464,64 @@ func (s *ClientService) DownLimitsByClientId(clientId int, dbs ...*gorm.DB) (map
 		result[l.InboundId] = l.DownLimit
 	}
 	return result, nil
+}
+
+// TotalGBsByClientId returns per-inbound total_gb limits for a client.
+func (s *ClientService) TotalGBsByClientId(clientId int, dbs ...*gorm.DB) (map[int]int64, error) {
+	db := database.GetDB()
+	if len(dbs) > 0 && dbs[0] != nil {
+		db = dbs[0]
+	}
+	var links []model.ClientInbound
+	if err := db.Where("client_id = ? AND total_gb > 0", clientId).Find(&links).Error; err != nil {
+		return nil, err
+	}
+	result := make(map[int]int64, len(links))
+	for _, l := range links {
+		result[l.InboundId] = l.TotalGB
+	}
+	return result, nil
+}
+
+// InboundTrafficsByClientId returns per-inbound traffic usage stats for a client.
+func (s *ClientService) InboundTrafficsByClientId(clientId int, dbs ...*gorm.DB) (map[int]model.ClientInboundTraffic, error) {
+	db := database.GetDB()
+	if len(dbs) > 0 && dbs[0] != nil {
+		db = dbs[0]
+	}
+	var links []model.ClientInbound
+	if err := db.Where("client_id = ?", clientId).Find(&links).Error; err != nil {
+		return nil, err
+	}
+	result := make(map[int]model.ClientInboundTraffic, len(links))
+	for _, l := range links {
+		used := l.Up + l.Down
+		var remained int64
+		if l.TotalGB > 0 && l.TotalGB > used {
+			remained = l.TotalGB - used
+		}
+		depleted := l.TotalGB > 0 && used >= l.TotalGB
+		result[l.InboundId] = model.ClientInboundTraffic{
+			InboundID: l.InboundId,
+			Up:        l.Up,
+			Down:      l.Down,
+			Total:     l.TotalGB,
+			Used:      used,
+			Remained:  remained,
+			Depleted:  depleted,
+		}
+	}
+	return result, nil
+}
+
+// GetClient returns a Client model populated with per-inbound quotas and usage.
+func (s *ClientService) GetClient(email string) (*model.Client, error) {
+	rec, err := s.GetRecordByEmail(nil, email)
+	if err != nil {
+		return nil, err
+	}
+	c := rec.ToClient()
+	c.TotalGBByInbound, _ = s.TotalGBsByClientId(rec.Id)
+	c.InboundTraffics, _ = s.InboundTrafficsByClientId(rec.Id)
+	return c, nil
 }

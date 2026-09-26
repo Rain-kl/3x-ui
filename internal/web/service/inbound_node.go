@@ -1026,6 +1026,11 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 				if err := clearGlobalTraffic(tx, cs.Email); err != nil {
 					return false, err
 				}
+				_ = tx.Exec(
+					`UPDATE client_inbounds SET up = 0, down = 0
+					 WHERE client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
+					cs.Email,
+				).Error
 				existing.Up = canon.Up
 				existing.Down = canon.Down
 				existing.Enable = cs.Enable
@@ -1088,6 +1093,19 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 					existing.Down = clampTrafficCounter(existing.Down + deltaDown)
 					existing.Total = cs.Total
 					existing.Reset = cs.Reset
+				}
+			}
+			if c.Id > 0 && (deltaUp > 0 || deltaDown > 0) {
+				if err := tx.Exec(
+					fmt.Sprintf(
+						`UPDATE client_inbounds SET up = %s, down = %s
+						 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
+						database.ClampedAddExpr("up"),
+						database.ClampedAddExpr("down"),
+					),
+					deltaUp, deltaDown, c.Id, cs.Email,
+				).Error; err != nil {
+					logger.Warning("setRemoteTrafficLocked update client_inbounds ", err)
 				}
 			}
 			// A dip plus a lagging longer expiry mimics nodeClientRenewed and would

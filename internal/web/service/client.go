@@ -20,9 +20,11 @@ import (
 
 type ClientWithAttachments struct {
 	model.ClientRecord
-	InboundIds         []int               `json:"inboundIds"`
-	DownLimitByInbound map[int]int         `json:"downLimitByInbound,omitempty"`
-	Traffic            *xray.ClientTraffic `json:"traffic,omitempty"`
+	InboundIds         []int                              `json:"inboundIds"`
+	DownLimitByInbound map[int]int                        `json:"downLimitByInbound,omitempty"`
+	TotalGBByInbound   map[int]int64                      `json:"totalGBByInbound,omitempty"`
+	InboundTraffics    map[int]model.ClientInboundTraffic `json:"inboundTraffics,omitempty"`
+	Traffic            *xray.ClientTraffic                `json:"traffic,omitempty"`
 }
 
 // MarshalJSON is required because model.ClientRecord defines its own
@@ -35,10 +37,18 @@ func (c ClientWithAttachments) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	extras := struct {
-		InboundIds         []int               `json:"inboundIds"`
-		DownLimitByInbound map[int]int         `json:"downLimitByInbound,omitempty"`
-		Traffic            *xray.ClientTraffic `json:"traffic,omitempty"`
-	}{InboundIds: c.InboundIds, DownLimitByInbound: c.DownLimitByInbound, Traffic: c.Traffic}
+		InboundIds         []int                              `json:"inboundIds"`
+		DownLimitByInbound map[int]int                        `json:"downLimitByInbound,omitempty"`
+		TotalGBByInbound   map[int]int64                      `json:"totalGBByInbound,omitempty"`
+		InboundTraffics    map[int]model.ClientInboundTraffic `json:"inboundTraffics,omitempty"`
+		Traffic            *xray.ClientTraffic                `json:"traffic,omitempty"`
+	}{
+		InboundIds:         c.InboundIds,
+		DownLimitByInbound: c.DownLimitByInbound,
+		TotalGBByInbound:   c.TotalGBByInbound,
+		InboundTraffics:    c.InboundTraffics,
+		Traffic:            c.Traffic,
+	}
 	extra, err := json.Marshal(extras)
 	if err != nil {
 		return nil, err

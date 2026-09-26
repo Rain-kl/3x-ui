@@ -223,6 +223,19 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 		).Error; err != nil {
 			logger.Warning("AddClientTraffic update data ", err)
 		}
+		if ibId > 0 {
+			if err = tx.Exec(
+				fmt.Sprintf(
+					`UPDATE client_inbounds SET up = %s, down = %s
+					 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
+					database.ClampedAddExpr("up"),
+					database.ClampedAddExpr("down"),
+				),
+				t.Up, t.Down, ibId, ct.Email,
+			).Error; err != nil {
+				logger.Warning("AddClientTraffic update client_inbounds ", err)
+			}
+		}
 	}
 
 	// adjustTraffics converts delayed-start rows (negative ExpiryTime → absolute
@@ -457,6 +470,25 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB, mutationBatch *trafficMut
 		trafficByEmail[traffics[i].Email] = traffics[i]
 		trafficWasEnabled[traffics[i].Email] = traffics[i].Enable
 	}
+	type depletedInboundKey struct {
+		inboundID int
+		email     string
+	}
+	depletedInboundsSet := make(map[depletedInboundKey]struct{})
+	var depletedLinks []struct {
+		InboundID int    `gorm:"column:inbound_id"`
+		Email     string `gorm:"column:email"`
+	}
+	_ = tx.Raw(`
+		SELECT ci.inbound_id, c.email
+		FROM client_inbounds ci
+		JOIN clients c ON c.id = ci.client_id
+		WHERE ci.total_gb > 0 AND (ci.up + ci.down) >= ci.total_gb
+	`).Scan(&depletedLinks).Error
+	for _, dl := range depletedLinks {
+		depletedInboundsSet[depletedInboundKey{inboundID: dl.InboundID, email: dl.Email}] = struct{}{}
+	}
+
 	renewedEmails := make([]string, 0, len(traffics))
 	for inbound_index := range inbounds {
 		settings := map[string]any{}
@@ -525,7 +557,9 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB, mutationBatch *trafficMut
 				traffic.Up = 0
 				renewedEmails = append(renewedEmails, email)
 			}
-			if !trafficWasEnabled[email] {
+			curEnable, _ := c["enable"].(bool)
+			_, wasDepletedOnInbound := depletedInboundsSet[depletedInboundKey{inboundID: inbounds[inbound_index].Id, email: email}]
+			if !trafficWasEnabled[email] || (renewals > 0 && wasDepletedOnInbound && !curEnable) {
 				traffic.Enable = true
 				c["enable"] = true
 				key := inboundClientKey{inboundID: inbounds[inbound_index].Id, email: email}
@@ -575,6 +609,11 @@ func (s *InboundService) autoRenewClients(tx *gorm.DB, mutationBatch *trafficMut
 	// too, or the stale pushed totals would re-deplete it immediately.
 	if err = clearGlobalTraffic(tx, renewedEmails...); err != nil {
 		return false, 0, err
+	}
+	if len(renewedEmails) > 0 {
+		_ = tx.Model(&model.ClientInbound{}).
+			Where("client_id IN (SELECT id FROM clients WHERE email IN ?)", renewedEmails).
+			Updates(map[string]any{"up": 0, "down": 0}).Error
 	}
 	for _, clientToAdd := range clientsToAdd {
 		if clientToAdd.inbound.NodeID != nil {
@@ -691,6 +730,19 @@ func (s *InboundService) ResetClientTrafficByEmail(clientEmail string) error {
 				Updates(map[string]any{"enable": true, "up": 0, "down": 0}).Error; err != nil {
 				return err
 			}
+			if err := tx.Model(&model.ClientInbound{}).
+				Where("client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)", clientEmail).
+				Updates(map[string]any{"up": 0, "down": 0}).Error; err != nil {
+				return err
+			}
+			var attachedInboundIds []int
+			if err := tx.Model(&model.ClientInbound{}).
+				Where("client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)", clientEmail).
+				Pluck("inbound_id", &attachedInboundIds).Error; err == nil {
+				for _, ibId := range attachedInboundIds {
+					_, _, _, _ = s.markClientsEnabledInSettings(tx, ibId, map[string]struct{}{clientEmail: {}})
+				}
+			}
 			return tx.Where("email = ?", clientEmail).Delete(&model.NodeClientTraffic{}).Error
 		})
 	})
@@ -737,43 +789,47 @@ func (s *InboundService) resetClientTrafficLocked(id int, clientEmail string) (b
 		return false, nil, err
 	}
 
-	if !traffic.Enable {
-		inbound, err := s.GetInbound(id)
-		if err != nil {
-			return false, nil, err
+	inbound, err := s.GetInbound(id)
+	if err != nil {
+		return false, nil, err
+	}
+	clients, err := s.GetClients(inbound)
+	if err != nil {
+		return false, nil, err
+	}
+	var targetClient *model.Client
+	for _, client := range clients {
+		if client.Email == clientEmail {
+			targetClient = &client
+			break
 		}
-		clients, err := s.GetClients(inbound)
-		if err != nil {
-			return false, nil, err
-		}
-		for _, client := range clients {
-			if client.Email == clientEmail && client.Enable {
-				cipher := ""
-				if string(inbound.Protocol) == "shadowsocks" {
-					var oldSettings map[string]any
-					err = json.Unmarshal([]byte(inbound.Settings), &oldSettings)
-					if err != nil {
-						return false, nil, err
-					}
-					cipher, _ = oldSettings["method"].(string)
-				}
-				clientMap := map[string]any{
-					"email":    client.Email,
-					"id":       client.ID,
-					"auth":     client.Auth,
-					"security": client.Security,
-					"flow":     client.Flow,
-					"password": client.Password,
-					"cipher":   cipher,
-					"reverse":  client.Reverse,
-				}
-				if inbound.NodeID != nil {
-					reenableNodeID = inbound.NodeID
-				} else {
-					reenablePlan = &trafficLocalApplyPlan{action: trafficAddUser, inbound: *inbound, client: clientMap}
-				}
-				break
+	}
+
+	shouldReenable := !traffic.Enable || (targetClient != nil && !targetClient.Enable)
+	if shouldReenable && targetClient != nil {
+		cipher := ""
+		if string(inbound.Protocol) == "shadowsocks" {
+			var oldSettings map[string]any
+			err = json.Unmarshal([]byte(inbound.Settings), &oldSettings)
+			if err != nil {
+				return false, nil, err
 			}
+			cipher, _ = oldSettings["method"].(string)
+		}
+		clientMap := map[string]any{
+			"email":    targetClient.Email,
+			"id":       targetClient.ID,
+			"auth":     targetClient.Auth,
+			"security": targetClient.Security,
+			"flow":     targetClient.Flow,
+			"password": targetClient.Password,
+			"cipher":   cipher,
+			"reverse":  targetClient.Reverse,
+		}
+		if inbound.NodeID != nil {
+			reenableNodeID = inbound.NodeID
+		} else {
+			reenablePlan = &trafficLocalApplyPlan{action: trafficAddUser, inbound: *inbound, client: clientMap}
 		}
 	}
 
@@ -783,10 +839,6 @@ func (s *InboundService) resetClientTrafficLocked(id int, clientEmail string) (b
 
 	db := database.GetDB()
 	now := time.Now().UnixMilli()
-	inbound, err := s.GetInbound(id)
-	if err != nil {
-		return false, nil, err
-	}
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := adjustGroupBaselinesForRemovedTraffic(tx, []string{clientEmail}); err != nil {
 			return err
@@ -804,6 +856,16 @@ func (s *InboundService) resetClientTrafficLocked(id int, clientEmail string) (b
 			Where("id = ?", id).
 			Update("last_traffic_reset_time", now).Error; err != nil {
 			return err
+		}
+		if err := tx.Model(&model.ClientInbound{}).
+			Where("inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)", id, clientEmail).
+			Updates(map[string]any{"up": 0, "down": 0}).Error; err != nil {
+			return err
+		}
+		if shouldReenable && targetClient != nil && !targetClient.Enable {
+			if _, _, _, err := s.markClientsEnabledInSettings(tx, id, map[string]struct{}{clientEmail: {}}); err != nil {
+				return err
+			}
 		}
 		if reenableNodeID != nil {
 			return (&NodeService{}).MarkNodeDirtyTx(tx, *reenableNodeID)

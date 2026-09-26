@@ -471,6 +471,10 @@ func (s *InboundService) GetClientByEmail(clientEmail string) (*xray.ClientTraff
 
 	for _, client := range clients {
 		if client.Email == clientEmail {
+			if rec, rErr := s.clientService.GetRecordByEmail(nil, clientEmail); rErr == nil && rec != nil {
+				client.TotalGBByInbound, _ = s.clientService.TotalGBsByClientId(rec.Id)
+				client.InboundTraffics, _ = s.clientService.InboundTrafficsByClientId(rec.Id)
+			}
 			return traffic, &client, nil
 		}
 	}

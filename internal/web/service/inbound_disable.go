@@ -88,16 +88,34 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB, mutationBatch *traff
 	if err != nil {
 		return false, 0, nil, err
 	}
-	if len(depletedRows) == 0 {
+
+	type depletedInboundTarget struct {
+		ClientId  int    `gorm:"column:client_id"`
+		InboundId int    `gorm:"column:inbound_id"`
+		Email     string `gorm:"column:email"`
+	}
+	var depletedInbounds []depletedInboundTarget
+	if err := tx.Raw(`
+		SELECT ci.client_id, ci.inbound_id, c.email
+		FROM client_inbounds ci
+		JOIN clients c ON c.id = ci.client_id
+		WHERE ci.total_gb > 0 AND (ci.up + ci.down) >= ci.total_gb
+	`).Scan(&depletedInbounds).Error; err != nil {
+		return false, 0, nil, err
+	}
+
+	if len(depletedRows) == 0 && len(depletedInbounds) == 0 {
 		return false, 0, nil, nil
 	}
 
 	depletedEmails := make([]string, 0, len(depletedRows))
+	depletedEmailsSet := make(map[string]struct{}, len(depletedRows))
 	for i := range depletedRows {
 		if depletedRows[i].Email == "" {
 			continue
 		}
 		depletedEmails = append(depletedEmails, depletedRows[i].Email)
+		depletedEmailsSet[depletedRows[i].Email] = struct{}{}
 	}
 
 	type target struct {
@@ -121,20 +139,22 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB, mutationBatch *traff
 		}
 	}
 
-	byInbound := make(map[int][]target)
+	byInbound := make(map[int]map[string]struct{})
 	for _, t := range targets {
-		byInbound[t.InboundID] = append(byInbound[t.InboundID], t)
+		if byInbound[t.InboundID] == nil {
+			byInbound[t.InboundID] = make(map[string]struct{})
+		}
+		byInbound[t.InboundID][t.Email] = struct{}{}
 	}
 
 	disabledNodeIDs := make(map[int]struct{})
-	for inboundID, group := range byInbound {
-		emails := make(map[string]struct{}, len(group))
-		for _, t := range group {
-			emails[t.Email] = struct{}{}
-		}
-		oldInbound, inbound, mErr := s.markClientsDisabledInSettings(tx, inboundID, emails)
+	for inboundID, emails := range byInbound {
+		oldInbound, inbound, disabledEmails, mErr := s.markClientsDisabledInSettings(tx, inboundID, emails)
 		if mErr != nil {
 			return false, 0, nil, mErr
+		}
+		if len(disabledEmails) == 0 {
+			continue
 		}
 		if inbound.NodeID != nil {
 			mutationBatch.remotePlans = append(mutationBatch.remotePlans, trafficInboundUpdatePlan{
@@ -144,12 +164,49 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB, mutationBatch *traff
 			disabledNodeIDs[*inbound.NodeID] = struct{}{}
 			continue
 		}
-		for email := range emails {
+		for _, email := range disabledEmails {
 			mutationBatch.localPlans = append(mutationBatch.localPlans, trafficLocalApplyPlan{
 				action: trafficRemoveUser, inbound: *inbound, email: email,
 			})
 		}
 	}
+
+	var count int64
+	singleNodeByInbound := make(map[int]map[string]struct{})
+	for _, di := range depletedInbounds {
+		if _, globallyDepleted := depletedEmailsSet[di.Email]; globallyDepleted {
+			continue
+		}
+		if singleNodeByInbound[di.InboundId] == nil {
+			singleNodeByInbound[di.InboundId] = make(map[string]struct{})
+		}
+		singleNodeByInbound[di.InboundId][di.Email] = struct{}{}
+	}
+
+	for inboundID, emails := range singleNodeByInbound {
+		oldInbound, inbound, disabledEmails, mErr := s.markClientsDisabledInSettings(tx, inboundID, emails)
+		if mErr != nil {
+			return false, 0, nil, mErr
+		}
+		if len(disabledEmails) == 0 {
+			continue
+		}
+		count += int64(len(disabledEmails))
+		if inbound.NodeID != nil {
+			mutationBatch.remotePlans = append(mutationBatch.remotePlans, trafficInboundUpdatePlan{
+				oldInbound: *oldInbound, newInbound: *inbound,
+			})
+			mutationBatch.addNode(*inbound.NodeID)
+			disabledNodeIDs[*inbound.NodeID] = struct{}{}
+			continue
+		}
+		for _, email := range disabledEmails {
+			mutationBatch.localPlans = append(mutationBatch.localPlans, trafficLocalApplyPlan{
+				action: trafficRemoveUser, inbound: *inbound, email: email,
+			})
+		}
+	}
+
 	// Flip the rows already collected above by primary key instead of
 	// re-evaluating the depleted predicate, which was a second full scan of
 	// client_traffics on every poll. Sorted ids keep the lock order stable.
@@ -158,7 +215,6 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB, mutationBatch *traff
 		ids = append(ids, depletedRows[i].Id)
 	}
 	slices.Sort(ids)
-	var count int64
 	for _, batch := range chunkInts(ids, sqlInChunk) {
 		result := tx.Model(xray.ClientTraffic{}).
 			Where("id IN ? AND enable = ?", batch, true).
@@ -186,18 +242,17 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB, mutationBatch *traff
 }
 
 // markClientsDisabledInSettings flips client.enable=false in the inbound's
-// stored settings JSON for the given emails and returns both the pre and
-// post snapshots so a caller pushing to a remote node has the diff to hand.
-func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID int, emails map[string]struct{}) (oldIb, newIb *model.Inbound, err error) {
+// stored settings JSON for the given emails.
+func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID int, emails map[string]struct{}) (oldIb, newIb *model.Inbound, disabledEmails []string, err error) {
 	var ib model.Inbound
 	if err := tx.Model(&model.Inbound{}).Where("id = ?", inboundID).First(&ib).Error; err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	snapshot := ib
 
 	settings := map[string]any{}
 	if err := json.Unmarshal([]byte(ib.Settings), &settings); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	clients, _ := settings["clients"].([]any)
 	now := time.Now().Unix() * 1000
@@ -218,19 +273,70 @@ func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID in
 		entry["updated_at"] = now
 		clients[i] = entry
 		mutated = true
+		disabledEmails = append(disabledEmails, email)
 	}
 	if !mutated {
-		return &snapshot, &ib, nil
+		return &snapshot, &ib, nil, nil
 	}
 	settings["clients"] = clients
 	bs, marshalErr := json.MarshalIndent(settings, "", "  ")
 	if marshalErr != nil {
-		return nil, nil, marshalErr
+		return nil, nil, nil, marshalErr
 	}
 	ib.Settings = string(bs)
 	if err := tx.Model(&model.Inbound{}).Where("id = ?", inboundID).
 		Update("settings", ib.Settings).Error; err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return &snapshot, &ib, nil
+	return &snapshot, &ib, disabledEmails, nil
+}
+
+// markClientsEnabledInSettings flips client.enable=true in the inbound's
+// stored settings JSON for the given emails.
+func (s *InboundService) markClientsEnabledInSettings(tx *gorm.DB, inboundID int, emails map[string]struct{}) (oldIb, newIb *model.Inbound, enabledEmails []string, err error) {
+	var ib model.Inbound
+	if err := tx.Model(&model.Inbound{}).Where("id = ?", inboundID).First(&ib).Error; err != nil {
+		return nil, nil, nil, err
+	}
+	snapshot := ib
+
+	settings := map[string]any{}
+	if err := json.Unmarshal([]byte(ib.Settings), &settings); err != nil {
+		return nil, nil, nil, err
+	}
+	clients, _ := settings["clients"].([]any)
+	now := time.Now().Unix() * 1000
+	mutated := false
+	for i := range clients {
+		entry, ok := clients[i].(map[string]any)
+		if !ok {
+			continue
+		}
+		email, _ := entry["email"].(string)
+		if _, hit := emails[email]; !hit {
+			continue
+		}
+		if cur, _ := entry["enable"].(bool); cur {
+			continue
+		}
+		entry["enable"] = true
+		entry["updated_at"] = now
+		clients[i] = entry
+		mutated = true
+		enabledEmails = append(enabledEmails, email)
+	}
+	if !mutated {
+		return &snapshot, &ib, nil, nil
+	}
+	settings["clients"] = clients
+	bs, marshalErr := json.MarshalIndent(settings, "", "  ")
+	if marshalErr != nil {
+		return nil, nil, nil, marshalErr
+	}
+	ib.Settings = string(bs)
+	if err := tx.Model(&model.Inbound{}).Where("id = ?", inboundID).
+		Update("settings", ib.Settings).Error; err != nil {
+		return nil, nil, nil, err
+	}
+	return &snapshot, &ib, enabledEmails, nil
 }
