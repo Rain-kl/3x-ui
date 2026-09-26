@@ -321,4 +321,25 @@ func TestClientRateLimit_SubNodeScopedUpdate(t *testing.T) {
 	if limits2[rec.Email] != 200 {
 		t.Errorf("ClientLimitsByInbound(ib2) = %d, want 200", limits2[rec.Email])
 	}
+
+	// Simulates master pushing UpdateUser for ib1 to clear limit (DownLimit = 0).
+	clearIb1 := model.Client{
+		Email:              rec.Email,
+		DownLimit:          0,
+		DownLimitByInbound: map[int]int{ib1.Id: 0},
+		Enable:             true,
+	}
+	if _, err := svc.Update(inboundSvc, rec.Id, clearIb1, 0, ib1.Id); err != nil {
+		t.Fatalf("Update ib1 clear: %v", err)
+	}
+	if err := db.Where("client_id = ? AND inbound_id = ?", rec.Id, ib1.Id).First(&ci1).Error; err != nil {
+		t.Fatalf("find ci1 after clear: %v", err)
+	}
+	if ci1.DownLimit != 0 {
+		t.Errorf("ci1.DownLimit after clear = %d, want 0", ci1.DownLimit)
+	}
+	limits1Cleared := svc.ClientLimitsByInbound(ib1.Id)
+	if limits1Cleared[rec.Email] != 0 {
+		t.Errorf("ClientLimitsByInbound(ib1) after clear = %d, want 0", limits1Cleared[rec.Email])
+	}
 }

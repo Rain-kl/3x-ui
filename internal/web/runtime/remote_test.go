@@ -511,3 +511,118 @@ func TestRemoteAdoptedAliasYieldsToNodeReportedTag(t *testing.T) {
 		t.Fatalf("central tag resolved to %d via a stale alias, want 5 (the id the node reports)", id)
 	}
 }
+
+func TestRemoteAddClient_RateLimitAndQuotaMapping(t *testing.T) {
+	var postedBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch req.URL.Path {
+		case "/panel/api/inbounds/list":
+			_, _ = w.Write([]byte(`{"success":true,"obj":[{"id":42,"tag":"node-inbound-1"}]}`))
+		case "/panel/api/clients/add":
+			_ = json.NewDecoder(req.Body).Decode(&postedBody)
+			_, _ = w.Write([]byte(`{"success":true}`))
+		default:
+			http.NotFound(w, req)
+		}
+	}))
+	defer srv.Close()
+
+	r := NewRemote(nodeForPlainServer(t, srv, "verify", "tok"), nil)
+	ib := &model.Inbound{Id: 10, Tag: "node-inbound-1"}
+	client := model.Client{
+		Email:     "user@test.com",
+		DownLimit: 50,
+		DownLimitByInbound: map[int]int{
+			10: 100,
+			20: 200,
+		},
+		TotalGBByInbound: map[int]int64{
+			10: 10 << 30,
+			20: 20 << 30,
+		},
+	}
+
+	if err := r.AddClient(context.Background(), ib, client); err != nil {
+		t.Fatalf("AddClient: %v", err)
+	}
+
+	inboundIds, _ := postedBody["inboundIds"].([]any)
+	if len(inboundIds) != 1 || int(inboundIds[0].(float64)) != 42 {
+		t.Fatalf("posted inboundIds = %v, want [42]", inboundIds)
+	}
+	clientMap, _ := postedBody["client"].(map[string]any)
+	if dl, ok := clientMap["downLimit"]; ok && int(dl.(float64)) != 0 {
+		t.Fatalf("client.downLimit = %v, want 0 or omitted", dl)
+	}
+	downMap, _ := clientMap["downLimitByInbound"].(map[string]any)
+	if int(downMap["42"].(float64)) != 100 || len(downMap) != 1 {
+		t.Fatalf("client.downLimitByInbound = %v, want {42: 100}", downMap)
+	}
+	quotaMap, _ := clientMap["totalGBByInbound"].(map[string]any)
+	if int64(quotaMap["42"].(float64)) != (10<<30) || len(quotaMap) != 1 {
+		t.Fatalf("client.totalGBByInbound = %v, want {42: %d}", quotaMap, int64(10<<30))
+	}
+}
+
+func TestRemoteUpdateUser_RateLimitAndQuotaMapping(t *testing.T) {
+	var postedURL string
+	var postedClient model.Client
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case req.URL.Path == "/panel/api/inbounds/list":
+			_, _ = w.Write([]byte(`{"success":true,"obj":[{"id":42,"tag":"node-inbound-1"}]}`))
+		case strings.HasPrefix(req.URL.Path, "/panel/api/clients/update/"):
+			postedURL = req.URL.String()
+			_ = json.NewDecoder(req.Body).Decode(&postedClient)
+			_, _ = w.Write([]byte(`{"success":true}`))
+		default:
+			http.NotFound(w, req)
+		}
+	}))
+	defer srv.Close()
+
+	r := NewRemote(nodeForPlainServer(t, srv, "verify", "tok"), nil)
+	ib := &model.Inbound{Id: 10, Tag: "node-inbound-1"}
+	client := model.Client{
+		Email:     "user@test.com",
+		DownLimit: 100,
+		DownLimitByInbound: map[int]int{
+			10: 100,
+			20: 200,
+		},
+		TotalGBByInbound: map[int]int64{
+			10: 10 << 30,
+			20: 20 << 30,
+		},
+	}
+
+	if err := r.UpdateUser(context.Background(), ib, "user@test.com", client); err != nil {
+		t.Fatalf("UpdateUser: %v", err)
+	}
+
+	if !strings.Contains(postedURL, "inboundIds=42") {
+		t.Fatalf("posted URL = %q, want containing inboundIds=42", postedURL)
+	}
+	if postedClient.DownLimit != 0 {
+		t.Fatalf("postedClient.DownLimit = %d, want 0", postedClient.DownLimit)
+	}
+	if postedClient.DownLimitByInbound[42] != 100 || len(postedClient.DownLimitByInbound) != 1 {
+		t.Fatalf("postedClient.DownLimitByInbound = %v, want map[42:100]", postedClient.DownLimitByInbound)
+	}
+	if postedClient.TotalGBByInbound[42] != (10<<30) || len(postedClient.TotalGBByInbound) != 1 {
+		t.Fatalf("postedClient.TotalGBByInbound = %v, want map[42:%d]", postedClient.TotalGBByInbound, int64(10<<30))
+	}
+
+	// Verify clearing limit (DownLimit = 0, DownLimitByInbound = 0) correctly passes 0.
+	clearedClient := client
+	clearedClient.DownLimit = 0
+	clearedClient.DownLimitByInbound = map[int]int{10: 0}
+	if err := r.UpdateUser(context.Background(), ib, "user@test.com", clearedClient); err != nil {
+		t.Fatalf("UpdateUser (cleared): %v", err)
+	}
+	if postedClient.DownLimitByInbound[42] != 0 {
+		t.Fatalf("cleared postedClient.DownLimitByInbound = %v, want map[42:0]", postedClient.DownLimitByInbound)
+	}
+}

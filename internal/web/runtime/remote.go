@@ -571,12 +571,18 @@ func (r *Remote) AddClient(ctx context.Context, ib *model.Inbound, client model.
 	if err != nil {
 		return fmt.Errorf("remote AddClient: resolve tag %q: %w", ib.Tag, err)
 	}
-	if client.DownLimit > 0 {
-		if client.DownLimitByInbound == nil {
-			client.DownLimitByInbound = make(map[int]int)
-		}
-		client.DownLimitByInbound[id] = client.DownLimit
+	downLimit := client.DownLimit
+	if override, ok := client.DownLimitByInbound[ib.Id]; ok {
+		downLimit = override
 	}
+	client.DownLimitByInbound = map[int]int{id: downLimit}
+	client.DownLimit = 0
+
+	var quota int64
+	if client.TotalGBByInbound != nil {
+		quota = client.TotalGBByInbound[ib.Id]
+	}
+	client.TotalGBByInbound = map[int]int64{id: quota}
 	payload := map[string]any{
 		"client":     client,
 		"inboundIds": []int{id},
@@ -635,12 +641,18 @@ func (r *Remote) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail str
 	if err != nil {
 		return err
 	}
-	if payload.DownLimit > 0 {
-		if payload.DownLimitByInbound == nil {
-			payload.DownLimitByInbound = make(map[int]int)
-		}
-		payload.DownLimitByInbound[id] = payload.DownLimit
+	downLimit := payload.DownLimit
+	if override, ok := payload.DownLimitByInbound[ib.Id]; ok {
+		downLimit = override
 	}
+	payload.DownLimitByInbound = map[int]int{id: downLimit}
+	payload.DownLimit = 0
+
+	var quota int64
+	if payload.TotalGBByInbound != nil {
+		quota = payload.TotalGBByInbound[ib.Id]
+	}
+	payload.TotalGBByInbound = map[int]int64{id: quota}
 	path := "panel/api/clients/update/" + url.PathEscape(oldEmail) +
 		"?inboundIds=" + strconv.Itoa(id)
 	if _, err := r.do(ctx, http.MethodPost, path, payload); err != nil {
