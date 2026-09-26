@@ -241,9 +241,8 @@ func (s *InboundService) disableInvalidClients(tx *gorm.DB, mutationBatch *traff
 	return false, count, nodeIDs, nil
 }
 
-// markClientsDisabledInSettings flips client.enable=false in the inbound's
-// stored settings JSON for the given emails.
-func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID int, emails map[string]struct{}) (oldIb, newIb *model.Inbound, disabledEmails []string, err error) {
+// updateClientsEnableInSettings updates client.enable in inbound settings JSON.
+func (s *InboundService) updateClientsEnableInSettings(tx *gorm.DB, inboundID int, emails map[string]struct{}, targetEnable bool) (*model.Inbound, *model.Inbound, []string, error) {
 	var ib model.Inbound
 	if err := tx.Model(&model.Inbound{}).Where("id = ?", inboundID).First(&ib).Error; err != nil {
 		return nil, nil, nil, err
@@ -257,6 +256,7 @@ func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID in
 	clients, _ := settings["clients"].([]any)
 	now := time.Now().Unix() * 1000
 	mutated := false
+	var modifiedEmails []string
 	for i := range clients {
 		entry, ok := clients[i].(map[string]any)
 		if !ok {
@@ -266,14 +266,14 @@ func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID in
 		if _, hit := emails[email]; !hit {
 			continue
 		}
-		if cur, _ := entry["enable"].(bool); !cur {
+		if cur, _ := entry["enable"].(bool); cur == targetEnable {
 			continue
 		}
-		entry["enable"] = false
+		entry["enable"] = targetEnable
 		entry["updated_at"] = now
 		clients[i] = entry
 		mutated = true
-		disabledEmails = append(disabledEmails, email)
+		modifiedEmails = append(modifiedEmails, email)
 	}
 	if !mutated {
 		return &snapshot, &ib, nil, nil
@@ -288,55 +288,17 @@ func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID in
 		Update("settings", ib.Settings).Error; err != nil {
 		return nil, nil, nil, err
 	}
-	return &snapshot, &ib, disabledEmails, nil
+	return &snapshot, &ib, modifiedEmails, nil
+}
+
+// markClientsDisabledInSettings flips client.enable=false in the inbound's
+// stored settings JSON for the given emails.
+func (s *InboundService) markClientsDisabledInSettings(tx *gorm.DB, inboundID int, emails map[string]struct{}) (oldIb, newIb *model.Inbound, disabledEmails []string, err error) {
+	return s.updateClientsEnableInSettings(tx, inboundID, emails, false)
 }
 
 // markClientsEnabledInSettings flips client.enable=true in the inbound's
 // stored settings JSON for the given emails.
 func (s *InboundService) markClientsEnabledInSettings(tx *gorm.DB, inboundID int, emails map[string]struct{}) (oldIb, newIb *model.Inbound, enabledEmails []string, err error) {
-	var ib model.Inbound
-	if err := tx.Model(&model.Inbound{}).Where("id = ?", inboundID).First(&ib).Error; err != nil {
-		return nil, nil, nil, err
-	}
-	snapshot := ib
-
-	settings := map[string]any{}
-	if err := json.Unmarshal([]byte(ib.Settings), &settings); err != nil {
-		return nil, nil, nil, err
-	}
-	clients, _ := settings["clients"].([]any)
-	now := time.Now().Unix() * 1000
-	mutated := false
-	for i := range clients {
-		entry, ok := clients[i].(map[string]any)
-		if !ok {
-			continue
-		}
-		email, _ := entry["email"].(string)
-		if _, hit := emails[email]; !hit {
-			continue
-		}
-		if cur, _ := entry["enable"].(bool); cur {
-			continue
-		}
-		entry["enable"] = true
-		entry["updated_at"] = now
-		clients[i] = entry
-		mutated = true
-		enabledEmails = append(enabledEmails, email)
-	}
-	if !mutated {
-		return &snapshot, &ib, nil, nil
-	}
-	settings["clients"] = clients
-	bs, marshalErr := json.MarshalIndent(settings, "", "  ")
-	if marshalErr != nil {
-		return nil, nil, nil, marshalErr
-	}
-	ib.Settings = string(bs)
-	if err := tx.Model(&model.Inbound{}).Where("id = ?", inboundID).
-		Update("settings", ib.Settings).Error; err != nil {
-		return nil, nil, nil, err
-	}
-	return &snapshot, &ib, enabledEmails, nil
+	return s.updateClientsEnableInSettings(tx, inboundID, emails, true)
 }

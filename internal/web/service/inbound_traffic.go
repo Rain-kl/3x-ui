@@ -717,6 +717,9 @@ func (s *InboundService) delClientStatsByEmails(tx *gorm.DB, emails []string) er
 }
 
 func (s *InboundService) ResetClientTrafficByEmail(clientEmail string) error {
+	var reenablePlans []trafficLocalApplyPlan
+	var remoteResets []*model.Inbound
+
 	err := submitTrafficWrite(func() error {
 		return database.GetDB().Transaction(func(tx *gorm.DB) error {
 			if err := adjustGroupBaselinesForRemovedTraffic(tx, []string{clientEmail}); err != nil {
@@ -730,6 +733,11 @@ func (s *InboundService) ResetClientTrafficByEmail(clientEmail string) error {
 				Updates(map[string]any{"enable": true, "up": 0, "down": 0}).Error; err != nil {
 				return err
 			}
+			if err := tx.Model(&model.ClientRecord{}).
+				Where("email = ?", clientEmail).
+				Update("enable", true).Error; err != nil {
+				return err
+			}
 			if err := tx.Model(&model.ClientInbound{}).
 				Where("client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)", clientEmail).
 				Updates(map[string]any{"up": 0, "down": 0}).Error; err != nil {
@@ -738,9 +746,62 @@ func (s *InboundService) ResetClientTrafficByEmail(clientEmail string) error {
 			var attachedInboundIds []int
 			if err := tx.Model(&model.ClientInbound{}).
 				Where("client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)", clientEmail).
-				Pluck("inbound_id", &attachedInboundIds).Error; err == nil {
-				for _, ibId := range attachedInboundIds {
-					_, _, _, _ = s.markClientsEnabledInSettings(tx, ibId, map[string]struct{}{clientEmail: {}})
+				Pluck("inbound_id", &attachedInboundIds).Error; err != nil {
+				return err
+			}
+			for _, ibId := range attachedInboundIds {
+				_, newIb, enabledEmails, mErr := s.markClientsEnabledInSettings(tx, ibId, map[string]struct{}{clientEmail: {}})
+				if mErr != nil {
+					if errors.Is(mErr, gorm.ErrRecordNotFound) {
+						continue
+					}
+					return mErr
+				}
+				if newIb.NodeID != nil {
+					if len(enabledEmails) > 0 {
+						if err := (&NodeService{}).MarkNodeDirtyTx(tx, *newIb.NodeID); err != nil {
+							return err
+						}
+					}
+					remoteResets = append(remoteResets, newIb)
+					continue
+				}
+				if len(enabledEmails) == 0 {
+					continue
+				}
+				clients, cErr := ParseInboundSettingsClients(newIb.Settings)
+				if cErr != nil {
+					return cErr
+				}
+				var targetClient *model.Client
+				for i := range clients {
+					if clients[i].Email == clientEmail {
+						targetClient = &clients[i]
+						break
+					}
+				}
+				if targetClient != nil {
+					cipher := ""
+					if newIb.Protocol == model.Shadowsocks {
+						var oldSettings map[string]any
+						_ = json.Unmarshal([]byte(newIb.Settings), &oldSettings)
+						cipher, _ = oldSettings["method"].(string)
+					}
+					clientMap := map[string]any{
+						"email":    targetClient.Email,
+						"id":       targetClient.ID,
+						"auth":     targetClient.Auth,
+						"security": targetClient.Security,
+						"flow":     targetClient.Flow,
+						"password": targetClient.Password,
+						"cipher":   cipher,
+						"reverse":  targetClient.Reverse,
+					}
+					reenablePlans = append(reenablePlans, trafficLocalApplyPlan{
+						action:  trafficAddUser,
+						inbound: *newIb,
+						client:  clientMap,
+					})
 				}
 			}
 			return tx.Where("email = ?", clientEmail).Delete(&model.NodeClientTraffic{}).Error
@@ -748,6 +809,49 @@ func (s *InboundService) ResetClientTrafficByEmail(clientEmail string) error {
 	})
 	if err == nil {
 		s.resetMtprotoClientQuota(clientEmail)
+		for i := range reenablePlans {
+			plan := &reenablePlans[i]
+			if plan.inbound.Protocol == model.MTProto {
+				continue
+			}
+			if plan.inbound.Protocol == model.AmneziaWG {
+				s.applyLocalAmneziaWG(plan.inbound.Id)
+				continue
+			}
+			if plan.inbound.Protocol == model.TUIC {
+				s.applyLocalTuic(plan.inbound.Id)
+				continue
+			}
+			rt, rErr := s.runtimeFor(&plan.inbound)
+			if rErr == nil {
+				if aErr := rt.AddUser(context.Background(), &plan.inbound, plan.client); aErr != nil {
+					logger.Debug("Error in enabling client on", rt.Name(), ":", aErr)
+				} else {
+					logger.Debug("Client enabled on", rt.Name(), "due to reset traffic:", clientEmail)
+				}
+			}
+		}
+		seenNode := make(map[int]struct{})
+		for _, resetInbound := range remoteResets {
+			if resetInbound == nil || resetInbound.NodeID == nil {
+				continue
+			}
+			nodeID := *resetInbound.NodeID
+			if _, seen := seenNode[nodeID]; seen {
+				continue
+			}
+			seenNode[nodeID] = struct{}{}
+			if rt, rterr := s.runtimeFor(resetInbound); rterr != nil {
+				logger.Warning("ResetClientTrafficByEmail: runtime lookup failed:", rterr)
+			} else {
+				ctx, cancel := nodePushContext()
+				e := rt.ResetClientTraffic(ctx, resetInbound, clientEmail)
+				cancel()
+				if e != nil {
+					logger.Warning("ResetClientTrafficByEmail: remote propagation to", rt.Name(), "failed:", e)
+				}
+			}
+		}
 	}
 	return err
 }

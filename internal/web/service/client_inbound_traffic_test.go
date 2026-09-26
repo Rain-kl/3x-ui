@@ -355,3 +355,109 @@ func TestClientInboundTraffic_RemoteNodeAccounting(t *testing.T) {
 		t.Errorf("ci remote accounting mismatch: up=%d (want 200), down=%d (want 300)", row.Up, row.Down)
 	}
 }
+
+func TestClientInboundTraffic_ResetByEmail(t *testing.T) {
+	db := initTrafficTestDB(t)
+	svc := &InboundService{}
+
+	if err := db.Create(&model.Node{Id: 1, Name: "node-1", Address: "127.0.0.1", Port: 2053, ConfigDirty: false}).Error; err != nil {
+		t.Fatalf("create node: %v", err)
+	}
+	createNodeInbound(t, db, 1, "n1-in", 46001)
+	var nodeIb model.Inbound
+	if err := db.Where("tag = ?", "n1-in").First(&nodeIb).Error; err != nil {
+		t.Fatalf("find nodeIb: %v", err)
+	}
+
+	settingsA, _ := json.Marshal(map[string]any{
+		"clients": []map[string]any{
+			{"email": "resetall@test.com", "enable": false, "id": "uuid-a"},
+		},
+	})
+	ibLocal := &model.Inbound{UserId: 1, Tag: "ib-local", Enable: true, Port: 46002, Protocol: model.VLESS, Settings: string(settingsA)}
+	if err := db.Create(ibLocal).Error; err != nil {
+		t.Fatalf("create ibLocal: %v", err)
+	}
+
+	settingsB, _ := json.Marshal(map[string]any{
+		"clients": []map[string]any{
+			{"email": "resetall@test.com", "enable": false, "id": "uuid-b"},
+		},
+	})
+	if err := db.Model(&model.Inbound{}).Where("id = ?", nodeIb.Id).Update("settings", string(settingsB)).Error; err != nil {
+		t.Fatalf("update nodeIb settings: %v", err)
+	}
+
+	cr := &model.ClientRecord{Email: "resetall@test.com", TotalGB: 100 << 30, Enable: false}
+	if err := db.Create(cr).Error; err != nil {
+		t.Fatalf("create cr: %v", err)
+	}
+	ci1 := &model.ClientInbound{ClientId: cr.Id, InboundId: ibLocal.Id, TotalGB: 50 << 30, Up: 30 << 30, Down: 30 << 30}
+	if err := db.Create(ci1).Error; err != nil {
+		t.Fatalf("create ci1: %v", err)
+	}
+	ci2 := &model.ClientInbound{ClientId: cr.Id, InboundId: nodeIb.Id, TotalGB: 50 << 30, Up: 40 << 30, Down: 40 << 30}
+	if err := db.Create(ci2).Error; err != nil {
+		t.Fatalf("create ci2: %v", err)
+	}
+	ct := &xray.ClientTraffic{InboundId: ibLocal.Id, Email: "resetall@test.com", Enable: false, Up: 70 << 30, Down: 70 << 30}
+	if err := db.Create(ct).Error; err != nil {
+		t.Fatalf("create ct: %v", err)
+	}
+
+	if err := svc.ResetClientTrafficByEmail("resetall@test.com"); err != nil {
+		t.Fatalf("ResetClientTrafficByEmail: %v", err)
+	}
+
+	var refreshedCt xray.ClientTraffic
+	if err := db.Where("email = ?", "resetall@test.com").First(&refreshedCt).Error; err != nil {
+		t.Fatalf("query refreshedCt: %v", err)
+	}
+	if !refreshedCt.Enable || refreshedCt.Up != 0 || refreshedCt.Down != 0 {
+		t.Errorf("ct not reset: enable=%v, up=%d, down=%d", refreshedCt.Enable, refreshedCt.Up, refreshedCt.Down)
+	}
+
+	var refreshedCr model.ClientRecord
+	if err := db.First(&refreshedCr, cr.Id).Error; err != nil {
+		t.Fatalf("query refreshedCr: %v", err)
+	}
+	if !refreshedCr.Enable {
+		t.Errorf("client record enable should be true")
+	}
+
+	var cis []model.ClientInbound
+	if err := db.Where("client_id = ?", cr.Id).Find(&cis).Error; err != nil {
+		t.Fatalf("query cis: %v", err)
+	}
+	for _, ci := range cis {
+		if ci.Up != 0 || ci.Down != 0 {
+			t.Errorf("ci inbound %d not reset: up=%d, down=%d", ci.InboundId, ci.Up, ci.Down)
+		}
+	}
+
+	var checkLocalIb model.Inbound
+	if err := db.First(&checkLocalIb, ibLocal.Id).Error; err != nil {
+		t.Fatalf("query checkLocalIb: %v", err)
+	}
+	localClients, _ := svc.GetClients(&checkLocalIb)
+	if len(localClients) == 0 || !localClients[0].Enable {
+		t.Errorf("local inbound client not enabled in settings: %+v", localClients)
+	}
+
+	var checkNodeIb model.Inbound
+	if err := db.First(&checkNodeIb, nodeIb.Id).Error; err != nil {
+		t.Fatalf("query checkNodeIb: %v", err)
+	}
+	nodeClients, _ := svc.GetClients(&checkNodeIb)
+	if len(nodeClients) == 0 || !nodeClients[0].Enable {
+		t.Errorf("node inbound client not enabled in settings: %+v", nodeClients)
+	}
+
+	var node model.Node
+	if err := db.First(&node, 1).Error; err != nil {
+		t.Fatalf("query node: %v", err)
+	}
+	if !node.ConfigDirty {
+		t.Errorf("remote node was not marked dirty")
+	}
+}
