@@ -413,7 +413,8 @@ export default function AuditPage() {
                             title: t('pages.audit.node'),
                             dataIndex: 'nodeId',
                             render: (value: number) =>
-                              nodes.get(value) || t('pages.audit.localNode'),
+                              nodes.get(value) ||
+                              (value === 0 ? t('pages.audit.localNode') : `#${value}`),
                           },
                           {
                             title: t('pages.audit.client'),
@@ -475,7 +476,8 @@ export default function AuditPage() {
                             title: t('pages.audit.node'),
                             dataIndex: 'nodeId',
                             render: (value: number) =>
-                              nodes.get(value) || t('pages.audit.localNode'),
+                              nodes.get(value) ||
+                              (value === 0 ? t('pages.audit.localNode') : `#${value}`),
                           },
                           { title: t('pages.audit.inbound'), dataIndex: 'inbound' },
                           {
