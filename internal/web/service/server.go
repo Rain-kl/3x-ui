@@ -1090,9 +1090,9 @@ func parseXrayDigestSHA256(dgst []byte) (string, error) {
 	return "", fmt.Errorf("xray checksum: no SHA2-256 entry in digest")
 }
 
-const auditXrayVersion = "v26.10.10-audit.2"
+const auditXrayVersion = "v26.10.10-feat.1"
 
-var xrayVersionRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-audit\.\d+)?$`)
+var xrayVersionRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-(?:audit|feat)\.\d+)?$`)
 
 func (s *ServerService) UpdateXray(version string) error {
 	version = strings.TrimSpace(version)

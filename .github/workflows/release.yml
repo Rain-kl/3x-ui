@@ -72,7 +72,7 @@ jobs:
       - name: Build 3X-UI
         run: |
           CURL_RETRY="--retry 5 --retry-all-errors --retry-delay 3"
-          fetch() { wget -q --tries=5 --waitretry=10 --retry-on-http-error=429,500,502,503 "$@"; }
+          fetch() { wget --tries=5 --waitretry=10 --retry-on-http-error=429,500,502,503 "$@"; }
           export CGO_ENABLED=1
           export GOOS=linux
           export GOARCH=${{ matrix.platform }}
@@ -120,7 +120,7 @@ jobs:
           cd x-ui/bin
 
           # Download dependencies
-          Xray_URL="https://github.com/Rain-kl/Xray-core/releases/download/v26.10.10-audit.2/"
+          Xray_URL="https://github.com/Rain-kl/Xray-core/releases/download/v26.10.10-feat.1/"
           if [ "${{ matrix.platform }}" == "amd64" ]; then
             fetch ${Xray_URL}Xray-linux-64.zip
             unzip Xray-linux-64.zip
@@ -289,7 +289,7 @@ jobs:
           cd x-ui\bin
 
           # Download Xray for Windows
-          $Xray_URL = "https://github.com/Rain-kl/Xray-core/releases/download/v26.10.10-audit.2/"
+          $Xray_URL = "https://github.com/Rain-kl/Xray-core/releases/download/v26.10.10-feat.1/"
           Invoke-WebRequest @retry -Uri "${Xray_URL}Xray-windows-64.zip" -OutFile "Xray-windows-64.zip"
           Expand-Archive -Path "Xray-windows-64.zip" -DestinationPath .
           Remove-Item "Xray-windows-64.zip"
