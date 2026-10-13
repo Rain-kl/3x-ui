@@ -249,11 +249,7 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 	updateScript := fmt.Sprintf("set -e; trap 'rm -f %s' EXIT; %s %s", shellQuote(scriptPath), shellQuote(bash), shellQuote(scriptPath))
 	runIDEnv := "XUI_UPDATE_RUN_ID=" + strconv.FormatInt(runID, 10)
 	statusFileEnv := "XUI_UPDATE_STATUS_FILE=" + statusFile
-	lockXray := "false"
-	if locked, err := (&service.SettingService{}).GetXrayVersionLock(); err == nil && locked {
-		lockXray = "true"
-	}
-	lockEnv := "XUI_LOCK_XRAY=" + lockXray
+	// FORK(custom-core-only): Updates always install the bundled custom core.
 	proxyEnv := updateProxyEnvVars()
 
 	if systemdRun, err := exec.LookPath("systemd-run"); err == nil {
@@ -265,7 +261,6 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 			"--setenv", "XUI_UPDATE_TAG=" + updateTag,
 			"--setenv", runIDEnv,
 			"--setenv", statusFileEnv,
-			"--setenv", lockEnv,
 		}
 		for _, kv := range proxyEnv {
 			args = append(args, "--setenv", kv)
@@ -295,7 +290,6 @@ func (s *PanelService) startUpdate(useDev bool) (int64, error) {
 		"XUI_UPDATE_TAG="+updateTag,
 		runIDEnv,
 		statusFileEnv,
-		lockEnv,
 	)
 	setDetachedProcess(cmd)
 	if err := cmd.Start(); err != nil {

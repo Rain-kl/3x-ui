@@ -89,6 +89,8 @@ func allModels() []any {
 		&model.SubBalancer{},
 		&model.TuicTrafficReceipt{},
 		&model.AuditEvent{},
+		&model.AuditDailyStat{},
+		&model.AuditReceipt{},
 	}
 }
 
@@ -299,10 +301,8 @@ func initModels() error {
 }
 
 func migrateAuditEvents() error {
-	if db.Migrator().HasTable(&model.AuditEvent{}) {
-		return nil
-	}
-	return db.AutoMigrate(&model.AuditEvent{})
+	// FORK(audit-retention): Existing installations need the compact historical metrics table.
+	return db.AutoMigrate(&model.AuditEvent{}, &model.AuditDailyStat{}, &model.AuditReceipt{})
 }
 
 func postgresModelSettled(mdl any) bool {

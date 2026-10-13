@@ -7,7 +7,7 @@
   justify-content: space-between;
   gap: 16px;
 }
-.audit-header h2 {
+.audit-header h4 {
   margin-bottom: 0;
 }
 .audit-ranking {

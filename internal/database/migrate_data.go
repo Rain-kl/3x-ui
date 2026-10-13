@@ -61,6 +61,8 @@ func migrationModels() []any {
 		&model.SubBalancer{},
 		&model.TuicTrafficReceipt{},
 		&model.AuditEvent{},
+		&model.AuditDailyStat{},
+		&model.AuditReceipt{},
 	}
 }
 

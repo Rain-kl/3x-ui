@@ -65,8 +65,59 @@ jobs:
             sleep 15
           done
 
-  build:
+  validate-core:
     needs: resolve-xray-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          check-latest: true
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 26
+      - name: Verify panel frontend
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm typecheck
+          pnpm lint
+          pnpm test --project unit
+          pnpm run build
+      - name: Download and verify selected custom core
+        env:
+          XRAY_VERSION: ${{ needs.resolve-xray-version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/validated-xray
+          cd /tmp/validated-xray
+          base="https://github.com/Rain-kl/Xray-core/releases/download/${XRAY_VERSION}"
+          curl -fSL --retry 3 "$base/Xray-linux-64.zip" -o Xray-linux-64.zip
+          curl -fSL --retry 3 "$base/Xray-linux-64.zip.dgst" -o Xray-linux-64.zip.dgst
+          digest=$(awk '$1 == "SHA2-256=" {print $2}' Xray-linux-64.zip.dgst)
+          test "${#digest}" -eq 64
+          echo "$digest  Xray-linux-64.zip" | sha256sum -c -
+          unzip -q Xray-linux-64.zip
+          chmod +x xray
+          actual=$(./xray version | awk 'NR==1 {print "v" $2}')
+          test "$actual" = "$XRAY_VERSION"
+      - name: Verify selected binary audit, domains and rate limits
+        env:
+          XRAY_TRAFFICLOG_BIN: /tmp/validated-xray/xray
+        run: go test github.com/xtls/xray-core/testing/trafficlog -count=1
+      - name: Verify panel audit and real core API integration
+        env:
+          XRAY_E2E_BINARY: /tmp/validated-xray/xray
+        run: |
+          make dist-stub
+          go test ./internal/audit ./internal/xray ./internal/web/service ./internal/database ./internal/web/controller ./internal/web/job ./internal/web/runtime -count=1
+          go test ./internal/web -run 'Test(MasterNodeContract|RouteRegistryContract)' -count=1
+          go test -race ./internal/audit ./internal/web/service -run 'Test(Audit|SetAudit|Node)' -count=1
+
+  build:
+    needs: [resolve-xray-version, validate-core]
     permissions:
       contents: write
     strategy:
@@ -166,35 +217,24 @@ jobs:
 
           # Download dependencies
           Xray_URL="https://github.com/Rain-kl/Xray-core/releases/download/${{ needs.resolve-xray-version.outputs.version }}/"
-          if [ "${{ matrix.platform }}" == "amd64" ]; then
-            fetch ${Xray_URL}Xray-linux-64.zip
-            unzip Xray-linux-64.zip
-            rm -f Xray-linux-64.zip
-          elif [ "${{ matrix.platform }}" == "arm64" ]; then
-            fetch ${Xray_URL}Xray-linux-arm64-v8a.zip
-            unzip Xray-linux-arm64-v8a.zip
-            rm -f Xray-linux-arm64-v8a.zip
-          elif [ "${{ matrix.platform }}" == "armv7" ]; then
-            fetch ${Xray_URL}Xray-linux-arm32-v7a.zip
-            unzip Xray-linux-arm32-v7a.zip
-            rm -f Xray-linux-arm32-v7a.zip
-          elif [ "${{ matrix.platform }}" == "armv6" ]; then
-            fetch ${Xray_URL}Xray-linux-arm32-v6.zip
-            unzip Xray-linux-arm32-v6.zip
-            rm -f Xray-linux-arm32-v6.zip
-          elif [ "${{ matrix.platform }}" == "386" ]; then
-            fetch ${Xray_URL}Xray-linux-32.zip
-            unzip Xray-linux-32.zip
-            rm -f Xray-linux-32.zip
-          elif [ "${{ matrix.platform }}" == "armv5" ]; then
-            fetch ${Xray_URL}Xray-linux-arm32-v5.zip
-            unzip Xray-linux-arm32-v5.zip
-            rm -f Xray-linux-arm32-v5.zip
-          elif [ "${{ matrix.platform }}" == "s390x" ]; then
-            fetch ${Xray_URL}Xray-linux-s390x.zip
-            unzip Xray-linux-s390x.zip
-            rm -f Xray-linux-s390x.zip
-          fi
+          case "${{ matrix.platform }}" in
+            amd64) XRAY_ASSET=Xray-linux-64.zip ;;
+            arm64) XRAY_ASSET=Xray-linux-arm64-v8a.zip ;;
+            armv7) XRAY_ASSET=Xray-linux-arm32-v7a.zip ;;
+            armv6) XRAY_ASSET=Xray-linux-arm32-v6.zip ;;
+            386) XRAY_ASSET=Xray-linux-32.zip ;;
+            armv5) XRAY_ASSET=Xray-linux-arm32-v5.zip ;;
+            s390x) XRAY_ASSET=Xray-linux-s390x.zip ;;
+            *) echo "Unsupported core platform" >&2; exit 1 ;;
+          esac
+          fetch "${Xray_URL}${XRAY_ASSET}"
+          fetch "${Xray_URL}${XRAY_ASSET}.dgst"
+          digest=$(awk '$1 == "SHA2-256=" {print $2}' "${XRAY_ASSET}.dgst")
+          [[ "$digest" =~ ^[a-fA-F0-9]{64}$ ]] || { echo "Missing core SHA256" >&2; exit 1; }
+          echo "$digest  $XRAY_ASSET" | sha256sum --check --strict
+          unzip "$XRAY_ASSET"
+          test -s xray
+          rm -f "$XRAY_ASSET" "${XRAY_ASSET}.dgst"
           rm -f geoip.dat geosite.dat
           fetch https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat
           fetch https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
@@ -251,7 +291,7 @@ jobs:
   #  Windows Build
   # =================================
   build-windows:
-    needs: resolve-xray-version
+    needs: [resolve-xray-version, validate-core]
     name: Build for Windows
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     permissions:
@@ -337,7 +377,14 @@ jobs:
           # Download Xray for Windows
           $Xray_URL = "https://github.com/Rain-kl/Xray-core/releases/download/${{ needs.resolve-xray-version.outputs.version }}/"
           Invoke-WebRequest @retry -Uri "${Xray_URL}Xray-windows-64.zip" -OutFile "Xray-windows-64.zip"
+          Invoke-WebRequest @retry -Uri "${Xray_URL}Xray-windows-64.zip.dgst" -OutFile "Xray-windows-64.zip.dgst"
+          $digestLine = Get-Content "Xray-windows-64.zip.dgst" | Where-Object { $_ -match '^SHA2-256=\s*[a-fA-F0-9]{64}$' }
+          if (@($digestLine).Count -ne 1) { throw "Missing core SHA256" }
+          $expected = ($digestLine -replace '^SHA2-256=\s*', '').Trim()
+          if ((Get-FileHash "Xray-windows-64.zip" -Algorithm SHA256).Hash -ne $expected) { throw "Core checksum mismatch" }
           Expand-Archive -Path "Xray-windows-64.zip" -DestinationPath .
+          if (-not (Test-Path "xray.exe")) { throw "Core executable missing" }
+          Remove-Item "Xray-windows-64.zip.dgst"
           Remove-Item "Xray-windows-64.zip"
           Remove-Item geoip.dat, geosite.dat -ErrorAction SilentlyContinue
           Invoke-WebRequest @retry -Uri "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat" -OutFile "geoip.dat"

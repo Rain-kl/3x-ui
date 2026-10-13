@@ -13,18 +13,35 @@ _openapi:
       title: Acknowledge durable audit events by ID. Node-sync token permitted.
       url: '#acknowledge-durable-audit-events-by-id-node-sync-token-permitted'
     - depth: 2
+      title: Get detailed-hour and daily-summary audit retention.
+      url: '#get-detailed-hour-and-daily-summary-audit-retention'
+    - depth: 2
+      title: Save audit retention and compact/expire existing records.
+      url: '#save-audit-retention-and-compactexpire-existing-records'
+    - depth: 2
+      title: Clear both audit tables. Zero clears all; a positive day count clears
+        before that UTC date.
+      url: '#clear-both-audit-tables-zero-clears-all-a-positive-day-count-clears-before-that-utc-date'
+    - depth: 2
       title: Query connection counts, exact measured bytes, top sites and clients,
-        hourly trend, and recent events.
-      url: '#query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trend-and-recent-events'
+        hourly trends, daily summaries, and recent events.
+      url: '#query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trends-daily-summaries-and-recent-events'
   structuredData:
     headings:
       - content: Fetch up to 1000 pending node audit events. Node-sync token permitted.
         id: fetch-up-to-1000-pending-node-audit-events-node-sync-token-permitted
       - content: Acknowledge durable audit events by ID. Node-sync token permitted.
         id: acknowledge-durable-audit-events-by-id-node-sync-token-permitted
+      - content: Get detailed-hour and daily-summary audit retention.
+        id: get-detailed-hour-and-daily-summary-audit-retention
+      - content: Save audit retention and compact/expire existing records.
+        id: save-audit-retention-and-compactexpire-existing-records
+      - content: Clear both audit tables. Zero clears all; a positive day count clears
+          before that UTC date.
+        id: clear-both-audit-tables-zero-clears-all-a-positive-day-count-clears-before-that-utc-date
       - content: Query connection counts, exact measured bytes, top sites and clients,
-          hourly trend, and recent events.
-        id: query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trend-and-recent-events
+          hourly trends, daily summaries, and recent events.
+        id: query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trends-daily-summaries-and-recent-events
     contents: []
 ---
 
@@ -35,7 +52,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
     </>
   );
 }

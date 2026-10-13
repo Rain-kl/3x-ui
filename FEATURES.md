@@ -15,3 +15,22 @@
 - Preserve original IP destinations and export observed HTTP/TLS/QUIC/FakeDNS domains separately for website audit, including route-only sniffing.
 - Core integration: common/log/access.go and both app/dispatcher dispatch paths; panel: internal/audit/spool.go, audit ingestion and audit event display.
 - Design: [specification](docs/specs/sniffed-audit-domains.md). Implementation decision: [Agent Note](.agents/notes/sniffed-audit-domains.md). Upstream markers: FORK(sniffed-audit-domains). Legacy logs remain compatible; no retroactive IP-to-domain inference.
+
+## Latest custom core only (custom-core-only)
+- Always bundle/use the latest Rain-kl/Xray-core feat release; remove locking and official/arbitrary core switching. Legacy lock state no longer preserves old binaries during upgrades.
+- Validate the selected binary's audit and user rate-limit behavior before publishing panel packages.
+- Design: [spec](docs/specs/custom-core-only.md). Implementation and sync notes: [Agent Note](.agents/notes/custom-core-only.md). Integration marker: FORK(custom-core-only).
+
+## Audit workbench consistency (audit-workbench)
+- Share the existing page shell, cards and theme variants; remove desktop/mobile sidebar sponsorship.
+- Exclude reserved api-inbound control traffic before spooling and from ingestion/queries; prune historical control records without hiding client loopback traffic.
+- [Spec](docs/specs/audit-workbench.md), [Agent Note](.agents/notes/audit-workbench.md). Marker: FORK(audit-workbench).
+
+## Audit retention (audit-retention)
+- Preserve 24h visit details and 30 UTC calendar days of compact node/client/site totals. Historical summaries expose no per-visit timestamps; fresh detail and summary metrics share filters.
+- Configurable retention and confirmed cleanup; atomic compaction, explicit migration, UTC date filtering, and sparse deduplication for delayed delivery.
+- [Spec](docs/specs/audit-retention.md), [Agent Note](.agents/notes/audit-retention.md). Marker: FORK(audit-retention).
+
+## Consistent node audit export (audit-node-consistency)
+- Persist child role from authenticated export, recover existing fresh local records and stop child queue consumption; ACK after parent commit keeps stable ID deduplication.
+- Child UI directs administrators to the central master. [Spec](docs/specs/audit-node-consistency.md), [Agent Note](.agents/notes/audit-node-consistency.md). Marker: FORK(audit-node-consistency).

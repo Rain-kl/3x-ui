@@ -215,11 +215,8 @@ func (a *ServerController) getPanelUpdateInfo(c *gin.Context) {
 // installXray installs or updates Xray to the specified version.
 func (a *ServerController) installXray(c *gin.Context) {
 	version := c.Param("version")
-	if lockStr := c.PostForm("lock"); lockStr != "" {
-		if lockVal, err := strconv.ParseBool(lockStr); err == nil {
-			_ = a.settingService.SetXrayVersionLock(lockVal)
-		}
-	}
+	// FORK(custom-core-only): Legacy lock form values are intentionally ignored.
+
 	err := a.serverService.UpdateXray(version)
 	jsonMsg(c, I18nWeb(c, "pages.index.xraySwitchVersionPopover"), err)
 }

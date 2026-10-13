@@ -1883,21 +1883,13 @@ install_x-ui() {
     # orphaned mtg config for a since-deleted inbound) or the wrong
     # directory permissions.
     if [[ -n "${custom_bin_backup}" ]]; then
+        # FORK(custom-core-only): Never restore old Xray binaries or their lock marker.
         local restored_custom_bin=()
-        local xray_locked="false"
-        if [[ -f "${custom_bin_backup}/.xray_locked" ]]; then
-            xray_locked="true"
-        fi
         while IFS= read -r -d '' f; do
             local rel="${f#"${custom_bin_backup}"/}"
             case "${rel}" in
-                config.json | mtproto | mtproto/* | tuic | tuic/* | tuic-server | tuic-server-*) continue ;;
+                .xray_locked | xray-linux-* | config.json | mtproto | mtproto/* | tuic | tuic/* | tuic-server | tuic-server-*) continue ;;
             esac
-            if [[ "${xray_locked}" == "true" && "${rel}" == xray-linux-* ]]; then
-                cp -a "${f}" "bin/${rel}"
-                restored_custom_bin+=("${rel} (locked)")
-                continue
-            fi
             if [[ ! -e "bin/${rel}" ]]; then
                 mkdir -p "bin/$(dirname "${rel}")"
                 cp -a "${f}" "bin/${rel}"
@@ -1911,6 +1903,9 @@ install_x-ui() {
         fi
     fi
     trap - EXIT INT TERM
+
+    # FORK(custom-core-only): Retire legacy lock state after replacing the core.
+    rm -f bin/.xray_locked
 
     rm -f bin/tuic-server bin/tuic-server-* > /dev/null 2>&1 || true
     rm -rf bin/tuic > /dev/null 2>&1 || true

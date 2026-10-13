@@ -22,14 +22,21 @@ const MaxSpoolBytes = 10 << 20
 
 var accessLine = regexp.MustCompile(`\bfrom (\S+) accepted (\S+)`)
 
+// SummaryMetrics is used only when recovering a former standalone node's daily buckets.
+type SummaryMetrics struct {
+	Connections int64 `json:"connections"`
+	Measured    int64 `json:"measured"`
+}
+
 type Event struct {
-	ID          string    `json:"id"`
-	Time        time.Time `json:"time"`
-	Inbound     string    `json:"inbound"`
-	Outbound    string    `json:"outbound"`
-	Client      string    `json:"client"`
-	Source      string    `json:"source"`
-	Destination string    `json:"destination"`
+	Summary     *SummaryMetrics `json:"summary,omitempty"`
+	ID          string          `json:"id"`
+	Time        time.Time       `json:"time"`
+	Inbound     string          `json:"inbound"`
+	Outbound    string          `json:"outbound"`
+	Client      string          `json:"client"`
+	Source      string          `json:"source"`
+	Destination string          `json:"destination"`
 	// FORK(sniffed-audit-domains): Carry domain metadata through node spool and acknowledgement.
 	SniffedDomain string `json:"sniffedDomain,omitempty"`
 	Uplink        *int64 `json:"uplink,omitempty"`
@@ -140,6 +147,10 @@ func (s *Spool) Capture(line string) bool {
 				e.Outbound = route[len(route)-1]
 			}
 		}
+	}
+	// FORK(audit-workbench): Consume internal API logs without filling the client audit spool.
+	if e.Inbound == "api" {
+		return true
 	}
 	for i, field := range fields {
 		switch {

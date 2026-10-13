@@ -47,8 +47,17 @@ until curl -sfL -o "Xray-linux-${ARCH}.zip.tmp" "$XRAY_URL"; do
     attempt=$((attempt + 1))
 done
 mv "Xray-linux-${ARCH}.zip.tmp" "Xray-linux-${ARCH}.zip"
+# FORK(custom-core-only): Verify every architecture before adding its binary to the image.
+curl -sfL --retry 5 --retry-all-errors --retry-delay 3 -o "Xray-linux-${ARCH}.zip.dgst" "${XRAY_URL}.dgst"
+digest=$(awk '$1 == "SHA2-256=" {print $2}' "Xray-linux-${ARCH}.zip.dgst")
+if ! printf '%s\n' "$digest" | grep -Eq '^[a-fA-F0-9]{64}$'; then
+    echo "DockerInit: missing custom core SHA256" >&2
+    exit 1
+fi
+printf '%s  %s\n' "$digest" "Xray-linux-${ARCH}.zip" | sha256sum -c -
 unzip "Xray-linux-${ARCH}.zip"
-rm -f "Xray-linux-${ARCH}.zip" geoip.dat geosite.dat
+test -s xray
+rm -f "Xray-linux-${ARCH}.zip" "Xray-linux-${ARCH}.zip.dgst" geoip.dat geosite.dat
 mv xray "xray-linux-${FNAME}"
 # mtg-multi (MTProto sidecar) ships prebuilt release binaries for every target
 # we package, so download and unpack the matching one instead of compiling.

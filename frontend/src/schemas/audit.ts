@@ -25,6 +25,22 @@ const EventSchema = z.object({
 });
 
 export const AuditSummarySchema = z.object({
+  centralized: z.boolean().default(false),
+  dailyTotal: z.number().default(0),
+  days: z
+    .array(
+      z.object({
+        day: z.string(),
+        nodeId: z.number(),
+        client: z.string(),
+        site: z.string(),
+        connections: z.number(),
+        uplink: z.number(),
+        downlink: z.number(),
+        measured: z.number(),
+      }),
+    )
+    .default([]),
   connections: z.number(),
   uplink: z.number(),
   downlink: z.number(),
@@ -39,3 +55,9 @@ export const AuditSummarySchema = z.object({
 });
 
 export type AuditSummary = z.infer<typeof AuditSummarySchema>;
+
+export const AuditRetentionSchema = z.object({
+  detailHours: z.number().int().min(1).max(720),
+  summaryDays: z.number().int().min(1).max(365),
+});
+export type AuditRetention = z.infer<typeof AuditRetentionSchema>;

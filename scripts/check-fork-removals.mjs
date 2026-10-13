@@ -18,3 +18,12 @@ assert.match(read('internal/web/runtime/local.go'), /SetUserRateLimits/);
 assert.match(read('internal/xray/api.go'), /DownlinkGroupSpeedLimit:\s+nativeRateLimitUint/);
 assert.match(read('internal/web/service/xray.go'), /NativeRateLimitsChanged/);
 console.log('native-rate-limits: TC removal and core integration guards passed');
+
+for (const name of ['internal/web/service/server.go', 'internal/web/service/setting.go',
+  'internal/web/controller/server.go', 'internal/web/service/panel/panel.go']) {
+  assert.doesNotMatch(read(name), /GetXrayVersionLock|SetXrayVersionLock|XUI_LOCK_XRAY/);
+}
+assert.doesNotMatch(read('frontend/src/pages/index/VersionModal.tsx'), /isLocked|selectedVersion|<Select|<Switch/);
+assert.doesNotMatch(read('frontend/src/layouts/AppSidebar.tsx'), /SponsorSlot|key: '\/sponsors'/);
+assert.match(read('internal/audit/spool.go'), /e.Inbound ===? "api"/);
+console.log('custom-core-only and audit-workbench removals passed');

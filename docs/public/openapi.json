@@ -6370,28 +6370,159 @@
         }
       }
     },
+    "/panel/api/audit/settings": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Get detailed-hour and daily-summary audit retention.",
+        "operationId": "get_panel_api_audit_settings",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "detailHours": 24,
+                    "summaryDays": 30
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Save audit retention and compact/expire existing records.",
+        "operationId": "post_panel_api_audit_settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "detailHours": 24,
+                "summaryDays": 30
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/clear": {
+      "post": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Clear both audit tables. Zero clears all; a positive day count clears before that UTC date.",
+        "operationId": "post_panel_api_audit_clear",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "olderThanDays": 7
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/audit/summary": {
       "get": {
         "tags": [
           "Audit"
         ],
-        "summary": "Query connection counts, exact measured bytes, top sites and clients, hourly trend, and recent events.",
+        "summary": "Query connection counts, exact measured bytes, top sites and clients, hourly trends, daily summaries, and recent events.",
         "operationId": "get_panel_api_audit_summary",
         "parameters": [
           {
             "name": "hours",
             "in": "query",
             "required": false,
-            "description": "3, 12 or 24 hours.",
+            "description": "3, 12, 24, 168 (7 days) or 720 (30 days) hours.",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "UTC date YYYY-MM-DD; overrides the hours window and selects that day.",
+            "schema": {
+              "type": "string"
             }
           },
           {
             "name": "nodeId",
             "in": "query",
             "required": false,
-            "description": "",
+            "description": "0 for all nodes; -1 for the local node; a positive ID for one child.",
             "schema": {
               "type": "integer"
             }
@@ -6439,6 +6570,50 @@
                       "type": "string"
                     },
                     "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "days": [
+                      {
+                        "day": "2026-10-13",
+                        "nodeId": 0,
+                        "client": "alice",
+                        "site": "example.com",
+                        "connections": 12,
+                        "uplink": 1024,
+                        "downlink": 8192,
+                        "measured": 12
+                      }
+                    ],
+                    "dailyTotal": 1,
+                    "centralized": false,
+                    "connections": 12,
+                    "uplink": 1024,
+                    "downlink": 8192,
+                    "measured": 12,
+                    "sites": [
+                      {
+                        "name": "example.com",
+                        "connections": 12,
+                        "uplink": 1024,
+                        "downlink": 8192,
+                        "measured": 12,
+                        "uniqueSites": 1
+                      }
+                    ],
+                    "clients": [],
+                    "alerts": [],
+                    "hours": [],
+                    "events": [],
+                    "total": 0,
+                    "nodes": [
+                      {
+                        "id": 0,
+                        "name": "Local"
+                      }
+                    ]
                   }
                 }
               }
@@ -6847,7 +7022,7 @@
         "tags": [
           "Server"
         ],
-        "summary": "List Xray binary versions available for install on this host.",
+        "summary": "Return the latest published Rain-kl/Xray-core feat version.",
         "operationId": "get_panel_api_server_getXrayVersion",
         "responses": {
           "200": {
@@ -6869,9 +7044,7 @@
                 "example": {
                   "success": true,
                   "obj": [
-                    "v25.10.31",
-                    "v25.9.15",
-                    "v25.8.1"
+                    "v26.10.10-feat.3"
                   ]
                 }
               }
@@ -7425,14 +7598,14 @@
         "tags": [
           "Server"
         ],
-        "summary": "Download and install the specified Xray version. Pass \"latest\" for the newest release.",
+        "summary": "Install the latest Rain-kl/Xray-core feat release. Legacy locking is ignored.",
         "operationId": "post_panel_api_server_installXray_version",
         "parameters": [
           {
             "name": "version",
             "in": "path",
             "required": true,
-            "description": "Xray tag (e.g. v25.10.31) or \"latest\".",
+            "description": "\"latest\" or the currently latest published feat tag; other versions are rejected.",
             "schema": {
               "type": "string"
             }

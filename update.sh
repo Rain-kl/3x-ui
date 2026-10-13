@@ -607,18 +607,7 @@ update_x-ui() {
         rm ${xui_folder}/x-ui.service.rhel -f > /dev/null 2>&1
         rm ${xui_folder}/x-ui -f > /dev/null 2>&1
         rm ${xui_folder}/x-ui.sh -f > /dev/null 2>&1
-        local lock_xray="${XUI_LOCK_XRAY:-false}"
-        local locked_marker="${xui_folder}/bin/.xray_locked"
-        local xray_backup=""
-        if [[ "${lock_xray}" == "true" || -f "${locked_marker}" ]]; then
-            for f in "${xui_folder}/bin/xray-linux-"*; do
-                if [[ -f "${f}" ]]; then
-                    xray_backup="/tmp/x-ui-xray-locked-backup.$$"
-                    cp -a "${f}" "${xray_backup}" > /dev/null 2>&1
-                    break
-                fi
-            done
-        fi
+        # FORK(custom-core-only): Ignore legacy lock markers and replace the old core.
 
         echo -e "${green}Removing old mtg version...${plain}"
         rm ${xui_folder}/bin/mtg-linux-$(arch) -f > /dev/null 2>&1
@@ -637,16 +626,17 @@ update_x-ui() {
     echo -e "${green}Installing new x-ui version...${plain}"
     tar zxvf x-ui-linux-$(arch).tar.gz > /dev/null 2>&1
     if [[ $? -ne 0 ]]; then
-        rm -f "${xray_backup}"
         rm x-ui-linux-$(arch).tar.gz -f > /dev/null 2>&1
         _fail "ERROR: Failed to extract the x-ui release archive -- the previous installation has already been removed, so the panel will not start until this is fixed; try running the update again"
     fi
     rm x-ui-linux-$(arch).tar.gz -f > /dev/null 2>&1
     cd x-ui > /dev/null 2>&1
     if [[ $? -ne 0 || ! -s x-ui ]]; then
-        rm -f "${xray_backup}"
         _fail "ERROR: Extracted x-ui archive is missing the x-ui binary -- the previous installation has already been removed, so the panel will not start until this is fixed; try running the update again"
     fi
+    # FORK(custom-core-only): Retire legacy lock state after replacing the core.
+    rm -f bin/.xray_locked
+
     chmod +x x-ui > /dev/null 2>&1
 
     # Check the system's architecture and rename the file accordingly.
@@ -661,16 +651,6 @@ update_x-ui() {
         fi
     fi
 
-    if [[ -n "${xray_backup}" && -f "${xray_backup}" ]]; then
-        echo -e "${green}Xray version is locked, restoring existing Xray binary...${plain}"
-        local target_xray="bin/xray-linux-$(arch)"
-        if [[ $(arch) == "armv5" || $(arch) == "armv6" || $(arch) == "armv7" ]]; then
-            target_xray="bin/xray-linux-arm32"
-        fi
-        cp -a "${xray_backup}" "${target_xray}" > /dev/null 2>&1
-        touch bin/.xray_locked > /dev/null 2>&1
-        rm -f "${xray_backup}"
-    fi
 
     chmod +x x-ui bin/xray-linux-$(arch) > /dev/null 2>&1
     if [[ -f bin/mtg-linux-arm ]]; then

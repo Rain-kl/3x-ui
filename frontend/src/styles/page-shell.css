@@ -1,4 +1,6 @@
+/* FORK(audit-workbench): Reuse the existing page theme and responsive card layout. */
 .index-page,
+.audit-page,
 .clients-page,
 .inbounds-page,
 .xray-page,
@@ -14,6 +16,7 @@
 }
 
 .index-page.is-dark,
+.audit-page.is-dark,
 .clients-page.is-dark,
 .inbounds-page.is-dark,
 .xray-page.is-dark,
@@ -27,6 +30,7 @@
 }
 
 .index-page.is-dark.is-ultra,
+.audit-page.is-dark.is-ultra,
 .clients-page.is-dark.is-ultra,
 .inbounds-page.is-dark.is-ultra,
 .xray-page.is-dark.is-ultra,
@@ -41,7 +45,9 @@
 
 .index-page .ant-layout,
 .index-page .ant-layout-content,
+.audit-page .ant-layout,
 .clients-page .ant-layout,
+.audit-page .ant-layout-content,
 .clients-page .ant-layout-content,
 .inbounds-page .ant-layout,
 .inbounds-page .ant-layout-content,
@@ -59,6 +65,7 @@
 }
 
 .index-page .content-shell,
+.audit-page .content-shell,
 .clients-page .content-shell,
 .inbounds-page .content-shell,
 .xray-page .content-shell,
@@ -70,6 +77,7 @@
 }
 
 .index-page .content-area,
+.audit-page .content-area,
 .clients-page .content-area,
 .inbounds-page .content-area,
 .xray-page .content-area,
@@ -80,6 +88,7 @@
 }
 
 @media (max-width: 768px) {
+  .audit-page .content-area,
   .clients-page .content-area,
   .inbounds-page .content-area,
   .nodes-page .content-area,
@@ -174,6 +183,7 @@ body.dark .ant-dropdown-menu-item-divider {
   display: none;
 }
 
+.audit-page .summary-card,
 .clients-page .summary-card,
 .inbounds-page .summary-card,
 .nodes-page .summary-card,
@@ -182,6 +192,7 @@ body.dark .ant-dropdown-menu-item-divider {
 }
 
 @media (max-width: 768px) {
+  .audit-page .summary-card,
   .clients-page .summary-card,
   .inbounds-page .summary-card,
   .nodes-page .summary-card,

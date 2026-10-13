@@ -19,11 +19,12 @@ function statusFromServer(versionLock: boolean): Status {
 }
 
 describe('xray version lock', () => {
-  it('keeps versionLock from /server/status so the Xray update switch can restore it', () => {
-    expect(statusFromServer(true).xray.versionLock).toBe(true);
-  });
+  it('ignores legacy versionLock while reading the Xray core version', () => {
+    for (const versionLock of [true, false]) {
+      const status = statusFromServer(versionLock);
 
-  it('keeps an unlocked versionLock as false instead of dropping the field', () => {
-    expect(statusFromServer(false).xray.versionLock).toBe(false);
+      expect(status.xray.version).toBe('26.7.28');
+      expect(status.xray).not.toHaveProperty('versionLock');
+    }
   });
 });

@@ -92,10 +92,9 @@ type Status struct {
 		Write uint64 `json:"write"`
 	} `json:"diskTraffic"`
 	Xray struct {
-		State       ProcessState `json:"state"`
-		ErrorMsg    string       `json:"errorMsg"`
-		Version     string       `json:"version"`
-		VersionLock bool         `json:"versionLock"`
+		State    ProcessState `json:"state"`
+		ErrorMsg string       `json:"errorMsg"`
+		Version  string       `json:"version"`
 	} `json:"xray"`
 	// AmneziaWG gates the overview's AmneziaWG log view: Configured stays true
 	// while an inbound exists but its embedded interface isn't up yet, which
@@ -702,7 +701,6 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 		status.Xray.ErrorMsg = s.xrayService.GetXrayResult()
 	}
 	status.Xray.Version = s.xrayService.GetXrayVersion()
-	status.Xray.VersionLock, _ = s.settingService.GetXrayVersionLock()
 
 	var amneziawgCount int64
 	if err := database.GetDB().Model(model.Inbound{}).
@@ -876,46 +874,18 @@ const (
 )
 
 func (s *ServerService) GetXrayVersions() ([]string, error) {
-	const (
-		upstreamReleasesURL = "https://api.github.com/repos/XTLS/Xray-core/releases?per_page=100"
-		customReleasesURL   = "https://api.github.com/repos/Rain-kl/Xray-core/releases?per_page=100"
-	)
-
+	// FORK(custom-core-only): Official releases cannot provide this fork's audit and rate features.
+	const customReleasesURL = "https://api.github.com/repos/Rain-kl/Xray-core/releases?per_page=100"
 	client := s.settingService.NewProxiedHTTPClient(10 * time.Second)
-	customReleases, err := fetchGitHubReleases(client, customReleasesURL)
+	releases, err := fetchGitHubReleases(client, customReleasesURL)
 	if err != nil {
 		return nil, fmt.Errorf("fetch custom Xray releases: %w", err)
 	}
-	customVersions := featXrayReleaseVersions(customReleases)
-	if len(customVersions) == 0 {
+	versions := featXrayReleaseVersions(releases)
+	if len(versions) == 0 {
 		return nil, fmt.Errorf("Rain-kl/Xray-core has no published v*-feat.* release")
 	}
-
-	releases, err := fetchGitHubReleases(client, upstreamReleasesURL)
-	if err != nil {
-		return nil, err
-	}
-
-	var versions []string
-	for _, release := range releases {
-		tagVersion := strings.TrimPrefix(release.TagName, "v")
-		tagParts := strings.Split(tagVersion, ".")
-		if len(tagParts) != 3 {
-			continue
-		}
-
-		major, err1 := strconv.Atoi(tagParts[0])
-		minor, err2 := strconv.Atoi(tagParts[1])
-		patch, err3 := strconv.Atoi(tagParts[2])
-		if err1 != nil || err2 != nil || err3 != nil {
-			continue
-		}
-
-		if major > 26 || (major == 26 && minor > 6) || (major == 26 && minor == 6 && patch >= 27) {
-			versions = append(versions, release.TagName)
-		}
-	}
-	return append(customVersions, versions...), nil
+	return versions[:1], nil
 }
 
 func fetchGitHubReleases(client *http.Client, url string) ([]Release, error) {
@@ -1042,11 +1012,11 @@ func (s *ServerService) downloadXRay(version string) (string, error) {
 	}
 
 	fileName := fmt.Sprintf("Xray-%s-%s.zip", osName, arch)
-	repository := "XTLS/Xray-core"
-	if strings.Contains(version, "-audit.") || strings.Contains(version, "-feat.") {
-		repository = "Rain-kl/Xray-core"
+	// FORK(custom-core-only): Never download an official or arbitrary replacement binary.
+	if !featXrayVersionRegex.MatchString(version) {
+		return "", fmt.Errorf("only Rain-kl/Xray-core feat releases are supported")
 	}
-	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", repository, version, fileName)
+	url := fmt.Sprintf("https://github.com/Rain-kl/Xray-core/releases/download/%s/%s", version, fileName)
 	client := s.settingService.NewProxiedHTTPClient(60 * time.Second)
 	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if reqErr != nil {
@@ -1150,26 +1120,28 @@ func parseXrayDigestSHA256(dgst []byte) (string, error) {
 	return "", fmt.Errorf("xray checksum: no SHA2-256 entry in digest")
 }
 
-var xrayVersionRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-(?:audit|feat)\.\d+)?$`)
-
 func (s *ServerService) UpdateXray(version string) error {
+	// FORK(custom-core-only): Resolve and validate before stopping the running core.
 	version = strings.TrimSpace(version)
-	if !strings.HasPrefix(version, "v") {
-		version = "v" + version
+	if version != "latest" {
+		if !strings.HasPrefix(version, "v") {
+			version = "v" + version
+		}
+		if hasLocalNativeRateLimits() && !xray.SupportsNativeRateLimitVersion(version) {
+			return fmt.Errorf("configured bandwidth limits require Rain-kl/Xray-core v26.10.10-feat.2 or newer")
+		}
+		if !featXrayVersionRegex.MatchString(version) {
+			return fmt.Errorf("only the latest Rain-kl/Xray-core feat release is supported; request latest")
+		}
 	}
-	if !xrayVersionRegex.MatchString(version) {
-		return fmt.Errorf("invalid xray version format %q, expected e.g. v26.7.28", version)
+	versions, err := s.GetXrayVersions()
+	if err != nil {
+		return err
 	}
-
-	// FORK(native-rate-limits): Prevent switching to a core that silently ignores saved caps.
-	if hasLocalNativeRateLimits() && !xray.SupportsNativeRateLimitVersion(version) {
-		return fmt.Errorf("configured bandwidth limits require Rain-kl/Xray-core v26.10.10-feat.2 or newer")
+	if version != "latest" && version != versions[0] {
+		return fmt.Errorf("only the latest custom core %s is supported", versions[0])
 	}
-
-	// 1. Stop xray before doing anything
-	if err := s.StopXrayService(); err != nil {
-		logger.Warning("failed to stop xray before update:", err)
-	}
+	version = versions[0]
 
 	// 2. Download the zip
 	zipFileName, err := s.downloadXRay(version)
@@ -1191,6 +1163,25 @@ func (s *ServerService) UpdateXray(version string) error {
 	reader, err := zip.NewReader(zipFile, stat.Size())
 	if err != nil {
 		return err
+	}
+
+	// FORK(custom-core-only): Download and verify the archive before interrupting live connections.
+	binaryName := "xray"
+	if runtime.GOOS == "windows" {
+		binaryName = "xray.exe"
+	}
+	found := false
+	for _, entry := range reader.File {
+		if entry.Name == binaryName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("custom Xray archive is missing %s", binaryName)
+	}
+	if err := s.StopXrayService(); err != nil {
+		return fmt.Errorf("stop Xray before installing verified core: %w", err)
 	}
 
 	// 3. Helper to extract files

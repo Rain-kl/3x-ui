@@ -3,6 +3,7 @@ package model
 import "time"
 
 type AuditEvent struct {
+	Delivered   *bool     `json:"-" gorm:"default:true"`
 	ID          string    `json:"id" gorm:"primaryKey;size:32"`
 	NodeID      int       `json:"nodeId" gorm:"index:idx_audit_time_node,priority:1"`
 	Time        time.Time `json:"time" gorm:"index:idx_audit_time_node,priority:2;index"`

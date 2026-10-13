@@ -449,18 +449,52 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'GET',
+        path: '/panel/api/audit/settings',
+        summary: 'Get detailed-hour and daily-summary audit retention.',
+        response: '{"success":true,"obj":{"detailHours":24,"summaryDays":30}}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/audit/settings',
+        summary: 'Save audit retention and compact/expire existing records.',
+        body: '{"detailHours":24,"summaryDays":30}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/audit/clear',
+        summary:
+          'Clear both audit tables. Zero clears all; a positive day count clears before that UTC date.',
+        body: '{"olderThanDays":7}',
+      },
+      {
+        method: 'GET',
         path: '/panel/api/audit/summary',
         summary:
-          'Query connection counts, exact measured bytes, top sites and clients, hourly trend, and recent events.',
+          'Query connection counts, exact measured bytes, top sites and clients, hourly trends, daily summaries, and recent events.',
+        response:
+          '{\n  "success": true,\n  "obj": {\n    "days": [{ "day": "2026-10-13", "nodeId": 0, "client": "alice", "site": "example.com", "connections": 12, "uplink": 1024, "downlink": 8192, "measured": 12 }],\n    "dailyTotal": 1,\n    "centralized": false,\n    "connections": 12,\n    "uplink": 1024,\n    "downlink": 8192,\n    "measured": 12,\n    "sites": [{ "name": "example.com", "connections": 12, "uplink": 1024, "downlink": 8192, "measured": 12, "uniqueSites": 1 }],\n    "clients": [],\n    "alerts": [],\n    "hours": [],\n    "events": [],\n    "total": 0,\n    "nodes": [{ "id": 0, "name": "Local" }]\n  }\n}',
         params: [
           {
             name: 'hours',
             in: 'query',
             type: 'integer',
             optional: true,
-            desc: '3, 12 or 24 hours.',
+            desc: '3, 12, 24, 168 (7 days) or 720 (30 days) hours.',
           },
-          { name: 'nodeId', in: 'query', type: 'integer', optional: true },
+          {
+            name: 'day',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'UTC date YYYY-MM-DD; overrides the hours window and selects that day.',
+          },
+          {
+            name: 'nodeId',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            desc: '0 for all nodes; -1 for the local node; a positive ID for one child.',
+          },
           { name: 'client', in: 'query', type: 'string', optional: true },
           { name: 'site', in: 'query', type: 'string', optional: true },
           { name: 'offset', in: 'query', type: 'integer', optional: true },
@@ -588,8 +622,8 @@ export const sections: readonly Section[] = [
       {
         method: 'GET',
         path: '/panel/api/server/getXrayVersion',
-        summary: 'List Xray binary versions available for install on this host.',
-        response: '{\n  "success": true,\n  "obj": ["v25.10.31", "v25.9.15", "v25.8.1"]\n}',
+        summary: 'Return the latest published Rain-kl/Xray-core feat version.',
+        response: '{\n  "success": true,\n  "obj": ["v26.10.10-feat.3"]\n}',
       },
       {
         method: 'GET',
@@ -687,14 +721,13 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/server/installXray/:version',
-        summary:
-          'Download and install the specified Xray version. Pass "latest" for the newest release.',
+        summary: 'Install the latest Rain-kl/Xray-core feat release. Legacy locking is ignored.',
         params: [
           {
             name: 'version',
             in: 'path',
             type: 'string',
-            desc: 'Xray tag (e.g. v25.10.31) or "latest".',
+            desc: '"latest" or the currently latest published feat tag; other versions are rejected.',
           },
         ],
       },

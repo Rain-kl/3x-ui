@@ -299,7 +299,7 @@ func (r *Remote) do(ctx context.Context, method, path string, body any) (*envelo
 }
 
 func (r *Remote) FetchAudit(ctx context.Context) ([]audit.Event, error) {
-	env, err := r.do(ctx, http.MethodGet, "panel/api/audit/pending", nil)
+	env, err := r.do(ctx, http.MethodGet, "panel/api/audit/pending?summaries=1", nil)
 	if err != nil {
 		return nil, err
 	}
