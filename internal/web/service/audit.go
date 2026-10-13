@@ -2,6 +2,7 @@ package service
 
 import (
 	"net"
+	"net/url"
 	"strings"
 	"time"
 
@@ -54,9 +55,12 @@ type AuditNode struct {
 type AuditService struct{}
 
 func auditHost(destination string) (string, string) {
-	_, address, ok := strings.Cut(destination, ":")
-	if !ok {
-		address = destination
+	// FORK(sniffed-audit-domains): HTTP access targets are URLs, not tcp-prefixed addresses.
+	address := strings.TrimPrefix(strings.TrimPrefix(destination, "tcp:"), "udp:")
+	if strings.HasPrefix(address, "//") || strings.Contains(address, "://") {
+		if parsed, err := url.Parse(address); err == nil && parsed.Host != "" {
+			address = parsed.Host
+		}
 	}
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {

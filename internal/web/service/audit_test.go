@@ -20,7 +20,7 @@ func TestAuditIngestAndSummary(t *testing.T) {
 	service := AuditService{}
 	events := []audit.Event{
 		{ID: "one", Time: now, Inbound: "in", Client: xray.ScopedEmail("in", "alice"), Destination: "tcp:192.0.2.10:443", SniffedDomain: "www.example.com", Uplink: &one, Downlink: &two},
-		{ID: "two", Time: now, Inbound: "in", Client: "bob", Destination: "tcp:other.example.com:443"},
+		{ID: "two", Time: now, Inbound: "in", Client: "bob", Destination: "//other.example.com:443"},
 	}
 	if err := service.Ingest(7, events); err != nil {
 		t.Fatal(err)
