@@ -4953,6 +4953,10 @@
       "description": "Manage inbound configurations and their clients. All endpoints live under /panel/api/inbounds and require a logged-in session or Bearer token. Link-generating endpoints honour forwarded headers only when the request comes from a configured trusted proxy."
     },
     {
+      "name": "Audit",
+      "description": "Connection audit batches and the master dashboard."
+    },
+    {
       "name": "Server",
       "description": "System status, log retrieval, certificate generators, Xray binary management, and backup/restore. All under /panel/api/server."
     },
@@ -6284,6 +6288,158 @@
                 "example": {
                   "success": true,
                   "msg": "Inbound updated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/pending": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Fetch up to 1000 pending node audit events. Node-sync token permitted.",
+        "operationId": "get_panel_api_audit_pending",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/ack": {
+      "post": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Acknowledge durable audit events by ID. Node-sync token permitted.",
+        "operationId": "post_panel_api_audit_ack",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "ids": [
+                  "event-id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/summary": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Query connection counts, exact measured bytes, top sites and clients, hourly trend, and recent events.",
+        "operationId": "get_panel_api_audit_summary",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "description": "3, 12 or 24 hours.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "site",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
                 }
               }
             }

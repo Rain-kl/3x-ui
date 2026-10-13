@@ -115,6 +115,7 @@
     "clients": "客户端",
     "groups": "分组",
     "nodes": "节点",
+    "audit": "日志审计",
     "settings": "面板设置",
     "xray": "Xray 配置",
     "routing": "路由",
@@ -130,6 +131,7 @@
     "subFormats": "Sub Formats"
   },
   "pages": {
+    "audit": {"title": "日志审计", "subtitle": "按节点查看客户端访问目标、流量和连接频次。", "allNodes": "所有节点", "clientFilter": "筛选客户端邮箱", "siteFilter": "筛选网站", "connections": "连接数", "upload": "上传", "download": "下载", "measured": "已计量连接", "unmeasured": "有 {count} 条连接来自旧版核心，无法提供字节数。", "reviewHighFrequency": "建议检查高频客户端（启发式提示，不代表确认滥用）", "sites": "网站", "topSites": "网站流量排行", "hourlyTrend": "每小时连接趋势与客户端排行", "client": "客户端", "traffic": "流量", "recentEvents": "最近连接", "time": "时间", "node": "节点", "localNode": "本机", "inbound": "入站", "source": "源地址", "destination": "目标地址", "unavailable": "不可用"},
     "login": {
       "hello": "你好",
       "title": "欢迎",

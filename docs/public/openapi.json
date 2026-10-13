@@ -1709,6 +1709,15 @@
             "format": "int64",
             "type": "integer"
           },
+          "downLimit": {
+            "type": "integer"
+          },
+          "downLimitByInbound": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
           "email": {
             "description": "Client email identifier",
             "type": "string"
@@ -1737,6 +1746,12 @@
           "id": {
             "description": "Unique client identifier",
             "type": "string"
+          },
+          "inboundTraffics": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ClientInboundTraffic"
+            },
+            "type": "object"
           },
           "keepAlive": {
             "description": "Seconds between PersistentKeepalive packets; 0 sends none, omit to keep the stored value",
@@ -1807,6 +1822,13 @@
             "format": "int64",
             "type": "integer"
           },
+          "totalGBByInbound": {
+            "additionalProperties": {
+              "format": "int64",
+              "type": "integer"
+            },
+            "type": "object"
+          },
           "trafficReset": {
             "description": "Per-client traffic reset cycle, independent of the inbound's own (#5497).",
             "enum": [
@@ -1855,18 +1877,81 @@
             "format": "int64",
             "type": "integer"
           },
+          "down": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "downLimit": {
+            "example": 50,
+            "minimum": 0,
+            "type": "integer"
+          },
           "flowOverride": {
             "type": "string"
           },
           "inboundId": {
+            "type": "integer"
+          },
+          "totalGB": {
+            "example": 53687091200,
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "up": {
+            "format": "int64",
             "type": "integer"
           }
         },
         "required": [
           "clientId",
           "createdAt",
+          "down",
+          "downLimit",
           "flowOverride",
-          "inboundId"
+          "inboundId",
+          "totalGB",
+          "up"
+        ],
+        "type": "object"
+      },
+      "ClientInboundTraffic": {
+        "properties": {
+          "depleted": {
+            "type": "boolean"
+          },
+          "down": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "inboundId": {
+            "type": "integer"
+          },
+          "remained": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "up": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "used": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "depleted",
+          "down",
+          "inboundId",
+          "remained",
+          "total",
+          "up",
+          "used"
         ],
         "type": "object"
       },
@@ -1936,6 +2021,11 @@
           },
           "createdAt": {
             "format": "int64",
+            "type": "integer"
+          },
+          "downLimit": {
+            "example": 100,
+            "minimum": 0,
             "type": "integer"
           },
           "email": {
@@ -2031,6 +2121,7 @@
           "auth",
           "comment",
           "createdAt",
+          "downLimit",
           "email",
           "enable",
           "expiryTime",
@@ -2176,6 +2267,16 @@
             "format": "int64",
             "type": "integer"
           },
+          "downLimit": {
+            "example": 100,
+            "type": "integer"
+          },
+          "downLimitByInbound": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
           "email": {
             "example": "alice@example.com",
             "type": "string"
@@ -2252,6 +2353,7 @@
         },
         "required": [
           "createdAt",
+          "downLimit",
           "email",
           "enable",
           "expiryTime",
@@ -3033,6 +3135,12 @@
       "Inbound": {
         "description": "Inbound represents an Xray inbound configuration with traffic statistics and settings.",
         "properties": {
+          "clientDownLimit": {
+            "description": "ClientDownLimit sets peak outbound bandwidth for each client on this inbound in Mbps (0 = unlimited).",
+            "example": 10,
+            "minimum": 0,
+            "type": "integer"
+          },
           "clientStats": {
             "description": "Client traffic statistics",
             "items": {
@@ -3076,6 +3184,12 @@
           "id": {
             "description": "Unique identifier",
             "example": 1,
+            "type": "integer"
+          },
+          "inboundDownLimit": {
+            "description": "InboundDownLimit sets peak outbound bandwidth for this entire inbound in Mbps (0 = unlimited).",
+            "example": 100,
+            "minimum": 0,
             "type": "integer"
           },
           "lastTrafficResetTime": {
@@ -3154,6 +3268,12 @@
             "format": "int64",
             "type": "integer"
           },
+          "trafficRatio": {
+            "description": "TrafficRatio applies a multiplier when accounting client traffic (default: 1.0).",
+            "example": 1.5,
+            "minimum": 0,
+            "type": "number"
+          },
           "trafficReset": {
             "description": "Traffic reset schedule",
             "enum": [
@@ -3179,6 +3299,7 @@
           }
         },
         "required": [
+          "clientDownLimit",
           "clientStats",
           "disableFlow",
           "down",
@@ -3186,6 +3307,7 @@
           "excludeFromSub",
           "expiryTime",
           "id",
+          "inboundDownLimit",
           "lastTrafficResetTime",
           "listen",
           "port",
@@ -3199,6 +3321,7 @@
           "subSortIndex",
           "tag",
           "total",
+          "trafficRatio",
           "trafficReset",
           "trafficResetDay",
           "up"
@@ -4830,6 +4953,10 @@
       "description": "Manage inbound configurations and their clients. All endpoints live under /panel/api/inbounds and require a logged-in session or Bearer token. Link-generating endpoints honour forwarded headers only when the request comes from a configured trusted proxy."
     },
     {
+      "name": "Audit",
+      "description": "Connection audit batches and the master dashboard."
+    },
+    {
       "name": "Server",
       "description": "System status, log retrieval, certificate generators, Xray binary management, and backup/restore. All under /panel/api/server."
     },
@@ -5152,6 +5279,7 @@
                   "success": true,
                   "obj": [
                     {
+                      "clientDownLimit": 10,
                       "clientStats": [
                         {
                           "down": 2097152,
@@ -5180,6 +5308,7 @@
                       "expiryTime": 0,
                       "fallbackParent": null,
                       "id": 1,
+                      "inboundDownLimit": 100,
                       "lastTrafficResetTime": 0,
                       "listen": "",
                       "nodeId": null,
@@ -5195,6 +5324,7 @@
                       "subSortIndex": 1,
                       "tag": "in-443-tcp",
                       "total": 0,
+                      "trafficRatio": 1.5,
                       "trafficReset": "never",
                       "trafficResetDay": 1,
                       "up": 0
@@ -6158,6 +6288,158 @@
                 "example": {
                   "success": true,
                   "msg": "Inbound updated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/pending": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Fetch up to 1000 pending node audit events. Node-sync token permitted.",
+        "operationId": "get_panel_api_audit_pending",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/ack": {
+      "post": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Acknowledge durable audit events by ID. Node-sync token permitted.",
+        "operationId": "post_panel_api_audit_ack",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "ids": [
+                  "event-id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/summary": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Query connection counts, exact measured bytes, top sites and clients, hourly trend, and recent events.",
+        "operationId": "get_panel_api_audit_summary",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "description": "3, 12 or 24 hours.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "site",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
                 }
               }
             }
@@ -8603,6 +8885,8 @@
                       {
                         "comment": "Primary device",
                         "createdAt": 1735000000000,
+                        "downLimit": 100,
+                        "downLimitByInbound": {},
                         "email": "alice@example.com",
                         "enable": true,
                         "expiryTime": 1735689600000,
@@ -16578,6 +16862,7 @@
               "type": "inbounds",
               "payload": [
                 {
+                  "clientDownLimit": 10,
                   "clientStats": [
                     {
                       "down": 2097152,
@@ -16606,6 +16891,7 @@
                   "expiryTime": 0,
                   "fallbackParent": null,
                   "id": 1,
+                  "inboundDownLimit": 100,
                   "lastTrafficResetTime": 0,
                   "listen": "",
                   "nodeId": null,
@@ -16621,6 +16907,7 @@
                   "subSortIndex": 1,
                   "tag": "in-443-tcp",
                   "total": 0,
+                  "trafficRatio": 1.5,
                   "trafficReset": "never",
                   "trafficResetDay": 1,
                   "up": 0

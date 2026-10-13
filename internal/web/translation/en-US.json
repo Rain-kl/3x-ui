@@ -115,6 +115,7 @@
     "clients": "Clients",
     "groups": "Groups",
     "nodes": "Nodes",
+    "audit": "Log Audit",
     "hosts": "Hosts",
     "settings": "Panel Settings",
     "xray": "Xray Configs",
@@ -130,6 +131,7 @@
     "subFormats": "Sub Formats"
   },
   "pages": {
+    "audit": {"title": "Log audit", "subtitle": "Explore client destinations, traffic and connection frequency across nodes.", "allNodes": "All nodes", "clientFilter": "Filter client email", "siteFilter": "Filter site", "connections": "Connections", "upload": "Upload", "download": "Download", "measured": "Measured connections", "unmeasured": "{count} connections came from an older core; their byte counts are unavailable.", "reviewHighFrequency": "Review high-frequency clients (heuristic, not proof of abuse)", "sites": "Sites", "topSites": "Top sites by traffic", "hourlyTrend": "Hourly connection trend and top clients", "client": "Client", "traffic": "Traffic", "recentEvents": "Recent connections", "time": "Time", "node": "Node", "localNode": "Local", "inbound": "Inbound", "source": "Source", "destination": "Destination", "unavailable": "Unavailable"},
     "login": {
       "hello": "Hello",
       "title": "Welcome",

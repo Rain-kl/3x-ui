@@ -179,6 +179,19 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 		return nil, err
 	}
 	xrayConfig.LogConfig = resolveXrayLogPaths(xrayConfig.LogConfig)
+	var auditLog map[string]any
+	if err := json.Unmarshal(xrayConfig.LogConfig, &auditLog); err == nil {
+		if auditLog == nil {
+			auditLog = make(map[string]any)
+		}
+		for key := range auditLog {
+			if strings.EqualFold(key, "access") {
+				delete(auditLog, key)
+			}
+		}
+		auditLog["access"] = ""
+		xrayConfig.LogConfig, _ = json.Marshal(auditLog)
+	}
 	xrayConfig.API = ensureAPIServices(xrayConfig.API)
 	xrayConfig.Policy = ensureStatsPolicy(xrayConfig.Policy)
 	xrayConfig.RouterConfig = stripDisabledRules(xrayConfig.RouterConfig)

@@ -432,6 +432,44 @@ export const sections: readonly Section[] = [
   },
 
   {
+    id: 'audit',
+    title: 'Audit',
+    description: 'Connection audit batches and the master dashboard.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/audit/pending',
+        summary: 'Fetch up to 1000 pending node audit events. Node-sync token permitted.',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/audit/ack',
+        summary: 'Acknowledge durable audit events by ID. Node-sync token permitted.',
+        body: '{"ids":["event-id"]}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/audit/summary',
+        summary:
+          'Query connection counts, exact measured bytes, top sites and clients, hourly trend, and recent events.',
+        params: [
+          {
+            name: 'hours',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            desc: '3, 12 or 24 hours.',
+          },
+          { name: 'nodeId', in: 'query', type: 'integer', optional: true },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+          { name: 'site', in: 'query', type: 'string', optional: true },
+          { name: 'offset', in: 'query', type: 'integer', optional: true },
+        ],
+      },
+    ],
+  },
+
+  {
     id: 'server',
     title: 'Server',
     description:

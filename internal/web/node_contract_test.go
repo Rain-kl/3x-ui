@@ -271,6 +271,12 @@ func TestMasterNodeContract(t *testing.T) {
 					_, err := master.FetchTrafficSnapshot(ctx)
 					return err
 				}, nil},
+				{"audit pending and ack are accepted", []string{"FetchAudit", "AckAudit"}, func() error {
+					if _, err := master.FetchAudit(ctx); err != nil {
+						return err
+					}
+					return master.AckAudit(ctx, nil)
+				}, nil},
 				{"PushGlobalClientTraffics is accepted", []string{"PushGlobalClientTraffics"}, func() error {
 					return master.PushGlobalClientTraffics(ctx, "master-guid", []*xray.ClientTraffic{{Email: "c0", Up: 1, Down: 2}})
 				}, nil},

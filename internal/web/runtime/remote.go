@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/audit"
 	"github.com/mhsanaei/3x-ui/v3/internal/crypto/nodetoken"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
@@ -295,6 +296,26 @@ func (r *Remote) do(ctx context.Context, method, path string, body any) (*envelo
 		return &env, &remoteAPIError{msg: env.Msg}
 	}
 	return &env, nil
+}
+
+func (r *Remote) FetchAudit(ctx context.Context) ([]audit.Event, error) {
+	env, err := r.do(ctx, http.MethodGet, "panel/api/audit/pending", nil)
+	if err != nil {
+		return nil, err
+	}
+	var events []audit.Event
+	if err := json.Unmarshal(env.Obj, &events); err != nil {
+		return nil, err
+	}
+	if len(events) > 1000 {
+		return nil, errors.New("remote audit batch exceeds 1000 events")
+	}
+	return events, nil
+}
+
+func (r *Remote) AckAudit(ctx context.Context, ids []string) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/audit/ack", map[string]any{"ids": ids})
+	return err
 }
 
 func (r *Remote) resolveRemoteID(ctx context.Context, tag string) (int, error) {

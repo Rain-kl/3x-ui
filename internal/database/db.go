@@ -88,6 +88,7 @@ func allModels() []any {
 		&model.OutboundSubscription{},
 		&model.SubBalancer{},
 		&model.TuicTrafficReceipt{},
+		&model.AuditEvent{},
 	}
 }
 
@@ -178,6 +179,9 @@ func migrateInboundExcludeFromSubColumn() error {
 
 func initModels() error {
 	migrator := db.Migrator()
+	if err := migrateAuditEvents(); err != nil {
+		return err
+	}
 	if migrator.HasTable(&model.NodeClientTraffic{}) && !migrator.HasColumn(&model.NodeClientTraffic{}, "inbound_totals") {
 		if err := migrator.AddColumn(&model.NodeClientTraffic{}, "inbound_totals"); err != nil {
 			return err
@@ -292,6 +296,13 @@ func initModels() error {
 		}
 	}
 	return nil
+}
+
+func migrateAuditEvents() error {
+	if db.Migrator().HasTable(&model.AuditEvent{}) {
+		return nil
+	}
+	return db.AutoMigrate(&model.AuditEvent{})
 }
 
 func postgresModelSettled(mdl any) bool {

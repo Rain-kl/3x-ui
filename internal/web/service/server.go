@@ -932,7 +932,7 @@ func (s *ServerService) GetXrayVersions() ([]string, error) {
 			versions = append(versions, release.TagName)
 		}
 	}
-	return versions, nil
+	return append([]string{auditXrayVersion}, versions...), nil
 }
 
 func (s *ServerService) StopXrayService() error {
@@ -982,7 +982,11 @@ func (s *ServerService) downloadXRay(version string) (string, error) {
 	}
 
 	fileName := fmt.Sprintf("Xray-%s-%s.zip", osName, arch)
-	url := fmt.Sprintf("https://github.com/XTLS/Xray-core/releases/download/%s/%s", version, fileName)
+	repository := "XTLS/Xray-core"
+	if strings.Contains(version, "-audit.") {
+		repository = "Rain-kl/Xray-core"
+	}
+	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", repository, version, fileName)
 	client := s.settingService.NewProxiedHTTPClient(60 * time.Second)
 	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if reqErr != nil {
@@ -1086,7 +1090,9 @@ func parseXrayDigestSHA256(dgst []byte) (string, error) {
 	return "", fmt.Errorf("xray checksum: no SHA2-256 entry in digest")
 }
 
-var xrayVersionRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
+const auditXrayVersion = "v26.10.10-audit.1"
+
+var xrayVersionRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-audit\.\d+)?$`)
 
 func (s *ServerService) UpdateXray(version string) error {
 	version = strings.TrimSpace(version)

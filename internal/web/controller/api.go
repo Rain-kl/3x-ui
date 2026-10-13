@@ -122,6 +122,8 @@ var nodeSyncScopeAllow = map[string]map[string]struct{}{
 	"/server/outbounds":            {http.MethodGet: {}, http.MethodPost: {}},
 	"/server/outboundTags":         {http.MethodGet: {}},
 	"/server/routing":              {http.MethodGet: {}, http.MethodPost: {}},
+	"/audit/pending":               {http.MethodGet: {}},
+	"/audit/ack":                   {http.MethodPost: {}},
 }
 
 // enforceTokenScope applies explicit allowlists to monitor and node-sync tokens.
@@ -197,6 +199,7 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	// Server API
 	server := api.Group("/server")
 	a.serverController = NewServerController(server)
+	newAuditController(api.Group("/audit"))
 
 	// Nodes API — multi-panel management
 	nodes := api.Group("/nodes")

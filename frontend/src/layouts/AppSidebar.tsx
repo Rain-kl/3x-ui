@@ -29,6 +29,7 @@ import {
   PushpinFilled,
   PushpinOutlined,
   ReadOutlined,
+  BarChartOutlined,
   SafetyOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -73,7 +74,8 @@ type IconName =
   | 'sponsors'
   | 'apidocs'
   | 'outbound'
-  | 'routing';
+  | 'routing'
+  | 'audit';
 
 const iconByName: Record<IconName, ComponentType> = {
   dashboard: DashboardOutlined,
@@ -89,6 +91,7 @@ const iconByName: Record<IconName, ComponentType> = {
   apidocs: ApiOutlined,
   outbound: ExportOutlined,
   routing: SwapOutlined,
+  audit: BarChartOutlined,
 };
 
 function DonateButton({ ariaLabel }: { ariaLabel: string }) {
@@ -230,6 +233,7 @@ export default function AppSidebar() {
       { key: '/clients', icon: 'team', title: t('menu.clients') },
       { key: '/groups', icon: 'groups', title: t('menu.groups') },
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
+      { key: '/audit', icon: 'audit', title: t('menu.audit') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
       { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },
       { key: '/routing', icon: 'routing', title: t('menu.routing') },

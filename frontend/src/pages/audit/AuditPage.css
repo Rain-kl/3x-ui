@@ -1,0 +1,50 @@
+.audit-page {
+  min-height: 100vh;
+}
+.audit-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.audit-header h2 {
+  margin-bottom: 0;
+}
+.audit-ranking {
+  max-height: 460px;
+  overflow-y: auto;
+}
+.audit-rank {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  width: 100%;
+  padding: 6px 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: start;
+}
+.audit-rank > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audit-rank .ant-progress {
+  grid-column: 1 / -1;
+}
+.audit-trend {
+  height: 170px;
+  margin-bottom: 20px;
+}
+.audit-trend svg {
+  display: block;
+  width: 100%;
+  height: 145px;
+}
+.audit-trend > div {
+  display: flex;
+  justify-content: space-between;
+  color: var(--ant-color-text-secondary);
+}

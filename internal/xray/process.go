@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/audit"
 	"github.com/mhsanaei/3x-ui/v3/internal/config"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
@@ -644,7 +645,7 @@ func (p *process) Start() (err error) {
 	}
 
 	cmd := exec.CommandContext(context.Background(), GetBinaryPath(), "-c", configPath)
-	cmd.Stdout = p.logWriter
+	cmd.Stdout = audit.NewOutputWriter(p.logWriter)
 	cmd.Stderr = p.logWriter
 
 	err = p.startCommand(cmd)
