@@ -139,6 +139,7 @@ type Release struct {
 	Body            string `json:"body"`             // The release notes; the dev channel reads its commit from here
 	TargetCommitish string `json:"target_commitish"` // The branch/commit the tag points at
 	Prerelease      bool   `json:"prerelease"`       // Whether this is a pre-release
+	Draft           bool   `json:"draft"`
 }
 
 // ServerService provides business logic for server monitoring and management.
@@ -876,40 +877,22 @@ const (
 
 func (s *ServerService) GetXrayVersions() ([]string, error) {
 	const (
-		XrayURL    = "https://api.github.com/repos/XTLS/Xray-core/releases"
-		bufferSize = 8192
+		upstreamReleasesURL = "https://api.github.com/repos/XTLS/Xray-core/releases?per_page=100"
+		customReleasesURL   = "https://api.github.com/repos/Rain-kl/Xray-core/releases?per_page=100"
 	)
 
-	req, reqErr := http.NewRequestWithContext(context.Background(), http.MethodGet, XrayURL, nil)
-	if reqErr != nil {
-		return nil, reqErr
-	}
-	resp, err := s.settingService.NewProxiedHTTPClient(10 * time.Second).Do(req)
+	client := s.settingService.NewProxiedHTTPClient(10 * time.Second)
+	customReleases, err := fetchGitHubReleases(client, customReleasesURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("fetch custom Xray releases: %w", err)
 	}
-	defer resp.Body.Close()
-
-	// Check HTTP status code - GitHub API returns object instead of array on error
-	if resp.StatusCode != http.StatusOK {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		var errorResponse struct {
-			Message string `json:"message"`
-		}
-		if json.Unmarshal(bodyBytes, &errorResponse) == nil && errorResponse.Message != "" {
-			return nil, fmt.Errorf("GitHub API error: %s", errorResponse.Message)
-		}
-		return nil, fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, resp.Status)
+	customVersions := featXrayReleaseVersions(customReleases)
+	if len(customVersions) == 0 {
+		return nil, fmt.Errorf("Rain-kl/Xray-core has no published v*-feat.* release")
 	}
 
-	buffer := bytes.NewBuffer(make([]byte, bufferSize))
-	buffer.Reset()
-	if _, err := buffer.ReadFrom(resp.Body); err != nil {
-		return nil, err
-	}
-
-	var releases []Release
-	if err := json.Unmarshal(buffer.Bytes(), &releases); err != nil {
+	releases, err := fetchGitHubReleases(client, upstreamReleasesURL)
+	if err != nil {
 		return nil, err
 	}
 
@@ -932,7 +915,84 @@ func (s *ServerService) GetXrayVersions() ([]string, error) {
 			versions = append(versions, release.TagName)
 		}
 	}
-	return append([]string{auditXrayVersion}, versions...), nil
+	return append(customVersions, versions...), nil
+}
+
+func fetchGitHubReleases(client *http.Client, url string) ([]Release, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+		var apiError struct {
+			Message string `json:"message"`
+		}
+		if json.Unmarshal(body, &apiError) == nil && apiError.Message != "" {
+			return nil, fmt.Errorf("GitHub API error: %s", apiError.Message)
+		}
+		return nil, fmt.Errorf("GitHub API returned status %d: %s", resp.StatusCode, resp.Status)
+	}
+	var releases []Release
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&releases); err != nil {
+		return nil, err
+	}
+	return releases, nil
+}
+
+type featXrayVersion struct {
+	tag                 string
+	major, minor, patch int
+	feature             int
+}
+
+var featXrayVersionRegex = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)-feat\.(\d+)$`)
+
+func featXrayReleaseVersions(releases []Release) []string {
+	parsed := make([]featXrayVersion, 0, len(releases))
+	for _, release := range releases {
+		if release.Draft || release.Prerelease {
+			continue
+		}
+		match := featXrayVersionRegex.FindStringSubmatch(release.TagName)
+		if match == nil {
+			continue
+		}
+		values := [4]int{}
+		valid := true
+		for i := range values {
+			value, err := strconv.Atoi(match[i+1])
+			if err != nil {
+				valid = false
+				break
+			}
+			values[i] = value
+		}
+		if valid {
+			parsed = append(parsed, featXrayVersion{tag: release.TagName, major: values[0], minor: values[1], patch: values[2], feature: values[3]})
+		}
+	}
+	slices.SortFunc(parsed, func(a, b featXrayVersion) int {
+		return cmp.Or(
+			cmp.Compare(b.major, a.major),
+			cmp.Compare(b.minor, a.minor),
+			cmp.Compare(b.patch, a.patch),
+			cmp.Compare(b.feature, a.feature),
+		)
+	})
+	versions := make([]string, 0, len(parsed))
+	for _, version := range parsed {
+		if len(versions) == 0 || versions[len(versions)-1] != version.tag {
+			versions = append(versions, version.tag)
+		}
+	}
+	return versions
 }
 
 func (s *ServerService) StopXrayService() error {
@@ -983,7 +1043,7 @@ func (s *ServerService) downloadXRay(version string) (string, error) {
 
 	fileName := fmt.Sprintf("Xray-%s-%s.zip", osName, arch)
 	repository := "XTLS/Xray-core"
-	if strings.Contains(version, "-audit.") {
+	if strings.Contains(version, "-audit.") || strings.Contains(version, "-feat.") {
 		repository = "Rain-kl/Xray-core"
 	}
 	url := fmt.Sprintf("https://github.com/%s/releases/download/%s/%s", repository, version, fileName)
@@ -1089,8 +1149,6 @@ func parseXrayDigestSHA256(dgst []byte) (string, error) {
 	}
 	return "", fmt.Errorf("xray checksum: no SHA2-256 entry in digest")
 }
-
-const auditXrayVersion = "v26.10.10-feat.1"
 
 var xrayVersionRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-(?:audit|feat)\.\d+)?$`)
 
