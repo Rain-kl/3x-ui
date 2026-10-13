@@ -21,7 +21,52 @@ on:
       - ".github/workflows/release.yml"
 
 jobs:
+  resolve-xray-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Resolve latest custom Xray release
+        id: resolve
+        run: echo "version=$(./tools/latest-xray-feat-version.sh)" >> "$GITHUB_OUTPUT"
+      - name: Wait for custom Xray release assets
+        env:
+          XRAY_VERSION: ${{ steps.resolve.outputs.version }}
+        run: |
+          assets=(
+            Xray-linux-64.zip
+            Xray-linux-arm64-v8a.zip
+            Xray-linux-arm32-v7a.zip
+            Xray-linux-arm32-v6.zip
+            Xray-linux-32.zip
+            Xray-linux-arm32-v5.zip
+            Xray-linux-s390x.zip
+            Xray-windows-64.zip
+          )
+          release_url="https://github.com/Rain-kl/Xray-core/releases/download/${XRAY_VERSION}"
+          deadline=$((SECONDS + 1200))
+          while true; do
+            missing=()
+            for asset in "${assets[@]}"; do
+              if ! curl --fail --silent --show-error --location --head --max-time 30 "${release_url}/${asset}" >/dev/null; then
+                missing+=("$asset")
+              fi
+            done
+            if [ "${#missing[@]}" -eq 0 ]; then
+              break
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "Timed out waiting for custom Xray assets: ${missing[*]}" >&2
+              exit 1
+            fi
+            echo "Waiting for custom Xray assets: ${missing[*]}"
+            sleep 15
+          done
+
   build:
+    needs: resolve-xray-version
     permissions:
       contents: write
     strategy:
@@ -72,7 +117,7 @@ jobs:
       - name: Build 3X-UI
         run: |
           CURL_RETRY="--retry 5 --retry-all-errors --retry-delay 3"
-          fetch() { wget --tries=5 --waitretry=10 --retry-on-http-error=429,500,502,503 "$@"; }
+          fetch() { wget --tries=10 --waitretry=10 --retry-on-http-error=404,429,500,502,503 "$@"; }
           export CGO_ENABLED=1
           export GOOS=linux
           export GOARCH=${{ matrix.platform }}
@@ -120,7 +165,7 @@ jobs:
           cd x-ui/bin
 
           # Download dependencies
-          Xray_URL="https://github.com/Rain-kl/Xray-core/releases/download/v26.10.10-feat.1/"
+          Xray_URL="https://github.com/Rain-kl/Xray-core/releases/download/${{ needs.resolve-xray-version.outputs.version }}/"
           if [ "${{ matrix.platform }}" == "amd64" ]; then
             fetch ${Xray_URL}Xray-linux-64.zip
             unzip Xray-linux-64.zip
@@ -206,6 +251,7 @@ jobs:
   #  Windows Build
   # =================================
   build-windows:
+    needs: resolve-xray-version
     name: Build for Windows
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     permissions:
@@ -289,7 +335,7 @@ jobs:
           cd x-ui\bin
 
           # Download Xray for Windows
-          $Xray_URL = "https://github.com/Rain-kl/Xray-core/releases/download/v26.10.10-feat.1/"
+          $Xray_URL = "https://github.com/Rain-kl/Xray-core/releases/download/${{ needs.resolve-xray-version.outputs.version }}/"
           Invoke-WebRequest @retry -Uri "${Xray_URL}Xray-windows-64.zip" -OutFile "Xray-windows-64.zip"
           Expand-Archive -Path "Xray-windows-64.zip" -DestinationPath .
           Remove-Item "Xray-windows-64.zip"

@@ -31,9 +31,22 @@ if [ -z "$MTG_MULTI_VER" ]; then
     echo "DockerInit: could not resolve the latest mtg-multi release tag" >&2
     exit 1
 fi
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+XRAY_VERSION=$("$SCRIPT_DIR/tools/latest-xray-feat-version.sh")
 mkdir -p build/bin
 cd build/bin
-curl -sfLRO "https://github.com/Rain-kl/Xray-core/releases/download/v26.10.10-feat.1/Xray-linux-${ARCH}.zip"
+XRAY_URL="https://github.com/Rain-kl/Xray-core/releases/download/${XRAY_VERSION}/Xray-linux-${ARCH}.zip"
+attempt=1
+until curl -sfL -o "Xray-linux-${ARCH}.zip.tmp" "$XRAY_URL"; do
+    if [ "$attempt" -ge 40 ]; then
+        echo "DockerInit: failed to download custom Xray ${XRAY_VERSION} after ${attempt} attempts" >&2
+        exit 1
+    fi
+    echo "DockerInit: waiting for custom Xray ${XRAY_VERSION} release assets (attempt ${attempt}/40)" >&2
+    sleep 15
+    attempt=$((attempt + 1))
+done
+mv "Xray-linux-${ARCH}.zip.tmp" "Xray-linux-${ARCH}.zip"
 unzip "Xray-linux-${ARCH}.zip"
 rm -f "Xray-linux-${ARCH}.zip" geoip.dat geosite.dat
 mv xray "xray-linux-${FNAME}"
