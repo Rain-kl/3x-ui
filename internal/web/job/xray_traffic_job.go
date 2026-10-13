@@ -43,11 +43,20 @@ func splitMovedClientTraffics(clientTraffics []*xray.ClientTraffic) ([]*xray.Cli
 	moved := make([]*xray.ClientTraffic, 0, len(clientTraffics))
 	emails := make([]string, 0, len(clientTraffics))
 	active := make(map[string]bool, len(clientTraffics))
+	byEmail := make(map[string]*xray.ClientTraffic, len(clientTraffics))
 	for _, ct := range clientTraffics {
 		if ct == nil || ct.Up+ct.Down <= 0 {
 			continue
 		}
-		moved = append(moved, ct)
+		if existing := byEmail[ct.Email]; existing != nil {
+			existing.Up += ct.Up
+			existing.Down += ct.Down
+			continue
+		}
+		copy := *ct
+		copy.InboundTag = ""
+		byEmail[ct.Email] = &copy
+		moved = append(moved, &copy)
 		emails = append(emails, ct.Email)
 		active[ct.Email] = true
 	}
@@ -82,6 +91,8 @@ func (j *XrayTrafficJob) Run() {
 	needRestart0, clientsDisabled, err := j.inboundService.AddTraffic(traffics, clientTraffics)
 	if err != nil {
 		logger.Warning("add inbound traffic failed:", err)
+		j.xrayService.RejectTrafficSample()
+		return
 	}
 	err, needRestart1 := j.outboundService.AddTraffic(traffics, clientTraffics)
 	if err != nil {

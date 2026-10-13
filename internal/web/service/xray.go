@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -79,10 +80,11 @@ func currentXrayProcess() *xray.Process {
 // XrayService provides business logic for Xray process management.
 // It handles starting, stopping, restarting Xray, and managing its configuration.
 type XrayService struct {
-	inboundService InboundService
-	settingService SettingService
-	nodeService    NodeService
-	xrayAPI        xray.XrayAPI
+	inboundService  InboundService
+	settingService  SettingService
+	nodeService     NodeService
+	xrayAPI         xray.XrayAPI
+	trafficBaseline map[string]int64
 }
 
 // IsXrayRunning checks if the Xray process is currently running.
@@ -448,6 +450,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 		injectNodeEgresses(xrayConfig, nodes)
 	}
 
+	xray.ScopeRoutingUsers(xrayConfig)
 	return xrayConfig, nil
 }
 
@@ -1202,12 +1205,18 @@ func (s *XrayService) GetXrayTraffic() ([]*xray.Traffic, []*xray.ClientTraffic, 
 	}
 	defer s.xrayAPI.Close()
 
+	s.trafficBaseline = maps.Clone(s.xrayAPI.StatsLastValues)
 	traffic, clientTraffic, err := s.xrayAPI.GetTraffic()
 	if err != nil {
 		logger.Debug("Failed to fetch Xray traffic:", err)
 		return nil, nil, err
 	}
 	return traffic, clientTraffic, nil
+}
+
+// RejectTrafficSample keeps an uncommitted sample available to the next poll.
+func (s *XrayService) RejectTrafficSample() {
+	s.xrayAPI.StatsLastValues = s.trafficBaseline
 }
 
 // GetOnlineUsers returns connection-based online users (email + source IPs)

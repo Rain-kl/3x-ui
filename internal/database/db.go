@@ -166,6 +166,13 @@ func migrateClientInboundTrafficColumns() error {
 }
 
 func initModels() error {
+	migrator := db.Migrator()
+	if migrator.HasTable(&model.NodeClientTraffic{}) && !migrator.HasColumn(&model.NodeClientTraffic{}, "inbound_totals") {
+		if err := migrator.AddColumn(&model.NodeClientTraffic{}, "inbound_totals"); err != nil {
+			return err
+		}
+	}
+
 	if err := migrateClientTrafficLastSubFetchColumn(); err != nil {
 		return err
 	}

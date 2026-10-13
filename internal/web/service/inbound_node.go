@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -546,6 +547,7 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 	}
 
 	nodeBaselines := make(map[string]nodeTrafficCounter)
+	inboundBaselines := make(map[string]map[string]nodeTrafficCounter)
 	var baselineRows []model.NodeClientTraffic
 	if err := db.Model(&model.NodeClientTraffic{}).
 		Where("node_id = ?", nodeID).
@@ -554,6 +556,13 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 	}
 	for i := range baselineRows {
 		nodeBaselines[baselineRows[i].Email] = nodeTrafficCounter{Up: baselineRows[i].Up, Down: baselineRows[i].Down}
+		var totals map[string]nodeTrafficCounter
+		if baselineRows[i].InboundTotals != "" {
+			if err := json.Unmarshal([]byte(baselineRows[i].InboundTotals), &totals); err != nil {
+				return false, err
+			}
+		}
+		inboundBaselines[baselineRows[i].Email] = totals
 	}
 
 	var defaultUserId int
@@ -599,11 +608,6 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 		if snapIb == nil {
 			continue
 		}
-		c := tagToCentral[snapIb.Tag]
-		ratio := 1.0
-		if c != nil && c.TrafficRatio >= 0 && c.TrafficRatio != 1.0 {
-			ratio = c.TrafficRatio
-		}
 		for i := range snapIb.ClientStats {
 			email := snapIb.ClientStats[i].Email
 			snapEmailsAll[email] = struct{}{}
@@ -612,10 +616,6 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 			if isPerInbound {
 				up := snapIb.ClientStats[i].Up
 				down := snapIb.ClientStats[i].Down
-				if ratio != 1.0 {
-					up = int64(float64(up) * ratio)
-					down = int64(float64(down) * ratio)
-				}
 				cur.Up += up
 				cur.Down += down
 			} else {
@@ -629,6 +629,43 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 			nodeEmailTotals[email] = cur
 		}
 	}
+
+	perInboundDeltas := make(map[string]map[string]nodeTrafficCounter)
+	weightedDeltas := make(map[string]nodeTrafficCounter)
+	currentInboundTotals := make(map[string]map[string]nodeTrafficCounter)
+	for _, ib := range snap.Inbounds {
+		if ib == nil {
+			continue
+		}
+		centralIb := tagToCentral[ib.Tag]
+		if centralIb == nil {
+			continue
+		}
+		for _, cs := range ib.ClientStats {
+			if ib.Id <= 0 || emailMatchedInboundCounts[cs.Email] != emailInboundCounts[cs.Email] {
+				continue
+			}
+			if currentInboundTotals[cs.Email] == nil {
+				currentInboundTotals[cs.Email] = make(map[string]nodeTrafficCounter)
+			}
+			currentInboundTotals[cs.Email][ib.Tag] = nodeTrafficCounter{Up: cs.Up, Down: cs.Down}
+			previous, hasPrevious := inboundBaselines[cs.Email][ib.Tag]
+			delta := nodeTrafficCounter{}
+			if hasPrevious {
+				delta.Up = counterDelta(cs.Up, previous.Up)
+				delta.Down = counterDelta(cs.Down, previous.Down)
+			}
+			if perInboundDeltas[cs.Email] == nil {
+				perInboundDeltas[cs.Email] = make(map[string]nodeTrafficCounter)
+			}
+			perInboundDeltas[cs.Email][ib.Tag] = delta
+			total := weightedDeltas[cs.Email]
+			total.Up += int64(float64(delta.Up) * centralIb.TrafficRatio)
+			total.Down += int64(float64(delta.Down) * centralIb.TrafficRatio)
+			weightedDeltas[cs.Email] = total
+		}
+	}
+	accountedEmails := make(map[string]bool)
 
 	// Membership set for the rowExists checks below. Only the snapshot's emails
 	// are ever probed, so scope the lookup to those instead of plucking the whole
@@ -970,6 +1007,15 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 				}
 			}
 
+			isPerInbound := snapIb.Id > 0 && emailMatchedInboundCounts[cs.Email] == emailInboundCounts[cs.Email]
+			if isPerInbound {
+				deltaUp, deltaDown = 0, 0
+				if !accountedEmails[cs.Email] {
+					deltaUp, deltaDown = weightedDeltas[cs.Email].Up, weightedDeltas[cs.Email].Down
+				}
+				accountedEmails[cs.Email] = true
+			}
+
 			if _, rowExists := existingEmails[cs.Email]; !rowExists {
 				if dirty {
 					continue
@@ -1128,35 +1174,17 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 				}
 			}
 			if c.Id > 0 {
-				isPerInbound := snapIb.Id > 0 && emailMatchedInboundCounts[cs.Email] == emailInboundCounts[cs.Email]
+				usageUp, usageDown := deltaUp, deltaDown
 				if isPerInbound {
-					targetUp := cs.Up
-					targetDown := cs.Down
-					if c.TrafficRatio >= 0 && c.TrafficRatio != 1.0 {
-						targetUp = int64(float64(targetUp) * c.TrafficRatio)
-						targetDown = int64(float64(targetDown) * c.TrafficRatio)
-					}
-					if err := tx.Exec(
-						`UPDATE client_inbounds SET up = ?, down = ?
-						 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
-						targetUp, targetDown, c.Id, cs.Email,
-					).Error; err != nil {
-						logger.Warning("setRemoteTrafficLocked update client_inbounds ", err)
-					}
-				} else if deltaUp > 0 || deltaDown > 0 {
-					if err := tx.Exec(
-						fmt.Sprintf(
-							`UPDATE client_inbounds SET up = %s, down = %s
-							 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
-							database.ClampedAddExpr("up"),
-							database.ClampedAddExpr("down"),
-						),
-						deltaUp, deltaDown, c.Id, cs.Email,
-					).Error; err != nil {
-						logger.Warning("setRemoteTrafficLocked update client_inbounds ", err)
-					}
+					usageUp, usageDown = perInboundDeltas[cs.Email][snapIb.Tag].Up, perInboundDeltas[cs.Email][snapIb.Tag].Down
+				}
+				if err := tx.Exec(fmt.Sprintf(`UPDATE client_inbounds SET up = %s, down = %s
+				 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
+					database.ClampedAddExpr("up"), database.ClampedAddExpr("down")), usageUp, usageDown, c.Id, cs.Email).Error; err != nil {
+					return false, err
 				}
 			}
+
 			// A dip plus a lagging longer expiry mimics nodeClientRenewed and would
 			// undo a master shorten once the freeze lifts (#6228).
 			if lifecycleFrozen && seen && (canon.Up < base.Up || canon.Down < base.Down) {
@@ -1384,6 +1412,17 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 
 	if err := liftActivatedClientRecordExpiries(tx); err != nil {
 		logger.Warning("setRemoteTraffic: lift activated expiries failed:", err)
+	}
+
+	for email, totals := range currentInboundTotals {
+		encoded, err := json.Marshal(totals)
+		if err != nil {
+			return false, err
+		}
+		if err := tx.Model(&model.NodeClientTraffic{}).Where("node_id = ? AND email = ?", nodeID, email).
+			Update("inbound_totals", string(encoded)).Error; err != nil {
+			return false, err
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -1725,4 +1764,11 @@ func (s *InboundService) FilterAndSortClientEmails(emails []string) ([]string, [
 	}
 
 	return validEmails, extraEmails, nil
+}
+
+func counterDelta(current, previous int64) int64 {
+	if current < previous {
+		return max(current, 0)
+	}
+	return current - previous
 }

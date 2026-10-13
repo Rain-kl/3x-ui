@@ -138,6 +138,7 @@ func (x *XrayAPI) AddInbound(inbound []byte) error {
 	client := *x.HandlerServiceClient
 
 	conf := new(conf.InboundDetourConfig)
+	inbound = scopeInboundConfig(inbound)
 	err := json.Unmarshal(inbound, conf)
 	if err != nil {
 		logger.Debug("Failed to unmarshal inbound:", err)
@@ -694,6 +695,7 @@ func buildUserAccount(protocolName string, user map[string]any) (*serial.TypedMe
 // does not reject a duplicate email, and a later removal would then drop just
 // one of the two registrations, leaving a disabled client able to connect.
 func (x *XrayAPI) AddUser(Protocol string, inboundTag string, user map[string]any) error {
+	user = copyScopedUser(inboundTag, user)
 	userEmail, err := getRequiredUserString(user, "email")
 	if err != nil {
 		return err
@@ -740,7 +742,7 @@ func (x *XrayAPI) RemoveUser(inboundTag, email string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	op := &command.RemoveUserOperation{Email: email}
+	op := &command.RemoveUserOperation{Email: ScopedEmail(inboundTag, email)}
 	req := &command.AlterInboundRequest{
 		Tag:       inboundTag,
 		Operation: serial.ToTypedMessage(op),
@@ -861,7 +863,8 @@ func (x *XrayAPI) GetOnlineUsers() ([]OnlineUser, error) {
 			}
 			ips = append(ips, OnlineIP{IP: entry.GetIp(), LastSeen: entry.GetLastSeen()})
 		}
-		users = append(users, OnlineUser{Email: u.GetEmail(), IPs: ips})
+		_, email, _ := ParseScopedEmail(u.GetEmail())
+		users = append(users, OnlineUser{Email: email, IPs: ips})
 	}
 	return users, nil
 }
@@ -906,7 +909,8 @@ func processClientTraffic(matches []string, value int64, clientTrafficMap map[st
 
 	traffic, ok := clientTrafficMap[email]
 	if !ok {
-		traffic = &ClientTraffic{Email: email}
+		tag, originalEmail, _ := ParseScopedEmail(email)
+		traffic = &ClientTraffic{Email: originalEmail, InboundTag: tag}
 		clientTrafficMap[email] = traffic
 	}
 

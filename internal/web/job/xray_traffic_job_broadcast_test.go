@@ -57,3 +57,14 @@ func TestSplitMovedClientTraffics(t *testing.T) {
 		}
 	})
 }
+
+func TestSplitMovedClientTrafficsCombinesInbounds(t *testing.T) {
+	samples := []*xray.ClientTraffic{{Email: "shared", InboundTag: "a", Up: 100, Down: 200}, {Email: "shared", InboundTag: "b", Up: 300, Down: 400}}
+	moved, emails, active := splitMovedClientTraffics(samples)
+	if len(moved) != 1 || moved[0].Up != 400 || moved[0].Down != 600 || len(emails) != 1 || emails[0] != "shared" || !active["shared"] {
+		t.Fatalf("split=%v/%v/%v", moved, emails, active)
+	}
+	if samples[0].Up != 100 || samples[0].Down != 200 {
+		t.Fatal("input sample mutated")
+	}
+}

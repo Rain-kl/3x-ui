@@ -164,10 +164,10 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 	}
 
 	// Index by email for O(N) merge.
-	trafficByEmail := make(map[string]*xray.ClientTraffic, len(traffics))
+	trafficByEmail := make(map[string][]*xray.ClientTraffic, len(traffics))
 	for i := range traffics {
 		if traffics[i] != nil {
-			trafficByEmail[traffics[i].Email] = traffics[i]
+			trafficByEmail[traffics[i].Email] = append(trafficByEmail[traffics[i].Email], traffics[i])
 		}
 	}
 	// Load attached inbound IDs for clients to attribute traffic accurately even
@@ -183,7 +183,7 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
 		Where("clients.email IN ?", emails).
 		Scan(&clientInboundLinks).Error; err != nil {
-		logger.Warning("AddClientTraffic query client_inbounds links ", err)
+		return err
 	}
 	linksByEmail := make(map[string][]int, len(clientInboundLinks))
 	clientIdByEmail := make(map[string]int, len(clientInboundLinks))
@@ -192,147 +192,87 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 		clientIdByEmail[l.Email] = l.ClientId
 	}
 
-	type inboundStat struct {
-		Up   int64
-		Down int64
+	var localInbounds []model.Inbound
+	if err := tx.Select("id", "tag", "traffic_ratio").Where("node_id IS NULL").Find(&localInbounds).Error; err != nil {
+		return err
 	}
-	inboundTrafficMap := make(map[int]inboundStat)
-	if len(inboundTraffics) > 0 && len(inboundTraffics[0]) > 0 {
-		var activeTags []string
-		tagStatMap := make(map[string]inboundStat)
-		for _, it := range inboundTraffics[0] {
-			if it != nil && it.IsInbound && (it.Up > 0 || it.Down > 0) {
-				activeTags = append(activeTags, it.Tag)
-				tagStatMap[it.Tag] = inboundStat{Up: it.Up, Down: it.Down}
-			}
-		}
-		if len(activeTags) > 0 {
-			var activeIbs []model.Inbound
-			if err := tx.Model(&model.Inbound{}).Where("tag IN ?", activeTags).Find(&activeIbs).Error; err == nil {
-				for _, ib := range activeIbs {
-					if st, ok := tagStatMap[ib.Tag]; ok {
-						inboundTrafficMap[ib.Id] = st
-					}
-				}
-			}
-		}
+	idsByTag := make(map[string]int, len(localInbounds))
+	for _, ib := range localInbounds {
+		idsByTag[ib.Tag] = ib.Id
 	}
 
 	// Load traffic ratios for inbounds referenced by the clients.
 	inboundRatios := make(map[int]float64)
-	idSet := make(map[int]struct{})
-	for _, ct := range dbClientTraffics {
-		if ct.InboundId > 0 {
-			idSet[ct.InboundId] = struct{}{}
-		}
-	}
-	for _, t := range traffics {
-		if t != nil && t.InboundId > 0 {
-			idSet[t.InboundId] = struct{}{}
-		}
-	}
-	for _, l := range clientInboundLinks {
-		if l.InboundId > 0 {
-			idSet[l.InboundId] = struct{}{}
-		}
-	}
-	if len(idSet) > 0 {
-		inboundIds := make([]int, 0, len(idSet))
-		for id := range idSet {
-			inboundIds = append(inboundIds, id)
-		}
-		var inbounds []model.Inbound
-		if err := tx.Model(&model.Inbound{}).Where("id IN ?", inboundIds).Find(&inbounds).Error; err == nil {
-			for _, ib := range inbounds {
-				inboundRatios[ib.Id] = ib.TrafficRatio
-			}
-		}
+	for _, ib := range localInbounds {
+		inboundRatios[ib.Id] = ib.TrafficRatio
 	}
 
 	now := time.Now().UnixMilli()
 	// Atomic per-row UPDATE avoids lock inversion deadlocks on Postgres.
 	for _, ct := range dbClientTraffics {
-		t, ok := trafficByEmail[ct.Email]
-		if !ok || (t.Up == 0 && t.Down == 0) {
-			continue
-		}
-		ibId := t.InboundId
-		if ibId == 0 {
-			attached := linksByEmail[ct.Email]
-			if len(attached) == 1 {
-				ibId = attached[0]
-			} else if len(attached) > 1 {
-				bestIbId := 0
-				var bestScore int64 = -1
-				for _, aid := range attached {
-					st, ok := inboundTrafficMap[aid]
-					if !ok || (st.Up == 0 && st.Down == 0) {
-						continue
-					}
-					if t.Down > 0 && st.Down == 0 {
-						continue
-					}
-					if t.Up > 0 && st.Up == 0 {
-						continue
-					}
-					score := st.Up + st.Down
-					if score > bestScore {
-						bestScore = score
-						bestIbId = aid
-					}
+		for _, sample := range trafficByEmail[ct.Email] {
+			t := *sample
+			if t.Up == 0 && t.Down == 0 {
+				continue
+			}
+			ibId := t.InboundId
+			if t.InboundTag != "" {
+				ibId = idsByTag[t.InboundTag]
+				if ibId == 0 {
+					continue
 				}
-				if bestIbId > 0 {
-					ibId = bestIbId
+			}
+			if ibId == 0 {
+				attached := linksByEmail[ct.Email]
+				if len(attached) == 1 {
+					ibId = attached[0]
 				} else if slices.Contains(attached, ct.InboundId) {
 					ibId = ct.InboundId
-				} else {
-					ibId = attached[0]
 				}
-			} else {
-				ibId = ct.InboundId
 			}
-		}
-		ratio, okRatio := inboundRatios[ibId]
-		if okRatio && ratio >= 0 && ratio != 1.0 {
-			t.Up = int64(float64(t.Up) * ratio)
-			t.Down = int64(float64(t.Down) * ratio)
-		}
-		if err = tx.Exec(
-			fmt.Sprintf(
-				`UPDATE client_traffics SET up = %s, down = %s, last_online = %s WHERE email = ?`,
-				database.ClampedAddExpr("up"),
-				database.ClampedAddExpr("down"),
-				database.GreatestExpr("last_online", "?"),
-			),
-			t.Up, t.Down, now, ct.Email,
-		).Error; err != nil {
-			logger.Warning("AddClientTraffic update data ", err)
-		}
-		if ibId > 0 {
-			cid, hasCid := clientIdByEmail[ct.Email]
-			if hasCid {
-				if err = tx.Exec(
-					fmt.Sprintf(
-						`UPDATE client_inbounds SET up = %s, down = %s
+			rawUp, rawDown := t.Up, t.Down
+			ratio, okRatio := inboundRatios[ibId]
+			if okRatio && ratio >= 0 && ratio != 1.0 {
+				t.Up = int64(float64(t.Up) * ratio)
+				t.Down = int64(float64(t.Down) * ratio)
+			}
+			if err = tx.Exec(
+				fmt.Sprintf(
+					`UPDATE client_traffics SET up = %s, down = %s, last_online = %s WHERE email = ?`,
+					database.ClampedAddExpr("up"),
+					database.ClampedAddExpr("down"),
+					database.GreatestExpr("last_online", "?"),
+				),
+				t.Up, t.Down, now, ct.Email,
+			).Error; err != nil {
+				return err
+			}
+			if ibId > 0 {
+				cid, hasCid := clientIdByEmail[ct.Email]
+				if hasCid {
+					if err = tx.Exec(
+						fmt.Sprintf(
+							`UPDATE client_inbounds SET up = %s, down = %s
 						 WHERE inbound_id = ? AND client_id = ?`,
-						database.ClampedAddExpr("up"),
-						database.ClampedAddExpr("down"),
-					),
-					t.Up, t.Down, ibId, cid,
-				).Error; err != nil {
-					logger.Warning("AddClientTraffic update client_inbounds ", err)
-				}
-			} else {
-				if err = tx.Exec(
-					fmt.Sprintf(
-						`UPDATE client_inbounds SET up = %s, down = %s
+							database.ClampedAddExpr("up"),
+							database.ClampedAddExpr("down"),
+						),
+						rawUp, rawDown, ibId, cid,
+					).Error; err != nil {
+						return err
+					}
+				} else {
+					if err = tx.Exec(
+						fmt.Sprintf(
+							`UPDATE client_inbounds SET up = %s, down = %s
 						 WHERE inbound_id = ? AND client_id = (SELECT id FROM clients WHERE email = ? LIMIT 1)`,
-						database.ClampedAddExpr("up"),
-						database.ClampedAddExpr("down"),
-					),
-					t.Up, t.Down, ibId, ct.Email,
-				).Error; err != nil {
-					logger.Warning("AddClientTraffic update client_inbounds ", err)
+							database.ClampedAddExpr("up"),
+							database.ClampedAddExpr("down"),
+						),
+						rawUp, rawDown, ibId, ct.Email,
+					).Error; err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -348,7 +288,7 @@ func (s *InboundService) addClientTraffic(tx *gorm.DB, traffics []*xray.ClientTr
 			`UPDATE client_traffics SET expiry_time = ? WHERE email = ? AND expiry_time < 0`,
 			convertedExpiryByEmail[email], email,
 		).Error; err != nil {
-			logger.Warning("AddClientTraffic update expiry_time ", err)
+			return err
 		}
 	}
 
