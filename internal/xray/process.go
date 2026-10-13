@@ -625,6 +625,12 @@ func (p *process) Start() (err error) {
 		}
 	}()
 
+	if HasNativeRateLimits(p.config) {
+		p.refreshVersion()
+		if !SupportsNativeRateLimitVersion(p.GetXrayVersion()) {
+			return errors.New("bandwidth limits require Rain-kl/Xray-core v26.10.10-feat.2 or newer")
+		}
+	}
 	data, err := json.MarshalIndent(p.config, "", "  ")
 	if err != nil {
 		return common.NewErrorf("Failed to generate XRAY configuration files: %v", err)

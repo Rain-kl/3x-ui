@@ -16,7 +16,6 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 
@@ -34,12 +33,10 @@ type IPWithTimestamp struct {
 // API; no access log is involved. On a core too old to expose that API the job
 // simply skips the run (the bundled core always supports it).
 type CheckClientIpJob struct {
-	bannedSeen     map[string]int64
-	xrayService    service.XrayService
-	clientService  service.ClientService
-	inboundService service.InboundService
-	allowlist      ipLimitAllowlist
-	lastIpPrune    int64
+	bannedSeen  map[string]int64
+	xrayService service.XrayService
+	allowlist   ipLimitAllowlist
+	lastIpPrune int64
 }
 
 var job *CheckClientIpJob
@@ -65,10 +62,6 @@ func (j *CheckClientIpJob) Run() {
 		// fallback anymore, so there is nothing to do this run.
 		logger.Debug("[LimitIP] online-stats API unavailable this run; skipping")
 		return
-	}
-
-	if r := trafficshaper.GetReconciler(); r != nil {
-		j.syncTrafficShaper(r, observed)
 	}
 
 	if !isFail2BanEnabled() {
@@ -253,92 +246,6 @@ func (j *CheckClientIpJob) loadInboundsByEmails(emails []string) map[string]*mod
 		}
 	}
 	return out
-}
-
-func (j *CheckClientIpJob) syncTrafficShaper(r *trafficshaper.Reconciler, observed map[string]map[string]int64) {
-	if r == nil || len(observed) == 0 {
-		return
-	}
-	emails := make([]string, 0, len(observed))
-	for email := range observed {
-		emails = append(emails, email)
-	}
-	emailInbounds, inbounds := j.loadAllInboundsForEmails(emails)
-	for email, ibIDs := range emailInbounds {
-		r.RegisterClientInbounds(email, ibIDs...)
-	}
-	for _, ib := range inbounds {
-		if ib != nil && ib.Enable && ib.NodeID == nil {
-			clientLimits := j.clientService.ClientLimitsByInbound(ib.Id)
-			_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-				InboundID:        ib.Id,
-				Port:             ib.Port,
-				InboundDownLimit: ib.InboundDownLimit,
-				ClientDownLimit:  ib.ClientDownLimit,
-				ClientLimits:     clientLimits,
-				Clients:          j.inboundService.ExtractClientEmails(ib),
-			})
-		}
-	}
-	r.SyncAllObserved(observed)
-}
-
-// loadAllInboundsForEmails resolves all unique inbounds hosting the given client emails.
-func (j *CheckClientIpJob) loadAllInboundsForEmails(emails []string) (map[string][]int, []*model.Inbound) {
-	db := database.GetDB()
-	emailInbounds := make(map[string][]int, len(emails))
-	idSet := make(map[int]struct{})
-
-	for _, batch := range chunkEmails(emails, ipScanChunk) {
-		var pairs []struct {
-			Email     string
-			InboundId int
-		}
-		if err := db.Table("client_inbounds").
-			Select("clients.email AS email, client_inbounds.inbound_id AS inbound_id").
-			Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-			Where("clients.email IN ?", batch).
-			Scan(&pairs).Error; err != nil {
-			j.checkError(err)
-			return nil, nil
-		}
-		for _, p := range pairs {
-			emailInbounds[p.Email] = append(emailInbounds[p.Email], p.InboundId)
-			idSet[p.InboundId] = struct{}{}
-		}
-	}
-
-	for _, email := range emails {
-		if len(emailInbounds[email]) == 0 {
-			if ib, err := j.getInboundByEmail(email); err == nil && ib != nil {
-				emailInbounds[email] = append(emailInbounds[email], ib.Id)
-				idSet[ib.Id] = struct{}{}
-			}
-		}
-	}
-
-	if len(idSet) == 0 {
-		return emailInbounds, nil
-	}
-
-	ids := make([]int, 0, len(idSet))
-	for id := range idSet {
-		ids = append(ids, id)
-	}
-	sort.Ints(ids)
-
-	var inbounds []*model.Inbound
-	for lo := 0; lo < len(ids); lo += ipScanChunk {
-		hi := min(lo+ipScanChunk, len(ids))
-		var page []*model.Inbound
-		if err := db.Model(&model.Inbound{}).Where("id IN ? AND enable = ?", ids[lo:hi], true).Find(&page).Error; err != nil {
-			j.checkError(err)
-			return nil, nil
-		}
-		inbounds = append(inbounds, page...)
-	}
-
-	return emailInbounds, inbounds
 }
 
 func (j *CheckClientIpJob) loadClientIpRows(emails []string) map[string]*model.InboundClientIps {

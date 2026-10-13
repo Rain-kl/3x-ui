@@ -757,6 +757,7 @@
       "sniffingDestOverride": "Ghi đè đích",
       "advancedTitle": "Cài đặt nâng cao",
       "rateLimitTab": "Giới hạn tốc độ",
+      "nativeRateLimitHint": "Yêu cầu Xray core v26.10.10-feat.2 trở lên. Thay đổi giới hạn sẽ khởi động lại các kết nối đang hoạt động.",
       "list": {
         "rateLimit": "Giới hạn tốc độ (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "Gia hạn theo lịch diễn ra lúc nửa đêm theo múi giờ của bảng điều khiển và cũng đặt lại lưu lượng của khách hàng. Tắt việc đặt lại lưu lượng độc lập trừ khi bạn muốn đặt lại thêm.",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "Giới hạn tốc độ",
+      "nativeRateLimitHint": "Yêu cầu Xray core v26.10.10-feat.2 trở lên. Thay đổi giới hạn sẽ khởi động lại các kết nối đang hoạt động.",
       "downLimit": "Giới hạn tải xuống (Mbps)",
       "downLimitDesc": "Băng thông tải xuống mặc định của khách, 0 nghĩa là không giới hạn",
       "inboundRateLimitOverrides": "Ghi đè giới hạn tốc độ cho cổng liên kết",

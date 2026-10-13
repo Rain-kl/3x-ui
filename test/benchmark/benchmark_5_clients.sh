@@ -201,46 +201,9 @@ for i in {1..5}; do
 done
 echo "==> 5 client network namespaces created and routed to Host."
 
-# Step 3: Configure Linux Kernel TC HTB Hierarchy (TrafficShaper Engine)
+# Step 3: Use native Xray user and inbound-group limits
 echo ""
-echo "[Step 3/5] Applying Linux TC HTB hierarchy & u32 filters (Inbound: 100M, Clients: 10M, 20M, 30M, 15M, 50M)..."
-tc qdisc del dev "$HOST_IFACE" root 2>/dev/null || true
-tc qdisc add dev "$HOST_IFACE" root handle 1: htb default 9999
-tc class add dev "$HOST_IFACE" parent 1: classid 1:1 htb rate 10gbit ceil 10gbit
-tc class add dev "$HOST_IFACE" parent 1: classid 1:9999 htb rate 10gbit ceil 10gbit
-tc filter add dev "$HOST_IFACE" protocol ip parent 1:0 prio 5 handle 800::800 u32 match ip dst 0.0.0.0/32 flowid 1:9999
-
-# Inbound 1: 100 Mbps aggregate ceiling
-tc class add dev "$HOST_IFACE" parent 1:1 classid 1:10 htb rate 100mbit ceil 100mbit burst 64k cburst 64k
-tc filter add dev "$HOST_IFACE" protocol ip parent 1:0 prio 10 handle 0x1 u32 match ip sport "$INBOUND_PORT" 0xffff flowid 1:10
-
-# Client leaf classes (parent 1:10)
-# Client 1: 10 Mbps
-tc class add dev "$HOST_IFACE" parent 1:10 classid 1:11 htb rate 1mbit ceil 10mbit burst 32k cburst 32k
-tc qdisc add dev "$HOST_IFACE" parent 1:11 fq_codel
-tc filter add dev "$HOST_IFACE" protocol ip parent 1:0 prio 5 handle 800::101 u32 match ip sport "$INBOUND_PORT" 0xffff match ip dst 10.99.2.11/32 flowid 1:11
-
-# Client 2: 20 Mbps
-tc class add dev "$HOST_IFACE" parent 1:10 classid 1:12 htb rate 1mbit ceil 20mbit burst 32k cburst 32k
-tc qdisc add dev "$HOST_IFACE" parent 1:12 fq_codel
-tc filter add dev "$HOST_IFACE" protocol ip parent 1:0 prio 5 handle 800::102 u32 match ip sport "$INBOUND_PORT" 0xffff match ip dst 10.99.2.12/32 flowid 1:12
-
-# Client 3: 30 Mbps
-tc class add dev "$HOST_IFACE" parent 1:10 classid 1:13 htb rate 1mbit ceil 30mbit burst 32k cburst 32k
-tc qdisc add dev "$HOST_IFACE" parent 1:13 fq_codel
-tc filter add dev "$HOST_IFACE" protocol ip parent 1:0 prio 5 handle 800::103 u32 match ip sport "$INBOUND_PORT" 0xffff match ip dst 10.99.2.13/32 flowid 1:13
-
-# Client 4: 15 Mbps (Override)
-tc class add dev "$HOST_IFACE" parent 1:10 classid 1:14 htb rate 1mbit ceil 15mbit burst 32k cburst 32k
-tc qdisc add dev "$HOST_IFACE" parent 1:14 fq_codel
-tc filter add dev "$HOST_IFACE" protocol ip parent 1:0 prio 5 handle 800::104 u32 match ip sport "$INBOUND_PORT" 0xffff match ip dst 10.99.2.14/32 flowid 1:14
-
-# Client 5: 50 Mbps
-tc class add dev "$HOST_IFACE" parent 1:10 classid 1:15 htb rate 1mbit ceil 50mbit burst 32k cburst 32k
-tc qdisc add dev "$HOST_IFACE" parent 1:15 fq_codel
-tc filter add dev "$HOST_IFACE" protocol ip parent 1:0 prio 5 handle 800::105 u32 match ip sport "$INBOUND_PORT" 0xffff match ip dst 10.99.2.15/32 flowid 1:15
-
-echo "==> Linux TC classes and filters installed successfully."
+echo "[Step 3/5] Xray applies a 100 Mbps inbound group cap and per-user limits (10, 20, 30, 15, 50 Mbps)."
 
 # Step 4: Start Services (Data Server + VLESS-Reality Server + 5 Client Proxies)
 echo ""
@@ -308,11 +271,11 @@ cat << JSON > "$TMP_DIR/server.json"
     "protocol": "vless",
     "settings": {
       "clients": [
-        {"id": "${UUIDS[0]}", "email": "client1@test.com", "flow": "xtls-rprx-vision"},
-        {"id": "${UUIDS[1]}", "email": "client2@test.com", "flow": "xtls-rprx-vision"},
-        {"id": "${UUIDS[2]}", "email": "client3@test.com", "flow": "xtls-rprx-vision"},
-        {"id": "${UUIDS[3]}", "email": "client4@test.com", "flow": "xtls-rprx-vision"},
-        {"id": "${UUIDS[4]}", "email": "client5@test.com", "flow": "xtls-rprx-vision"}
+        {"id": "${UUIDS[0]}", "email": "client1@test.com", "flow": "xtls-rprx-vision", "downlink_speed_limit": 1250000, "rate_limit_group": "inbound-1", "downlink_group_speed_limit": 12500000},
+        {"id": "${UUIDS[1]}", "email": "client2@test.com", "flow": "xtls-rprx-vision", "downlink_speed_limit": 2500000, "rate_limit_group": "inbound-1", "downlink_group_speed_limit": 12500000},
+        {"id": "${UUIDS[2]}", "email": "client3@test.com", "flow": "xtls-rprx-vision", "downlink_speed_limit": 3750000, "rate_limit_group": "inbound-1", "downlink_group_speed_limit": 12500000},
+        {"id": "${UUIDS[3]}", "email": "client4@test.com", "flow": "xtls-rprx-vision", "downlink_speed_limit": 1875000, "rate_limit_group": "inbound-1", "downlink_group_speed_limit": 12500000},
+        {"id": "${UUIDS[4]}", "email": "client5@test.com", "flow": "xtls-rprx-vision", "downlink_speed_limit": 6250000, "rate_limit_group": "inbound-1", "downlink_group_speed_limit": 12500000}
       ],
       "decryption": "none"
     },
@@ -513,7 +476,7 @@ done
 echo ""
 echo "   ======================================================"
 echo "   Aggregate 5-Client Concurrent Throughput: $TOTAL_CONCURRENT_SPEED Mbps"
-echo "   Inbound Bandwidth Limit (HTB Class 1:10): 100.00 Mbps"
+echo "   Inbound Group Downlink Limit: 100.00 Mbps"
 echo "   ======================================================"
 
 # Assert individual client ceilings enforced in Phase 2
@@ -539,7 +502,7 @@ fi
 echo ""
 echo "======================================================="
 echo "🎉 ALL BENCHMARK VERIFICATION ASSERTIONS PASSED (5/5)!"
-echo "   - Inbound Ceiling: 100 Mbps enforced"
+echo "   - Inbound Group Ceiling: 100 Mbps enforced"
 echo "   - Client 1: 10 Mbps (Inbound Fallback)"
 echo "   - Client 2: 20 Mbps (Global Limit)"
 echo "   - Client 3: 30 Mbps (Global Limit)"

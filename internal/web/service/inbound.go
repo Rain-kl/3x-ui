@@ -22,7 +22,6 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
-	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 	"github.com/mhsanaei/3x-ui/v3/internal/tuic"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/maskcompat"
@@ -1249,6 +1248,9 @@ func (s *InboundService) normalizeMtprotoXrayPort(inbound *model.Inbound, oldSet
 // then saves the inbound to the database and optionally adds it to the running Xray instance.
 // Returns the created inbound, whether Xray needs restart, and any error.
 func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, bool, error) {
+	if err := validateNativeRateLimits(inbound); err != nil {
+		return inbound, false, err
+	}
 	inbound.Id = 0
 	if err := normalizeTuicSettings(inbound); err != nil {
 		return inbound, false, err
@@ -1558,22 +1560,6 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 		needRestart = true
 	}
 
-	if inbound.NodeID == nil {
-		if r := trafficshaper.GetReconciler(); r != nil {
-			clientLimits := s.clientService.ClientLimitsByInbound(inbound.Id)
-			if inbound.Enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0 || len(clientLimits) > 0) {
-				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-					InboundID:        inbound.Id,
-					Port:             inbound.Port,
-					InboundDownLimit: inbound.InboundDownLimit,
-					ClientDownLimit:  inbound.ClientDownLimit,
-					ClientLimits:     clientLimits,
-					Clients:          s.ExtractClientEmails(inbound),
-				})
-			}
-		}
-	}
-
 	return inbound, needRestart, err
 }
 
@@ -1691,11 +1677,6 @@ func (s *InboundService) delInbound(id int) (bool, func(), error) {
 	// Drop the egress SOCKS bridge a routed mtproto inbound left in the config.
 	if mtprotoRoutesThroughXray(&ib) {
 		needRestart = true
-	}
-	if ib.NodeID == nil {
-		if r := trafficshaper.GetReconciler(); r != nil {
-			_ = r.RemoveInbound(id)
-		}
 	}
 	return needRestart, nodePush, nil
 }
@@ -1847,24 +1828,6 @@ func (s *InboundService) SetInboundEnable(id int, enable bool) (bool, error) {
 	}
 	inbound.Enable = enable
 
-	if inbound.NodeID == nil {
-		if r := trafficshaper.GetReconciler(); r != nil {
-			clientLimits := s.clientService.ClientLimitsByInbound(inbound.Id)
-			if enable && (inbound.InboundDownLimit > 0 || inbound.ClientDownLimit > 0 || len(clientLimits) > 0) {
-				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-					InboundID:        inbound.Id,
-					Port:             inbound.Port,
-					InboundDownLimit: inbound.InboundDownLimit,
-					ClientDownLimit:  inbound.ClientDownLimit,
-					ClientLimits:     clientLimits,
-					Clients:          s.ExtractClientEmails(inbound),
-				})
-			} else if !enable {
-				_ = r.RemoveInbound(inbound.Id)
-			}
-		}
-	}
-
 	needRestart := false
 	rt, push, _, perr := s.nodePushPlan(inbound)
 	if perr != nil {
@@ -1948,6 +1911,9 @@ func (s *InboundService) validateUpdatedInboundClients(inbound *model.Inbound) e
 }
 
 func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, bool, error) {
+	if err := validateNativeRateLimits(inbound); err != nil {
+		return inbound, false, err
+	}
 	legacyShareAddr := legacyMtprotoShareAddr(inbound)
 	inbound.TrafficResetDay = normalizeTrafficResetDay(inbound.TrafficResetDay)
 	// Normalize streamSettings based on protocol
@@ -2284,24 +2250,6 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 			logger.Warning("UpdateInbound: sync routing on tag rename failed:", syncErr)
 		} else if routingChanged {
 			needRestart = true
-		}
-	}
-
-	if oldInbound.NodeID == nil {
-		if r := trafficshaper.GetReconciler(); r != nil {
-			clientLimits := s.clientService.ClientLimitsByInbound(oldInbound.Id)
-			if oldInbound.Enable && (oldInbound.InboundDownLimit > 0 || oldInbound.ClientDownLimit > 0 || len(clientLimits) > 0) {
-				_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-					InboundID:        oldInbound.Id,
-					Port:             oldInbound.Port,
-					InboundDownLimit: oldInbound.InboundDownLimit,
-					ClientDownLimit:  oldInbound.ClientDownLimit,
-					ClientLimits:     clientLimits,
-					Clients:          s.ExtractClientEmails(oldInbound),
-				})
-			} else {
-				_ = r.RemoveInbound(oldInbound.Id)
-			}
 		}
 	}
 

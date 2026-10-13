@@ -20,7 +20,6 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/sub"
-	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 	"github.com/mhsanaei/3x-ui/v3/internal/tunnelmonitor"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/sys"
@@ -112,30 +111,6 @@ func runWebServer() {
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
-	}
-
-	if err := trafficshaper.Init(); err != nil {
-		logger.Warning("Failed to initialize trafficshaper:", err)
-	} else if r := trafficshaper.GetReconciler(); r != nil {
-		inboundSvc := &service.InboundService{}
-		clientSvc := &service.ClientService{}
-		if inbounds, err := inboundSvc.GetAllInbounds(); err == nil {
-			for _, ib := range inbounds {
-				if ib.NodeID == nil && ib.Enable {
-					clientLimits := clientSvc.ClientLimitsByInbound(ib.Id)
-					if ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0 || len(clientLimits) > 0 {
-						_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-							InboundID:        ib.Id,
-							Port:             ib.Port,
-							InboundDownLimit: ib.InboundDownLimit,
-							ClientDownLimit:  ib.ClientDownLimit,
-							ClientLimits:     clientLimits,
-							Clients:          inboundSvc.ExtractClientEmails(ib),
-						})
-					}
-				}
-			}
-		}
 	}
 
 	server := web.NewServer()
@@ -236,9 +211,6 @@ func runWebServer() {
 				logger.Error("Server shutdown failed:", err)
 			}
 			_ = subServer.Stop()
-			if err := trafficshaper.Teardown(); err != nil {
-				logger.Warning("Error during trafficshaper teardown:", err)
-			}
 			log.Println("Shutting down servers.")
 			return
 		}
@@ -783,16 +755,6 @@ func main() {
 		} else {
 			updateCert(webCertFile, webKeyFile)
 		}
-	case "tc":
-		if len(os.Args) > 2 && os.Args[2] == "clean" {
-			if err := trafficshaper.Teardown(); err != nil {
-				fmt.Printf("tc clean failed: %v\n", err)
-				os.Exit(1)
-			}
-			fmt.Println("Traffic shaper rules cleaned successfully.")
-			return
-		}
-		fmt.Println("Usage: x-ui tc clean")
 	default:
 		fmt.Println("Invalid subcommands")
 		fmt.Println()
@@ -810,6 +772,5 @@ Commands:
     migrate-db     SQLite <-> .dump (--dump/--restore) or copy into PostgreSQL (--dsn)
     encrypt-tokens encrypt node bearer tokens with the configured active key
     setting        set settings
-    tc             traffic control commands (tc clean)
 `
 }

@@ -757,6 +757,7 @@
       "sniffingDestOverride": "Penggantian tujuan",
       "advancedTitle": "Pengaturan Lanjutan",
       "rateLimitTab": "Batas Kecepatan",
+      "nativeRateLimitHint": "Memerlukan Xray core v26.10.10-feat.2 atau yang lebih baru. Perubahan batas akan memulai ulang koneksi aktif.",
       "list": {
         "rateLimit": "Batas Kecepatan (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "Perpanjangan kalender dilakukan pada tengah malam menurut zona waktu panel dan juga mereset trafik klien. Nonaktifkan reset trafik terpisah kecuali Anda menginginkan reset tambahan.",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "Batas Kecepatan",
+      "nativeRateLimitHint": "Memerlukan Xray core v26.10.10-feat.2 atau yang lebih baru. Perubahan batas akan memulai ulang koneksi aktif.",
       "downLimit": "Batas Unduhan (Mbps)",
       "downLimitDesc": "Batas bandwidth unduhan default klien, 0 berarti tanpa batas",
       "inboundRateLimitOverrides": "Pengabaian Batas Kecepatan Node Terhubung",

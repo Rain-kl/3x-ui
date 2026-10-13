@@ -276,6 +276,13 @@ func (l *Local) AddUser(_ context.Context, ib *model.Inbound, userMap map[string
 	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC {
 		return nil
 	}
+	if xray.NativeRateLimitSupported(string(ib.Protocol)) {
+		limit := ib.ClientDownLimit
+		if value, ok := userMap["downLimit"].(int); ok && value > 0 {
+			limit = value
+		}
+		xray.SetUserRateLimits(userMap, ib.Tag, limit, ib.InboundDownLimit)
+	}
 	return l.withAPI(func(api *xray.XrayAPI) error {
 		return api.AddUser(string(ib.Protocol), ib.Tag, userMap)
 	})
@@ -296,6 +303,7 @@ func (l *Local) AddClient(ctx context.Context, ib *model.Inbound, client model.C
 	}
 	user := map[string]any{
 		"email":        client.Email,
+		"downLimit":    client.DownLimit,
 		"id":           client.ID,
 		"security":     client.Security,
 		"flow":         client.Flow,
@@ -337,6 +345,7 @@ func (l *Local) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail stri
 	}
 	user := map[string]any{
 		"email":        payload.Email,
+		"downLimit":    payload.DownLimit,
 		"id":           payload.ID,
 		"security":     payload.Security,
 		"flow":         payload.Flow,

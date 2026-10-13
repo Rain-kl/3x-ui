@@ -757,6 +757,7 @@
       "sniffingDestOverride": "بازنویسی مقصد",
       "advancedTitle": "تنظیمات پیشرفته",
       "rateLimitTab": "محدودیت سرعت",
+      "nativeRateLimitHint": "به Xray core نسخهٔ v26.10.10-feat.2 یا جدیدتر نیاز دارد. تغییر محدودیت‌ها اتصال‌های فعال را راه‌اندازی مجدد می‌کند.",
       "list": {
         "rateLimit": "محدودیت سرعت (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "تمدید تقویمی در نیمه‌شب به وقت پنل انجام می‌شود و ترافیک کاربر را نیز بازنشانی می‌کند. بازنشانی مستقل ترافیک را غیرفعال نگه دارید، مگر اینکه بازنشانی دیگری می‌خواهید.",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "محدودیت سرعت",
+      "nativeRateLimitHint": "به Xray core نسخهٔ v26.10.10-feat.2 یا جدیدتر نیاز دارد. تغییر محدودیت‌ها اتصال‌های فعال را راه‌اندازی مجدد می‌کند.",
       "downLimit": "محدودیت دانلود (Mbps)",
       "downLimitDesc": "حداکثر پهنای باند پیش‌فرض کلاینت، ۰ یعنی بدون محدودیت",
       "inboundRateLimitOverrides": "بازنویسی محدودیت سرعت گره‌های متصل",

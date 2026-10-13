@@ -757,6 +757,7 @@
       "sniffingDestOverride": "宛先のオーバーライド",
       "advancedTitle": "詳細設定",
       "rateLimitTab": "速度制限",
+      "nativeRateLimitHint": "Xray core v26.10.10-feat.2 以降が必要です。上限を変更するとアクティブな接続が再起動されます。",
       "list": {
         "rateLimit": "帯域制限 (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "カレンダー更新はパネルのタイムゾーンの午前 0 時に行われ、クライアントの通信量もリセットします。追加のリセットが不要なら、独立した通信量リセットは無効にしてください。",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "速度制限",
+      "nativeRateLimitHint": "Xray core v26.10.10-feat.2 以降が必要です。上限を変更するとアクティブな接続が再起動されます。",
       "downLimit": "下り速度制限 (Mbps)",
       "downLimitDesc": "クライアントのデフォルト下り帯域上限、0で無制限",
       "inboundRateLimitOverrides": "関連ノードの速度制限上書き",

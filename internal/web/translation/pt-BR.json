@@ -757,6 +757,7 @@
       "sniffingDestOverride": "Substituição de destino",
       "advancedTitle": "Configurações avançadas",
       "rateLimitTab": "Limite de velocidade",
+      "nativeRateLimitHint": "Requer o Xray core v26.10.10-feat.2 ou posterior. Alterar os limites reinicia as conexões ativas.",
       "list": {
         "rateLimit": "Limite de velocidade (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "A renovação por calendário ocorre à meia-noite no fuso horário do painel e também redefine o tráfego do cliente. Mantenha as redefinições independentes de tráfego desativadas, a menos que queira uma redefinição adicional.",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "Limite de velocidade",
+      "nativeRateLimitHint": "Requer o Xray core v26.10.10-feat.2 ou posterior. Alterar os limites reinicia as conexões ativas.",
       "downLimit": "Limite de download (Mbps)",
       "downLimitDesc": "Limite de largura de banda padrão do cliente, 0 significa sem limite",
       "inboundRateLimitOverrides": "Substituições de limite de nós vinculados",

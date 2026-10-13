@@ -757,6 +757,7 @@
       "sniffingDestOverride": "تجاوز الوجهة",
       "advancedTitle": "الإعدادات المتقدمة",
       "rateLimitTab": "حد السرعة",
+      "nativeRateLimitHint": "يتطلب Xray core الإصدار v26.10.10-feat.2 أو أحدث. يؤدي تغيير الحدود إلى إعادة تشغيل الاتصالات النشطة.",
       "list": {
         "rateLimit": "حد السرعة (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "يتم التجديد التقويمي عند منتصف الليل بتوقيت اللوحة ويُعاد أيضًا تعيين استهلاك العميل. أبقِ إعادة تعيين الاستهلاك المستقلة معطلة ما لم تكن تريد إعادة تعيين إضافية.",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "تحديد السرعة",
+      "nativeRateLimitHint": "يتطلب Xray core الإصدار v26.10.10-feat.2 أو أحدث. يؤدي تغيير الحدود إلى إعادة تشغيل الاتصالات النشطة.",
       "downLimit": "حد التنزيل (Mbps)",
       "downLimitDesc": "الحد الأقصى الافتراضي للنطاق الترددي للعميل، 0 يعني بدون حد",
       "inboundRateLimitOverrides": "تجاوز حد السرعة للمنافذ المرتبطة",

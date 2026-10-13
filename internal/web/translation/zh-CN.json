@@ -757,6 +757,7 @@
       "sniffingDestOverride": "目标覆盖",
       "advancedTitle": "高级设置",
       "rateLimitTab": "限速",
+      "nativeRateLimitHint": "需要 Xray core v26.10.10-feat.2 或更高版本。修改限速会重启现有连接。",
       "list": {
         "rateLimit": "带宽限速 (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "日历续期按面板时区的午夜执行，并重置客户端流量。若不需要额外重置，请关闭独立的流量重置。",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "限速",
+      "nativeRateLimitHint": "需要 Xray core v26.10.10-feat.2 或更高版本。修改限速会重启现有连接。",
       "downLimit": "下行限速 (Mbps)",
       "downLimitDesc": "客户端默认带宽上限，0 为不限速",
       "inboundRateLimitOverrides": "关联节点限速覆盖",

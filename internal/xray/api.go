@@ -788,8 +788,12 @@ func (x *XrayAPI) AddUser(Protocol string, inboundTag string, user map[string]an
 		Tag: inboundTag,
 		Operation: serial.ToTypedMessage(&command.AddUserOperation{
 			User: &protocol.User{
-				Email:   userEmail,
-				Account: account,
+				Email:                   userEmail,
+				Account:                 account,
+				UplinkSpeedLimit:        nativeRateLimitUint(user, "uplink_speed_limit"),
+				DownlinkSpeedLimit:      nativeRateLimitUint(user, "downlink_speed_limit"),
+				RateLimitGroup:          nativeRateLimitString(user, "rate_limit_group"),
+				DownlinkGroupSpeedLimit: nativeRateLimitUint(user, "downlink_group_speed_limit"),
 			},
 		}),
 	})
@@ -997,4 +1001,25 @@ func mapToSlice[T any](m map[string]*T) []*T {
 		result = append(result, v)
 	}
 	return result
+}
+
+func nativeRateLimitUint(user map[string]any, key string) uint64 {
+	switch value := user[key].(type) {
+	case uint64:
+		return value
+	case float64:
+		if value > 0 {
+			return uint64(value)
+		}
+	case int:
+		if value > 0 {
+			return uint64(value)
+		}
+	}
+	return 0
+}
+
+func nativeRateLimitString(user map[string]any, key string) string {
+	value, _ := user[key].(string)
+	return value
 }

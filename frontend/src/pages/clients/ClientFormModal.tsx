@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   AutoComplete,
   Button,
   Card,
@@ -1560,6 +1561,12 @@ export default function ClientFormModal({
                   label: t('pages.clients.tabRateLimit'),
                   children: (
                     <>
+                      <Alert
+                        type="info"
+                        showIcon
+                        message={t('pages.clients.nativeRateLimitHint')}
+                        style={{ marginBottom: 16 }}
+                      />
                       <Row gutter={16}>
                         <Col xs={24} md={12}>
                           <FormField

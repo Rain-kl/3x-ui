@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -20,7 +19,6 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
-	"github.com/mhsanaei/3x-ui/v3/internal/trafficshaper"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/random"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
@@ -294,7 +292,6 @@ func (s *ClientService) Create(inboundSvc *InboundService, payload *ClientCreate
 		}
 	}
 	err = s.setClientLimitHwidByEmail(client.Email, payload.LimitHwid)
-	s.syncTrafficShaperInbounds(inboundSvc, payload.InboundIds...)
 	return needRestart, err
 }
 
@@ -977,8 +974,6 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 		UpdateColumn("updated_at", time.Now().UnixMilli()).Error; err != nil {
 		return needRestart, err
 	}
-	targetIds := append(attachedIds, inboundFilter...)
-	s.syncTrafficShaperInbounds(inboundSvc, targetIds...)
 	return needRestart, nil
 }
 
@@ -1069,7 +1064,6 @@ func (s *ClientService) Delete(inboundSvc *InboundService, id int, keepTraffic b
 		withdrawClientTombstones(existing.Email)
 		return needRestart, err
 	}
-	s.syncTrafficShaperInbounds(inboundSvc, inboundIds...)
 	return needRestart, nil
 }
 
@@ -1205,9 +1199,6 @@ func (s *ClientService) Attach(inboundSvc *InboundService, id int, inboundIds []
 		adds = append(adds, &model.Inbound{Id: ibId, Settings: string(settingsPayload)})
 	}
 	needRestart, err := s.fanoutInboundClientAdds(inboundSvc, adds)
-	if err == nil {
-		s.syncTrafficShaperInbounds(inboundSvc, inboundIds...)
-	}
 	return needRestart, err
 }
 
@@ -1298,7 +1289,6 @@ func (s *ClientService) DeleteByEmail(inboundSvc *InboundService, email string, 
 			return needRestart, err
 		}
 	}
-	s.syncTrafficShaperInbounds(inboundSvc, inboundIds...)
 	return needRestart, nil
 }
 
@@ -1348,43 +1338,5 @@ func (s *ClientService) Detach(inboundSvc *InboundService, id int, inboundIds []
 		}})
 	}
 	needRestart, err := fanoutInboundApplies(applies)
-	if err == nil {
-		s.syncTrafficShaperInbounds(inboundSvc, inboundIds...)
-	}
 	return needRestart, err
-}
-
-// syncTrafficShaperInbounds refreshes TC rate limiting classes for the specified inbounds.
-func (s *ClientService) syncTrafficShaperInbounds(inboundSvc *InboundService, inboundIds ...int) {
-	r := trafficshaper.GetReconciler()
-	if r == nil || len(inboundIds) == 0 {
-		return
-	}
-	if inboundSvc == nil {
-		inboundSvc = &InboundService{}
-	}
-	seen := make(map[int]bool, len(inboundIds))
-	for _, id := range inboundIds {
-		if id <= 0 || seen[id] {
-			continue
-		}
-		seen[id] = true
-		ib, err := inboundSvc.GetInbound(id)
-		if err != nil || ib == nil || !ib.Enable || ib.NodeID != nil {
-			continue
-		}
-		clientLimits := s.ClientLimitsByInbound(ib.Id)
-		if ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0 || len(clientLimits) > 0 {
-			_ = r.ApplyInbound(context.Background(), trafficshaper.InboundRule{
-				InboundID:        ib.Id,
-				Port:             ib.Port,
-				InboundDownLimit: ib.InboundDownLimit,
-				ClientDownLimit:  ib.ClientDownLimit,
-				ClientLimits:     clientLimits,
-				Clients:          inboundSvc.ExtractClientEmails(ib),
-			})
-		} else {
-			_ = r.RemoveInbound(ib.Id)
-		}
-	}
 }

@@ -1161,6 +1161,10 @@ func (s *ServerService) UpdateXray(version string) error {
 		return fmt.Errorf("invalid xray version format %q, expected e.g. v26.7.28", version)
 	}
 
+	if hasLocalNativeRateLimits() && !xray.SupportsNativeRateLimitVersion(version) {
+		return fmt.Errorf("configured bandwidth limits require Rain-kl/Xray-core v26.10.10-feat.2 or newer")
+	}
+
 	// 1. Stop xray before doing anything
 	if err := s.StopXrayService(); err != nil {
 		logger.Warning("failed to stop xray before update:", err)

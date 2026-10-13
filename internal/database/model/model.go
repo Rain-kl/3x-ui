@@ -384,6 +384,9 @@ func (i *Inbound) GenXrayInboundConfig() *xray.InboundConfig {
 			settings = converted
 		}
 	}
+	if xray.NativeRateLimitSupported(protocol) {
+		settings = string(xray.NativeRateLimitSettings(i.Tag, []byte(settings), i.ClientDownLimit, i.InboundDownLimit))
+	}
 	streamSettings := i.StreamSettings
 	if stripped, ok := StripInboundXhttpClientFields(streamSettings); ok {
 		streamSettings = stripped

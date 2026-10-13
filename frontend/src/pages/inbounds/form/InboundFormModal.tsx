@@ -1153,6 +1153,12 @@ export default function InboundFormModal({
 
   const rateLimitTab = (
     <>
+      <Alert
+        type="info"
+        showIcon
+        message={t('pages.inbounds.nativeRateLimitHint')}
+        style={{ marginBottom: 16 }}
+      />
       <FormField
         name="inboundDownLimit"
         label={labelWithHint(

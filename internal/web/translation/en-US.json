@@ -757,6 +757,7 @@
       },
       "sniffingDestOverride": "Destination override",
       "rateLimitTab": "Rate Limit",
+      "nativeRateLimitHint": "Requires Xray core v26.10.10-feat.2 or newer. Changing limits restarts active connections.",
       "list": {
         "rateLimit": "Rate Limit (Mbps)"
       },
@@ -1020,6 +1021,7 @@
       "renewWeeklyDesc": "Calendar renewal uses midnight in the panel timezone and also resets the client's traffic. Keep independent traffic resets disabled unless an additional reset is intended.",
       "tuicTotalGBDesc": "TUIC does not support per-client traffic limits; set traffic limit on the inbound instead.",
       "tabRateLimit": "Rate Limit",
+      "nativeRateLimitHint": "Requires Xray core v26.10.10-feat.2 or newer. Changing limits restarts active connections.",
       "downLimit": "Downlink Limit (Mbps)",
       "downLimitDesc": "Client default downlink bandwidth cap, 0 means unlimited",
       "inboundRateLimitOverrides": "Inbound Rate Limit Overrides",

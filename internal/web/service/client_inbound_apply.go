@@ -494,6 +494,10 @@ func (s *ClientService) AddInboundClient(inboundSvc *InboundService, data *model
 		return false, err
 	}
 
+	if err := validateNativeRateLimits(oldInbound, clients...); err != nil {
+		return false, err
+	}
+
 	if oldInbound.Protocol == model.Shadowsocks {
 		applyShadowsocksClientMethod(interfaceClients, oldSettings)
 	}
@@ -605,6 +609,7 @@ func (s *ClientService) AddInboundClient(inboundSvc *InboundService, data *model
 				}
 				err1 := rt.AddUser(context.Background(), oldInbound, map[string]any{
 					"email":        client.Email,
+					"downLimit":    client.DownLimit,
 					"id":           client.ID,
 					"auth":         client.Auth,
 					"security":     client.Security,
@@ -716,6 +721,9 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 
 	if newClientId == "" || clientIndex == -1 {
 		return false, common.NewError("empty client ID")
+	}
+	if err := validateNativeRateLimits(oldInbound, clients...); err != nil {
+		return false, err
 	}
 	if strings.TrimSpace(clients[0].Email) == "" {
 		return false, common.NewError("client email is required")
@@ -900,7 +908,7 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 		detachEmails = []string{oldEmail}
 	}
 
-	needRestart := false
+	needRestart := oldInbound.NodeID == nil && clientIndex >= 0 && oldClients[clientIndex].DownLimit != clients[0].DownLimit
 
 	// Resolve the push plan before the DB write so a node-state lookup failure
 	// still aborts the whole update without committing anything (it used to roll
@@ -1049,6 +1057,7 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 					}
 					err1 := rt.AddUser(context.Background(), oldInbound, map[string]any{
 						"email":        clients[0].Email,
+						"downLimit":    clients[0].DownLimit,
 						"id":           clients[0].ID,
 						"security":     clients[0].Security,
 						"flow":         clients[0].Flow,
