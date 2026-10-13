@@ -34,7 +34,10 @@ func ParseScopedEmail(value string) (string, string, bool) {
 	return string(tag), string(email), true
 }
 
-func ScopeInboundSettings(tag string, settings []byte) []byte {
+func ScopeInboundSettings(tag string, settings []byte, protocol ...string) []byte {
+	if len(protocol) > 0 && protocol[0] == "masque" {
+		return settings
+	}
 	var obj map[string]any
 	if json.Unmarshal(settings, &obj) != nil {
 		return settings
@@ -104,7 +107,7 @@ func scopeInboundConfig(raw []byte) []byte {
 	if json.Unmarshal(raw, &obj) != nil {
 		return raw
 	}
-	obj["settings"] = ScopeInboundSettings(ib.Tag, ib.Settings)
+	obj["settings"] = ScopeInboundSettings(ib.Tag, ib.Settings, ib.Protocol)
 	result, err := json.Marshal(obj)
 	if err != nil {
 		return raw

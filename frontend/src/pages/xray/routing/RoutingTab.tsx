@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Dropdown, Modal, Select, Space, Table, Tabs, message } from 'antd';
+import { Alert, Button, Dropdown, Modal, Select, Space, Table, Tabs, message } from 'antd';
 import {
   AimOutlined,
   ControlOutlined,
@@ -55,6 +55,7 @@ export default function RoutingTab({
   isMobile,
 }: RoutingTabProps) {
   const { t } = useTranslation();
+  const [messageApi, messageContextHolder] = message.useMessage();
   const [modal, modalContextHolder] = Modal.useModal();
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<RoutingRule | null>(null);
@@ -102,12 +103,12 @@ export default function RoutingTab({
       try {
         const resp = await HttpUtil.post('/panel/api/xray/', { nodeId }, { silent: true });
         if (!resp?.success) {
-          message.error(resp?.msg || t('somethingWentWrong'));
+          messageApi.error(resp?.msg || t('somethingWentWrong'));
           return;
         }
         const rules = parseRoutingRulesFromXrayConfigObj(resp.obj);
         if (rules == null) {
-          message.error(t('somethingWentWrong'));
+          messageApi.error(t('somethingWentWrong'));
           return;
         }
         setRemoteRules(
@@ -116,12 +117,12 @@ export default function RoutingTab({
         setRemoteOutboundTags(parseOutboundTagsFromXrayConfigObj(resp.obj));
         setRemoteReady(true);
       } catch {
-        message.error(t('somethingWentWrong'));
+        messageApi.error(t('somethingWentWrong'));
       } finally {
         setRemoteLoading(false);
       }
     },
-    [t],
+    [messageApi, t],
   );
 
   const handleNodeChange = useCallback(
@@ -150,6 +151,7 @@ export default function RoutingTab({
     moved: false,
   });
 
+  const routingScript = templateSettings?.routing?.script ?? '';
   const activeRules = useMemo(() => {
     if (selectedNodeId > 0) {
       return remoteRules;
@@ -232,14 +234,14 @@ export default function RoutingTab({
       };
       const resp = await HttpUtil.post('/panel/api/xray/update', payload);
       if (resp?.success) {
-        message.success(t('pages.settings.toasts.modifySettings'));
+        messageApi.success(t('pages.settings.toasts.modifySettings'));
       }
     } catch {
-      message.error(t('somethingWentWrong'));
+      messageApi.error(t('somethingWentWrong'));
     } finally {
       setRemoteSaving(false);
     }
-  }, [selectedNodeId, remoteReady, remoteRules, t]);
+  }, [messageApi, selectedNodeId, remoteReady, remoteRules, t]);
 
   const inboundTagOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -317,7 +319,7 @@ export default function RoutingTab({
     try {
       parsed = JSON.parse(value);
     } catch {
-      message.error(t('pages.xray.importInvalidJson'));
+      messageApi.error(t('pages.xray.importInvalidJson'));
       return;
     }
     const obj = parsed as { rules?: unknown; routing?: { rules?: unknown } };
@@ -329,7 +331,7 @@ export default function RoutingTab({
           ? obj.routing!.rules
           : null;
     if (!list) {
-      message.error(t('pages.xray.importInvalidJson'));
+      messageApi.error(t('pages.xray.importInvalidJson'));
       return;
     }
     mutate((listRules) => {
@@ -488,6 +490,15 @@ export default function RoutingTab({
   return (
     <>
       {modalContextHolder}
+      {messageContextHolder}
+      {routingScript.trim() !== '' && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title={t('pages.xray.routingScriptActive', { section: t('pages.xray.basicTemplate') })}
+        />
+      )}
       <Tabs
         defaultActiveKey="basic"
         items={[

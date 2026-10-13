@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
+	"github.com/mhsanaei/3x-ui/v3/internal/database/dbtest"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/session"
@@ -31,10 +32,7 @@ func newAPIAuthTestEngine(t *testing.T) (*gin.Engine, *APIController) {
 	gin.SetMode(gin.TestMode)
 	dbDir := t.TempDir()
 	t.Setenv("XUI_DB_FOLDER", dbDir)
-	if err := database.InitDB(filepath.Join(dbDir, "x-ui.db")); err != nil {
-		t.Fatalf("InitDB: %v", err)
-	}
-	t.Cleanup(func() { _ = database.CloseDB() })
+	dbtest.InitDB(t, filepath.Join(dbDir, "x-ui.db"))
 	engine := gin.New()
 	store := cookie.NewStore([]byte("api-auth-test-secret"))
 	engine.Use(sessions.Sessions("3x-ui", store))
@@ -156,7 +154,10 @@ func TestNodeSyncScopeAllowlistMatchesRemoteInventory(t *testing.T) {
 		"/inbounds/add":                {http.MethodPost: {}},
 		"/inbounds/del/:id":            {http.MethodPost: {}},
 		"/inbounds/update/:id":         {http.MethodPost: {}},
+		"/inbounds/:id/subSortIndex":   {http.MethodPost: {}},
 		"/clients/add":                 {http.MethodPost: {}},
+		"/clients/activeInbounds":      {http.MethodPost: {}},
+		"/clients/bulkResetTraffic":    {http.MethodPost: {}},
 		"/clients/del/:email":          {http.MethodPost: {}},
 		"/clients/:email/detach":       {http.MethodPost: {}},
 		"/clients/update/:email":       {http.MethodPost: {}},
