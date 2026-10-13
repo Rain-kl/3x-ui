@@ -1248,6 +1248,7 @@ func (s *InboundService) normalizeMtprotoXrayPort(inbound *model.Inbound, oldSet
 // then saves the inbound to the database and optionally adds it to the running Xray instance.
 // Returns the created inbound, whether Xray needs restart, and any error.
 func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, bool, error) {
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if err := validateNativeRateLimits(inbound); err != nil {
 		return inbound, false, err
 	}
@@ -1911,6 +1912,7 @@ func (s *InboundService) validateUpdatedInboundClients(inbound *model.Inbound) e
 }
 
 func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, bool, error) {
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if err := validateNativeRateLimits(inbound); err != nil {
 		return inbound, false, err
 	}

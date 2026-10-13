@@ -276,6 +276,7 @@ func (l *Local) AddUser(_ context.Context, ib *model.Inbound, userMap map[string
 	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC {
 		return nil
 	}
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if xray.NativeRateLimitSupported(string(ib.Protocol)) {
 		limit := ib.ClientDownLimit
 		if value, ok := userMap["downLimit"].(int); ok && value > 0 {
@@ -302,7 +303,8 @@ func (l *Local) AddClient(ctx context.Context, ib *model.Inbound, client model.C
 		return nil
 	}
 	user := map[string]any{
-		"email":        client.Email,
+		"email": client.Email,
+		// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 		"downLimit":    client.DownLimit,
 		"id":           client.ID,
 		"security":     client.Security,
@@ -344,7 +346,8 @@ func (l *Local) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail stri
 		return nil
 	}
 	user := map[string]any{
-		"email":        payload.Email,
+		"email": payload.Email,
+		// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 		"downLimit":    payload.DownLimit,
 		"id":           payload.ID,
 		"security":     payload.Security,

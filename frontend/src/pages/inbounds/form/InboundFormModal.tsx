@@ -1153,6 +1153,7 @@ export default function InboundFormModal({
 
   const rateLimitTab = (
     <>
+      {/* FORK(native-rate-limits): Explain core requirements and connection restarts. */}
       <Alert
         type="info"
         showIcon

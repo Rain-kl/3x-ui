@@ -1561,6 +1561,7 @@ export default function ClientFormModal({
                   label: t('pages.clients.tabRateLimit'),
                   children: (
                     <>
+                      {/* FORK(native-rate-limits): Explain core requirements and connection restarts. */}
                       <Alert
                         type="info"
                         showIcon

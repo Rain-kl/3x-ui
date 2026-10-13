@@ -625,6 +625,7 @@ func (p *process) Start() (err error) {
 		}
 	}()
 
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if HasNativeRateLimits(p.config) {
 		p.refreshVersion()
 		if !SupportsNativeRateLimitVersion(p.GetXrayVersion()) {

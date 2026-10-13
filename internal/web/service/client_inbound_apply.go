@@ -494,6 +494,7 @@ func (s *ClientService) AddInboundClient(inboundSvc *InboundService, data *model
 		return false, err
 	}
 
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if err := validateNativeRateLimits(oldInbound, clients...); err != nil {
 		return false, err
 	}
@@ -608,7 +609,8 @@ func (s *ClientService) AddInboundClient(inboundSvc *InboundService, data *model
 					cipher, _ = oldSettings["method"].(string)
 				}
 				err1 := rt.AddUser(context.Background(), oldInbound, map[string]any{
-					"email":        client.Email,
+					"email": client.Email,
+					// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 					"downLimit":    client.DownLimit,
 					"id":           client.ID,
 					"auth":         client.Auth,
@@ -722,6 +724,7 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 	if newClientId == "" || clientIndex == -1 {
 		return false, common.NewError("empty client ID")
 	}
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if err := validateNativeRateLimits(oldInbound, clients...); err != nil {
 		return false, err
 	}
@@ -908,6 +911,7 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 		detachEmails = []string{oldEmail}
 	}
 
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	needRestart := oldInbound.NodeID == nil && clientIndex >= 0 && oldClients[clientIndex].DownLimit != clients[0].DownLimit
 
 	// Resolve the push plan before the DB write so a node-state lookup failure
@@ -1056,7 +1060,8 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 						cipher, _ = oldSettings["method"].(string)
 					}
 					err1 := rt.AddUser(context.Background(), oldInbound, map[string]any{
-						"email":        clients[0].Email,
+						"email": clients[0].Email,
+						// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 						"downLimit":    clients[0].DownLimit,
 						"id":           clients[0].ID,
 						"security":     clients[0].Security,

@@ -384,6 +384,7 @@ func (i *Inbound) GenXrayInboundConfig() *xray.InboundConfig {
 			settings = converted
 		}
 	}
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if xray.NativeRateLimitSupported(protocol) {
 		settings = string(xray.NativeRateLimitSettings(i.Tag, []byte(settings), i.ClientDownLimit, i.InboundDownLimit))
 	}

@@ -215,6 +215,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 		return nil, err
 	}
 	for _, inbound := range inbounds {
+		// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 		if inbound.Enable && inbound.NodeID == nil {
 			if err := validateNativeRateLimits(inbound); err != nil {
 				return nil, err
@@ -255,6 +256,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 			enableMap[clientTraffic.Email] = clientTraffic.Enable
 		}
 
+		// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 		clientLimits := s.inboundService.clientService.ClientLimitsByInbound(inbound.Id)
 		finalClients := make([]any, 0, len(dbClients))
 		var wgPeers []any
@@ -274,6 +276,7 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 			if !flowAllowed {
 				flow = ""
 			}
+			// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 			entry := map[string]any{"email": c.Email, "downLimit": clientLimits[c.Email]}
 			switch inbound.Protocol {
 			case model.VLESS:
@@ -1484,6 +1487,7 @@ func (s *XrayService) restartToDropClients(diff *xray.HotDiff) bool {
 // partially applied. Callers must hold the package-level lock.
 func (s *XrayService) tryHotApply(process *xray.Process, newCfg *xray.Config) bool {
 	oldCfg := process.GetConfig()
+	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if xray.NativeRateLimitsChanged(oldCfg, newCfg) {
 		logger.Info("native bandwidth limits changed; restarting Xray to enforce them on existing sessions")
 		return false

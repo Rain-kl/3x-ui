@@ -1161,6 +1161,7 @@ func (s *ServerService) UpdateXray(version string) error {
 		return fmt.Errorf("invalid xray version format %q, expected e.g. v26.7.28", version)
 	}
 
+	// FORK(native-rate-limits): Prevent switching to a core that silently ignores saved caps.
 	if hasLocalNativeRateLimits() && !xray.SupportsNativeRateLimitVersion(version) {
 		return fmt.Errorf("configured bandwidth limits require Rain-kl/Xray-core v26.10.10-feat.2 or newer")
 	}

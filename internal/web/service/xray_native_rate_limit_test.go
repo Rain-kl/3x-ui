@@ -121,3 +121,71 @@ func TestUpdateXrayRejectsUnsupportedNativeRateLimitVersions(t *testing.T) {
 		}
 	}
 }
+
+func TestNativeRateLimitValidationAllowsDisabledUnsupportedStoredCaps(t *testing.T) {
+	db := initTrafficTestDB(t)
+
+	// Disabled unsupported inbounds retain limits without applying them.
+	disabled := &model.Inbound{
+		UserId: 1, Enable: false, Protocol: model.TUIC, Tag: "stored-limit", Port: 444,
+		Settings: `{"clients":[]}`, InboundDownLimit: 12, ClientDownLimit: 3,
+	}
+	created, _, err := (&InboundService{}).AddInbound(disabled)
+	if err != nil {
+		t.Fatalf("save disabled inbound with stored caps: %v", err)
+	}
+	var stored model.Inbound
+	if err := db.First(&stored, created.Id).Error; err != nil {
+		t.Fatalf("load disabled inbound: %v", err)
+	}
+	if stored.InboundDownLimit != 12 || stored.ClientDownLimit != 3 {
+		t.Fatalf("stored limits = %d/%d, want 12/3 Mbps", stored.InboundDownLimit, stored.ClientDownLimit)
+	}
+
+	// An active client's stored cap is enforced as soon as its unsupported inbound is enabled.
+	enabled := &model.Inbound{Enable: true, Protocol: model.TUIC, InboundDownLimit: 0}
+	activeClient := model.Client{Enable: true, DownLimit: 5}
+	err = validateNativeRateLimits(enabled, activeClient)
+	if err == nil || !strings.Contains(err.Error(), "not supported for tuic") {
+		t.Fatalf("active unsupported client limit error = %v, want TUIC support rejection", err)
+	}
+}
+
+func TestHasLocalNativeRateLimitsIgnoresInactiveClientCaps(t *testing.T) {
+	db := initTrafficTestDB(t)
+	inbound := &model.Inbound{
+		UserId: 1, Enable: true, Protocol: model.VLESS, Tag: "local-rate", Port: 445,
+		Settings: `{"clients":[]}`,
+	}
+	if err := db.Create(inbound).Error; err != nil {
+		t.Fatalf("create inbound: %v", err)
+	}
+	client := &model.ClientRecord{Email: "inactive@example.test", DownLimit: 20, Enable: false}
+	if err := db.Create(client).Error; err != nil {
+		t.Fatalf("create disabled client: %v", err)
+	}
+	if err := db.Model(client).UpdateColumn("enable", false).Error; err != nil {
+		t.Fatalf("disable client with schema default enabled: %v", err)
+	}
+	if err := db.Create(&model.ClientInbound{ClientId: client.Id, InboundId: inbound.Id, DownLimit: 12}).Error; err != nil {
+		t.Fatalf("attach disabled client with inbound override: %v", err)
+	}
+
+	if hasLocalNativeRateLimits() {
+		t.Fatal("inactive client caps should not require a compatible local core")
+	}
+	client.Enable = true
+	if err := db.Save(client).Error; err != nil {
+		t.Fatalf("enable client: %v", err)
+	}
+	if !hasLocalNativeRateLimits() {
+		t.Fatal("active client cap should require a compatible local core")
+	}
+	inbound.Enable = false
+	if err := db.Save(inbound).Error; err != nil {
+		t.Fatalf("disable inbound: %v", err)
+	}
+	if hasLocalNativeRateLimits() {
+		t.Fatal("disabled inbound caps should not require a compatible local core")
+	}
+}

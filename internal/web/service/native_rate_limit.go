@@ -57,8 +57,21 @@ func hasLocalNativeRateLimits() bool {
 		return true
 	}
 	for _, ib := range inbounds {
-		if ib.Enable && ib.NodeID == nil && (ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0 || len((&ClientService{}).ClientLimitsByInbound(ib.Id)) > 0) {
+		if !ib.Enable || ib.NodeID != nil {
+			continue
+		}
+		if ib.InboundDownLimit > 0 || ib.ClientDownLimit > 0 {
 			return true
+		}
+		clients, err := (&ClientService{}).ListForInbound(nil, ib.Id)
+		if err != nil {
+			return true
+		}
+		limits := (&ClientService{}).ClientLimitsByInbound(ib.Id)
+		for _, client := range clients {
+			if client.Enable && limits[client.Email] > 0 {
+				return true
+			}
 		}
 	}
 	return false
