@@ -11,21 +11,21 @@ import (
 func TestSpoolCapturesMeasuredAndLegacyAccess(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
 	s := NewSpool(path)
-	measured := "2026/10/13 01:02:03.123456 from tcp:192.0.2.1:4567 accepted tcp:example.com:443 [in >> direct] email: alice uplink=1024 downlink=2048"
+	measured := "2026/10/13 01:02:03.123456 from tcp:192.0.2.1:4567 accepted tcp:192.0.2.10:443 [in >> direct] email: alice sniffed_domain=www.example.com uplink=1024 downlink=2048"
 	legacy := "2026/10/13 01:02:04.123456 from tcp:192.0.2.2:4568 accepted tcp:old.example:443 [in >> direct] email: bob"
 	if !s.Capture(measured) || !s.Capture(legacy) {
 		t.Fatal("access lines were not captured")
 	}
 	events := s.Snapshot(100)
-	if len(events) != 2 || events[0].Client != "alice" || events[0].Inbound != "in" || events[0].Uplink == nil || *events[0].Uplink != 1024 || events[1].Uplink != nil {
+	if len(events) != 2 || events[0].Destination != "tcp:192.0.2.10:443" || events[0].SniffedDomain != "www.example.com" || events[0].Client != "alice" || events[0].Inbound != "in" || events[0].Uplink == nil || *events[0].Uplink != 1024 || events[1].Uplink != nil {
 		t.Fatalf("unexpected events: %+v", events)
 	}
 	if err := s.Flush(); err != nil {
 		t.Fatal(err)
 	}
 	reloaded := NewSpool(path)
-	if got := len(reloaded.Snapshot(100)); got != 2 {
-		t.Fatalf("reloaded %d events, want 2", got)
+	if got := reloaded.Snapshot(100); len(got) != 2 || got[0].SniffedDomain != "www.example.com" {
+		t.Fatalf("domain lost during spool reload: %+v", got)
 	}
 	if err := reloaded.Ack([]string{events[0].ID}); err != nil {
 		t.Fatal(err)

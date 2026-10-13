@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -29,8 +30,10 @@ type Event struct {
 	Client      string    `json:"client"`
 	Source      string    `json:"source"`
 	Destination string    `json:"destination"`
-	Uplink      *int64    `json:"uplink,omitempty"`
-	Downlink    *int64    `json:"downlink,omitempty"`
+	// FORK(sniffed-audit-domains): Carry domain metadata through node spool and acknowledgement.
+	SniffedDomain string `json:"sniffedDomain,omitempty"`
+	Uplink        *int64 `json:"uplink,omitempty"`
+	Downlink      *int64 `json:"downlink,omitempty"`
 }
 
 type Spool struct {
@@ -142,6 +145,11 @@ func (s *Spool) Capture(line string) bool {
 		switch {
 		case field == "email:" && i+1 < len(fields):
 			e.Client = fields[i+1]
+		// FORK(sniffed-audit-domains): Decode the core's escaped optional metadata token.
+		case strings.HasPrefix(field, "sniffed_domain="):
+			if domain, err := url.QueryUnescape(strings.TrimPrefix(field, "sniffed_domain=")); err == nil {
+				e.SniffedDomain = domain
+			}
 		case strings.HasPrefix(field, "uplink="):
 			if n, err := strconv.ParseInt(strings.TrimPrefix(field, "uplink="), 10, 64); err == nil && n >= 0 {
 				e.Uplink = &n

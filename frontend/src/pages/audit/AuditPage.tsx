@@ -302,7 +302,21 @@ export default function AuditPage() {
                           ),
                         },
                         { title: t('pages.audit.source'), dataIndex: 'source' },
-                        { title: t('pages.audit.destination'), dataIndex: 'destination' },
+                        {
+                          title: t('pages.audit.destination'),
+                          dataIndex: 'destination',
+                          // FORK(sniffed-audit-domains): Show domain attribution beside the original target.
+                          render: (value: string, record: AuditSummary['events'][number]) => (
+                            <div>
+                              <div>{value}</div>
+                              {record.host && !value.includes(record.host) && (
+                                <Button type="link" onClick={() => chooseSite(record.site)}>
+                                  {record.host}
+                                </Button>
+                              )}
+                            </div>
+                          ),
+                        },
                         {
                           title: t('pages.audit.upload'),
                           dataIndex: 'uplink',

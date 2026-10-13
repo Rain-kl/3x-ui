@@ -19,7 +19,7 @@ func TestAuditIngestAndSummary(t *testing.T) {
 	now := time.Now().UTC()
 	service := AuditService{}
 	events := []audit.Event{
-		{ID: "one", Time: now, Inbound: "in", Client: xray.ScopedEmail("in", "alice"), Destination: "tcp:www.example.com:443", Uplink: &one, Downlink: &two},
+		{ID: "one", Time: now, Inbound: "in", Client: xray.ScopedEmail("in", "alice"), Destination: "tcp:192.0.2.10:443", SniffedDomain: "www.example.com", Uplink: &one, Downlink: &two},
 		{ID: "two", Time: now, Inbound: "in", Client: "bob", Destination: "tcp:other.example.com:443"},
 	}
 	if err := service.Ingest(7, events); err != nil {
@@ -42,7 +42,7 @@ func TestAuditIngestAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filtered.Connections != 1 || len(filtered.Events) != 1 || filtered.Events[0].Client != "alice" {
+	if filtered.Connections != 1 || len(filtered.Events) != 1 || filtered.Events[0].Client != "alice" || filtered.Events[0].Destination != "tcp:192.0.2.10:443" || filtered.Events[0].Host != "www.example.com" {
 		t.Fatalf("wrong filtered rows: %+v", filtered)
 	}
 }

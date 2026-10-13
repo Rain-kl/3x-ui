@@ -9,3 +9,9 @@
 - **Core provenance:** Rain-kl/Xray-core native implementation is based on upstream [PR #6050](https://github.com/XTLS/Xray-core/pull/6050), original commit `da56e92`, cherry-picked as `4e99a70`; see the [core feature entry](https://github.com/Rain-kl/Xray-core/blob/main/FEATURES.md#native-authenticated-user-rate-limits-native-rate-limits) and [core specification](https://github.com/Rain-kl/Xray-core/blob/main/docs/specs/native-rate-limits.md).
 
 - **移除回归守卫**：`node scripts/check-fork-removals.mjs` 验证 TC 模块与旧钩子缺席，并检查原生配置、API 与重启接线。
+
+## Sniffed domains in audit (sniffed-audit-domains)
+
+- Preserve original IP destinations and export observed HTTP/TLS/QUIC/FakeDNS domains separately for website audit, including route-only sniffing.
+- Core integration: common/log/access.go and both app/dispatcher dispatch paths; panel: internal/audit/spool.go, audit ingestion and audit event display.
+- Design: [specification](docs/specs/sniffed-audit-domains.md). Implementation decision: [Agent Note](.agents/notes/sniffed-audit-domains.md). Upstream markers: FORK(sniffed-audit-domains). Legacy logs remain compatible; no retroactive IP-to-domain inference.

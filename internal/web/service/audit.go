@@ -83,6 +83,10 @@ func (AuditService) Ingest(nodeID int, events []audit.Event) error {
 			continue
 		}
 		host, site := auditHost(e.Destination)
+		// FORK(sniffed-audit-domains): Attribute websites by observed domain while preserving original IP.
+		if e.SniffedDomain != "" {
+			host, site = auditHost(e.SniffedDomain)
+		}
 		_, client, scoped := xray.ParseScopedEmail(e.Client)
 		if !scoped {
 			client = e.Client
