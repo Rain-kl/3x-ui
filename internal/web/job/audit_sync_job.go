@@ -15,9 +15,10 @@ import (
 )
 
 type AuditSyncJob struct {
-	running   sync.Mutex
-	nodes     service.NodeService
-	lastPrune time.Time
+	running        sync.Mutex
+	nodes          service.NodeService
+	lastPrune      time.Time
+	policyWarnings sync.Map
 }
 
 func NewAuditSyncJob() *AuditSyncJob { return &AuditSyncJob{} }
@@ -31,7 +32,19 @@ func (j *AuditSyncJob) Run() {
 	if err != nil {
 		return
 	}
-	if len(nodes) == 0 && auditChildMode() {
+	hasEnabledDownstream := false
+	for _, node := range nodes {
+		hasEnabledDownstream = hasEnabledDownstream || node.Enable
+	}
+	if !hasEnabledDownstream && auditChildMode() {
+		// FORK(audit-retention): Offline children expire source history using the last persisted master policy.
+		if time.Since(j.lastPrune) >= 5*time.Minute {
+			if err := (service.AuditService{}).PruneChild(audit.Local()); err != nil {
+				logger.Warning("audit: child prune failed:", err)
+			} else {
+				j.lastPrune = time.Now()
+			}
+		}
 		return
 	}
 	j.ingestLocal()
@@ -49,6 +62,11 @@ func (j *AuditSyncJob) Run() {
 	if mgr == nil {
 		return
 	}
+	control, err := (service.AuditService{}).Control()
+	if err != nil {
+		logger.Warning("audit: read parent policy failed:", err)
+		return
+	}
 	sem := make(chan struct{}, 8)
 	var wg sync.WaitGroup
 	for _, node := range nodes {
@@ -61,7 +79,7 @@ func (j *AuditSyncJob) Run() {
 		common.GoRecover("audit-sync:"+node.Name, func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			j.pullNode(mgr, node)
+			j.pullNode(mgr, node, control)
 		})
 	}
 	wg.Wait()
@@ -84,13 +102,26 @@ func (j *AuditSyncJob) ingestLocal() {
 	}
 }
 
-func (j *AuditSyncJob) pullNode(mgr *runtime.Manager, node *model.Node) {
+func (j *AuditSyncJob) pullNode(mgr *runtime.Manager, node *model.Node, control audit.Control) {
 	rt, err := mgr.RemoteFor(node)
 	if err != nil {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
+	// FORK(audit-retention): Persistent master policy and watermark converge before source export.
+	if err := rt.SyncAudit(ctx, control); err != nil {
+		last, ok := j.policyWarnings.Load(node.Id)
+		if !ok || time.Since(last.(time.Time)) >= time.Minute {
+			logger.Warningf("audit: policy sync to %s failed: %v", node.Name, err)
+			j.policyWarnings.Store(node.Id, time.Now())
+		}
+		if !strings.Contains(err.Error(), "HTTP 404") {
+			return
+		}
+		// Older children can still export safely: the master enforces its cleanup watermark.
+		// The broadcast endpoint reports their unsupported policy synchronization explicitly.
+	}
 	for range 5 {
 		events, err := rt.FetchAudit(ctx)
 		if err != nil {

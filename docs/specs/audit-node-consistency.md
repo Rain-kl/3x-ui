@@ -9,3 +9,5 @@ Child audit UI explicitly directs users to the master rather than showing a sepa
 Support direct master/child topology. Export rejects panels with enabled downstream nodes before persisting a child role; export/ACK touch only local node_id=0 legacy visits. This prevents nested-master pulls relabeling/deleting downstream node history.
 
 New masters request pending?summaries=1 to advertise support for bucket migration. Without that opt-in, children leave daily buckets unacknowledged locally rather than sending counts to an older master that would interpret each bucket as one visit. Upgrade the master before its children. Child retention/cleanup APIs reject changes; manage them centrally on the master.
+
+Master retention changes and cleanup watermarks are propagated through the authenticated audit/sync endpoint before pending export. The child expires its spool and legacy database using the master's policy, preserves unacknowledged raw visits within the retained window, and refuses nested-master role transitions. Source capture must not wait for spool disk IO. See audit-retention.md for broadcast, retries, ordering and cleanup guarantees.

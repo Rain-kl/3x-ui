@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/audit"
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 )
@@ -18,23 +20,51 @@ type AuditRetention struct {
 	SummaryDays int       `json:"summaryDays" example:"30"`
 }
 
+func readAuditControl(tx *gorm.DB) (audit.Control, error) {
+	var rows []model.Setting
+	if err := tx.Where("key IN ?", []string{"auditDetailHours", "auditSummaryDays", "auditClearBefore", "auditPolicyRevision"}).Find(&rows).Error; err != nil {
+		return audit.Control{}, fmt.Errorf("read audit policy: %w", err)
+	}
+	values := map[string]string{"auditDetailHours": defaultValueMap["auditDetailHours"], "auditSummaryDays": defaultValueMap["auditSummaryDays"], "auditClearBefore": "", "auditPolicyRevision": "0"}
+	for _, row := range rows {
+		values[row.Key] = row.Value
+	}
+	hours, err := strconv.Atoi(values["auditDetailHours"])
+	if err != nil {
+		return audit.Control{}, fmt.Errorf("read audit detail retention: %w", err)
+	}
+	days, err := strconv.Atoi(values["auditSummaryDays"])
+	if err != nil {
+		return audit.Control{}, fmt.Errorf("read audit summary retention: %w", err)
+	}
+	revision, err := strconv.ParseInt(values["auditPolicyRevision"], 10, 64)
+	if err != nil || revision < 0 {
+		return audit.Control{}, fmt.Errorf("invalid audit policy revision %q", values["auditPolicyRevision"])
+	}
+	var clear time.Time
+	if values["auditClearBefore"] != "" {
+		clear, err = time.Parse(time.RFC3339Nano, values["auditClearBefore"])
+		if err != nil {
+			return audit.Control{}, fmt.Errorf("read audit cleanup watermark: %w", err)
+		}
+	}
+	policy := audit.Control{DetailHours: hours, SummaryDays: days, Revision: revision, ClearBefore: clear}
+	return policy, validateAuditRetention(retentionFromControl(policy))
+}
+
+func retentionFromControl(c audit.Control) AuditRetention {
+	return AuditRetention{DetailHours: c.DetailHours, SummaryDays: c.SummaryDays, ClearBefore: c.ClearBefore}
+}
+
 func (AuditService) Retention() (AuditRetention, error) {
-	svc := &SettingService{}
-	hours, err := svc.getInt("auditDetailHours")
-	if err != nil {
-		return AuditRetention{}, fmt.Errorf("read audit detail retention: %w", err)
-	}
-	days, err := svc.getInt("auditSummaryDays")
-	if err != nil {
-		return AuditRetention{}, fmt.Errorf("read audit summary retention: %w", err)
-	}
-	clear, err := svc.getString("auditClearBefore")
-	if err != nil {
-		return AuditRetention{}, fmt.Errorf("read audit cleanup watermark: %w", err)
-	}
-	clearBefore, _ := time.Parse(time.RFC3339Nano, clear)
-	policy := AuditRetention{DetailHours: hours, SummaryDays: days, ClearBefore: clearBefore}
-	return policy, validateAuditRetention(policy)
+	policy, err := readAuditControl(database.GetDB())
+	return retentionFromControl(policy), err
+}
+
+func (AuditService) Control() (audit.Control, error) {
+	auditRetentionMu.Lock()
+	defer auditRetentionMu.Unlock()
+	return readAuditControl(database.GetDB())
 }
 
 func validateAuditRetention(policy AuditRetention) error {
@@ -44,79 +74,124 @@ func validateAuditRetention(policy AuditRetention) error {
 	return nil
 }
 
+func saveAuditValue(tx *gorm.DB, key, value string) error {
+	var stored model.Setting
+	err := tx.Where("key = ?", key).First(&stored).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return tx.Create(&model.Setting{Key: key, Value: value}).Error
+	}
+	if err != nil {
+		return err
+	}
+	if stored.Value == value {
+		return nil
+	}
+	return tx.Model(&model.Setting{}).Where("key = ?", key).Update("value", value).Error
+}
+
+func saveAuditControl(tx *gorm.DB, c audit.Control) error {
+	for _, item := range []struct{ key, value string }{
+		{"auditDetailHours", strconv.Itoa(c.DetailHours)}, {"auditSummaryDays", strconv.Itoa(c.SummaryDays)},
+		{"auditPolicyRevision", strconv.FormatInt(c.Revision, 10)}, {"auditClearBefore", c.ClearBefore.UTC().Format(time.RFC3339Nano)},
+	} {
+		if err := saveAuditValue(tx, item.key, item.value); err != nil {
+			return fmt.Errorf("save %s: %w", item.key, err)
+		}
+	}
+	return nil
+}
+
 func (svc AuditService) SetRetention(policy AuditRetention) error {
 	if err := validateAuditRetention(policy); err != nil {
 		return err
 	}
 	auditRetentionMu.Lock()
-	defer auditRetentionMu.Unlock()
-	if (AuditService{}).IsChild() {
-		return fmt.Errorf("manage audit retention and cleanup on the master panel")
-	}
-	return database.GetDB().Transaction(func(tx *gorm.DB) error {
-		for key, value := range map[string]int{"auditDetailHours": policy.DetailHours, "auditSummaryDays": policy.SummaryDays} {
-			result := tx.Model(&model.Setting{}).Where("key = ?", key).Update("value", strconv.Itoa(value))
-			if result.Error != nil {
-				return fmt.Errorf("save %s: %w", key, result.Error)
-			}
-			if result.RowsAffected == 0 {
-				if err := tx.Create(&model.Setting{Key: key, Value: strconv.Itoa(value)}).Error; err != nil {
-					return err
-				}
-			}
+	err := func() error {
+		if svc.IsChild() {
+			return fmt.Errorf("manage audit retention and cleanup on the master panel")
 		}
-		return pruneAudit(tx, policy)
-	})
+		return database.GetDB().Transaction(func(tx *gorm.DB) error {
+			current, err := readAuditControl(tx)
+			if err != nil {
+				return err
+			}
+			current.DetailHours, current.SummaryDays = policy.DetailHours, policy.SummaryDays
+			current.Revision++
+			if err := saveAuditControl(tx, current); err != nil {
+				return err
+			}
+			return pruneAudit(tx, retentionFromControl(current))
+		})
+	}()
+	auditRetentionMu.Unlock()
+	if err != nil {
+		return err
+	}
+	return svc.SyncNodes(context.Background())
 }
 
-func (AuditService) Clear(olderThanDays int) error {
+func clearAuditBefore(tx *gorm.DB, cutoff time.Time) error {
+	if cutoff.IsZero() {
+		return nil
+	}
+	if err := tx.Where("time < ?", cutoff).Delete(&model.AuditEvent{}).Error; err != nil {
+		return err
+	}
+	day := cutoff.UTC().Format("2006-01-02")
+	midnight, _ := time.Parse("2006-01-02", day)
+	op := "day < ?"
+	if !cutoff.Equal(midnight) {
+		op = "day <= ?"
+	}
+	if err := tx.Where(op, day).Delete(&model.AuditDailyStat{}).Error; err != nil {
+		return err
+	}
+	return tx.Where("time < ?", cutoff).Delete(&model.AuditReceipt{}).Error
+}
+
+func (svc AuditService) Clear(olderThanDays int) error {
 	if olderThanDays < 0 || olderThanDays > 3650 {
 		return fmt.Errorf("clear audit cutoff must be 0..3650 days")
 	}
+	committed := false
 	auditRetentionMu.Lock()
-	defer auditRetentionMu.Unlock()
-	if (AuditService{}).IsChild() {
-		return fmt.Errorf("manage audit retention and cleanup on the master panel")
+	err := func() error {
+		if svc.IsChild() {
+			return fmt.Errorf("manage audit retention and cleanup on the master panel")
+		}
+		var state audit.Control
+		err := database.GetDB().Transaction(func(tx *gorm.DB) error {
+			var err error
+			state, err = readAuditControl(tx)
+			if err != nil {
+				return err
+			}
+			cutoff := time.Now().UTC()
+			if olderThanDays > 0 {
+				cutoff, _ = time.Parse("2006-01-02", cutoff.AddDate(0, 0, -olderThanDays).Format("2006-01-02"))
+			}
+			if cutoff.After(state.ClearBefore) {
+				state.ClearBefore = cutoff
+			}
+			state.Revision++
+			if err := saveAuditControl(tx, state); err != nil {
+				return err
+			}
+			return clearAuditBefore(tx, state.ClearBefore)
+		})
+		if err != nil {
+			return err
+		}
+		committed = true
+		if err := audit.Local().Prune(time.Time{}, state.ClearBefore); err != nil {
+			return fmt.Errorf("master audit cleanup saved; remove local spool: %w", err)
+		}
+		return nil
+	}()
+	auditRetentionMu.Unlock()
+	// Persisted desired state is retried even if removing the local spool failed.
+	if !committed {
+		return err
 	}
-	return database.GetDB().Transaction(func(tx *gorm.DB) error {
-		cutoff := time.Now().UTC()
-		if olderThanDays > 0 {
-			cutoff, _ = time.Parse("2006-01-02", cutoff.AddDate(0, 0, -olderThanDays).Format("2006-01-02"))
-		}
-		var previous model.Setting
-		err := tx.Where("key = ?", "auditClearBefore").First(&previous).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-		existing, _ := time.Parse(time.RFC3339Nano, previous.Value)
-		if cutoff.After(existing) {
-			result := tx.Model(&model.Setting{}).Where("key = ?", "auditClearBefore").Update("value", cutoff.Format(time.RFC3339Nano))
-			if result.Error != nil {
-				return result.Error
-			}
-			if result.RowsAffected == 0 {
-				if err := tx.Create(&model.Setting{Key: "auditClearBefore", Value: cutoff.Format(time.RFC3339Nano)}).Error; err != nil {
-					return err
-				}
-			}
-		}
-		details := tx.Where("1 = 1")
-		summaries := tx.Where("1 = 1")
-		if olderThanDays > 0 {
-			day := time.Now().UTC().AddDate(0, 0, -olderThanDays).Format("2006-01-02")
-			details = tx.Where("time < ?", cutoff)
-			summaries = tx.Where("day < ?", day)
-		}
-		if err := details.Delete(&model.AuditEvent{}).Error; err != nil {
-			return err
-		}
-		if err := summaries.Delete(&model.AuditDailyStat{}).Error; err != nil {
-			return err
-		}
-		receipts := tx.Where("1 = 1")
-		if olderThanDays > 0 {
-			receipts = tx.Where("time < ?", cutoff)
-		}
-		return receipts.Delete(&model.AuditReceipt{}).Error
-	})
+	return errors.Join(err, svc.SyncNodes(context.Background()))
 }

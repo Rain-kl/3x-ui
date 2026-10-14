@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -43,12 +44,20 @@ type Event struct {
 	Downlink      *int64 `json:"downlink,omitempty"`
 }
 
+type queuedEvent struct {
+	event   Event
+	encoded []byte
+}
+
 type Spool struct {
-	mu     sync.Mutex
-	path   string
-	events []Event
-	size   int
-	dirty  bool
+	mu          sync.Mutex
+	flushMu     sync.Mutex
+	path        string
+	events      []queuedEvent
+	size        int
+	dirty       bool
+	revision    uint64
+	clearBefore time.Time
 }
 
 var (
@@ -82,7 +91,7 @@ func NewSpool(path string) *Spool {
 	for scan.Scan() {
 		var e Event
 		if json.Unmarshal(scan.Bytes(), &e) == nil && e.ID != "" {
-			s.appendLocked(e)
+			s.appendLocked(encodeEvent(e))
 		}
 	}
 	if scan.Err() != nil || s.size > MaxSpoolBytes {
@@ -91,23 +100,25 @@ func NewSpool(path string) *Spool {
 	return s
 }
 
-func encodedSize(e Event) int {
-	b, _ := json.Marshal(e)
-	return len(b) + 1
+func encodeEvent(e Event) queuedEvent {
+	raw, _ := json.Marshal(e)
+	return queuedEvent{event: e, encoded: append(raw, '\n')}
 }
 
-func (s *Spool) appendLocked(e Event) bool {
-	n := encodedSize(e)
-	if n > MaxSpoolBytes {
+func (s *Spool) appendLocked(e queuedEvent) bool {
+	n := len(e.encoded)
+	if n > MaxSpoolBytes || e.event.Time.Before(s.clearBefore) {
 		return false
 	}
 	for s.size+n > MaxSpoolBytes && len(s.events) > 0 {
-		s.size -= encodedSize(s.events[0])
+		s.size -= len(s.events[0].encoded)
+		s.events[0] = queuedEvent{}
 		s.events = s.events[1:]
 	}
 	s.events = append(s.events, e)
 	s.size += n
 	s.dirty = true
+	s.revision++
 	return true
 }
 
@@ -122,9 +133,10 @@ func (s *Spool) Add(e Event) bool {
 	if e.Time.IsZero() || e.Destination == "" {
 		return false
 	}
+	entry := encodeEvent(e)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.appendLocked(e)
+	return s.appendLocked(entry)
 }
 
 func (s *Spool) Capture(line string) bool {
@@ -182,7 +194,26 @@ func (s *Spool) Snapshot(limit int) []Event {
 		limit = 1000
 	}
 	limit = min(limit, len(s.events))
-	return append([]Event(nil), s.events[:limit]...)
+	events := make([]Event, limit)
+	for i := range events {
+		events[i] = s.events[i].event
+	}
+	return events
+}
+
+func (s *Spool) removeLocked(drop func(Event) bool) {
+	kept := s.events[:0]
+	for _, e := range s.events {
+		if !drop(e.event) {
+			kept = append(kept, e)
+		} else {
+			s.size -= len(e.encoded)
+			s.dirty = true
+			s.revision++
+		}
+	}
+	clear(s.events[len(kept):])
+	s.events = kept
 }
 
 func (s *Spool) Ack(ids []string) error {
@@ -194,30 +225,46 @@ func (s *Spool) Ack(ids []string) error {
 		set[id] = struct{}{}
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	kept := s.events[:0]
-	for _, e := range s.events {
-		if _, ok := set[e.ID]; !ok {
-			kept = append(kept, e)
-		} else {
-			s.size -= encodedSize(e)
-			s.dirty = true
-		}
+	s.removeLocked(func(e Event) bool { _, ok := set[e.ID]; return ok })
+	s.mu.Unlock()
+	return s.Flush()
+}
+
+// Prune also advances the capture watermark. Expiry may change with policy;
+// manual cleanup is monotonic and prevents cleared events from reappearing.
+func (s *Spool) Prune(expireBefore, clearBefore time.Time) error {
+	s.mu.Lock()
+	if clearBefore.After(s.clearBefore) {
+		s.clearBefore = clearBefore
 	}
-	s.events = kept
-	return s.flushLocked()
+	s.removeLocked(func(e Event) bool { return e.Time.Before(expireBefore) || e.Time.Before(s.clearBefore) })
+	s.mu.Unlock()
+	return s.Flush()
 }
 
 func (s *Spool) Flush() error {
+	s.flushMu.Lock()
+	defer s.flushMu.Unlock()
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.flushLocked()
-}
-
-func (s *Spool) flushLocked() error {
 	if !s.dirty {
+		s.mu.Unlock()
 		return nil
 	}
+	events := append([]queuedEvent(nil), s.events...)
+	revision := s.revision
+	s.mu.Unlock()
+	if err := s.writeSnapshot(events); err != nil {
+		return fmt.Errorf("persist audit spool: %w", err)
+	}
+	s.mu.Lock()
+	if s.revision == revision {
+		s.dirty = false
+	}
+	s.mu.Unlock()
+	return nil
+}
+
+func (s *Spool) writeSnapshot(events []queuedEvent) error {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
 		return err
 	}
@@ -226,34 +273,26 @@ func (s *Spool) flushLocked() error {
 		return err
 	}
 	defer os.Remove(f.Name())
+	defer f.Close()
 	if err := f.Chmod(0o600); err != nil {
-		f.Close()
 		return err
 	}
 	writer := bufio.NewWriter(f)
-	for _, e := range s.events {
-		b, _ := json.Marshal(e)
-		if _, err := writer.Write(append(b, '\n')); err != nil {
-			f.Close()
+	for _, e := range events {
+		if _, err := writer.Write(e.encoded); err != nil {
 			return err
 		}
 	}
 	if err := writer.Flush(); err != nil {
-		f.Close()
 		return err
 	}
 	if err := f.Sync(); err != nil {
-		f.Close()
 		return err
 	}
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(f.Name(), s.path); err != nil {
-		return err
-	}
-	s.dirty = false
-	return nil
+	return os.Rename(f.Name(), s.path)
 }
 
 type OutputWriter struct {

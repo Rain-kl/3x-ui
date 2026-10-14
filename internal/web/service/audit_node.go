@@ -16,12 +16,14 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 )
 
-func (AuditService) IsChild() bool {
+func (AuditService) IsChild() bool { return isAuditChild(database.GetDB()) }
+
+func isAuditChild(db *gorm.DB) bool {
 	if os.Getenv("XUI_AUDIT_CHILD") == "1" {
 		return true
 	}
 	var role model.Setting
-	err := database.GetDB().Where("key = ?", "auditChildMode").First(&role).Error
+	err := db.Where("key = ?", "auditChildMode").First(&role).Error
 	if err == nil && role.Value == "true" {
 		return true
 	}
@@ -29,7 +31,7 @@ func (AuditService) IsChild() bool {
 		return true
 	}
 	var count int64
-	err = database.GetDB().Model(&model.ApiToken{}).Where("scope = ? AND enabled = ? AND (expires_at = 0 OR expires_at > ?)", model.ApiScopeNodeSync, true, time.Now().Unix()).Count(&count).Error
+	err = db.Model(&model.ApiToken{}).Where("scope = ? AND enabled = ? AND (expires_at = 0 OR expires_at > ?)", model.ApiScopeNodeSync, true, time.Now().Unix()).Count(&count).Error
 	return err != nil || count > 0
 }
 
@@ -71,11 +73,14 @@ func (AuditService) FetchPending(spool *audit.Spool, summarySupport ...bool) ([]
 	if downstream > 0 {
 		return nil, fmt.Errorf("audit export requires a direct child; a panel with downstream nodes must remain the audit master")
 	}
-	if err := (&SettingService{}).setBool("auditChildMode", true); err != nil {
+	if err := saveAuditValue(database.GetDB(), "auditChildMode", "true"); err != nil {
 		return nil, fmt.Errorf("persist audit child role: %w", err)
 	}
 	policy, err := (AuditService{}).Retention()
 	if err != nil {
+		return nil, err
+	}
+	if err := spool.Prune(auditHistoryStart(policy, time.Now().UTC()), policy.ClearBefore); err != nil {
 		return nil, err
 	}
 	// Recover all still-retained legacy detail, including visits already older than the detail window.

@@ -32,6 +32,20 @@ func newAuditController(g *gin.RouterGroup) {
 		jsonObj(c, true, (service.AuditService{}).Clear(*body.OlderThanDays))
 	})
 
+	// FORK(audit-retention): Parent RPC propagates policy and cleanup without allowing child UI overrides.
+	g.POST("/sync", func(c *gin.Context) {
+		if _, ok := c.Get("api_token_scope"); !ok {
+			c.AbortWithStatusJSON(403, gin.H{"success": false, "msg": "audit policy sync requires an authenticated parent node channel"})
+			return
+		}
+		var state audit.Control
+		if err := c.ShouldBindJSON(&state); err != nil {
+			jsonObj(c, nil, err)
+			return
+		}
+		jsonObj(c, true, (service.AuditService{}).ApplyControl(audit.Local(), state))
+	})
+
 	g.GET("/pending", func(c *gin.Context) {
 		// FORK(audit-node-consistency): Export also establishes the persistent parent relationship.
 		events, err := (service.AuditService{}).FetchPending(audit.Local(), c.Query("summaries") == "1")

@@ -124,6 +124,8 @@ var nodeSyncScopeAllow = map[string]map[string]struct{}{
 	"/server/routing":              {http.MethodGet: {}, http.MethodPost: {}},
 	"/audit/pending":               {http.MethodGet: {}},
 	"/audit/ack":                   {http.MethodPost: {}},
+	// FORK(audit-retention): Permit only the dedicated parent policy RPC for node-sync credentials.
+	"/audit/sync": {http.MethodPost: {}},
 }
 
 // enforceTokenScope applies explicit allowlists to monitor and node-sync tokens.

@@ -78,7 +78,11 @@ type remoteAPIError struct{ msg string }
 func (e *remoteAPIError) Error() string { return "remote: " + e.msg }
 
 type Remote struct {
-	node *model.Node
+	// FORK(audit-retention): Avoid unchanged policy RPCs while preserving reconnection retries.
+	auditSyncGate chan struct{}
+	auditControl  audit.Control
+	auditSyncedAt time.Time
+	node          *model.Node
 
 	mu             sync.RWMutex
 	remoteIDByTag  map[string]int
@@ -113,6 +117,7 @@ type RemoteInboundOption struct {
 func NewRemote(n *model.Node, r NodeEgressResolver) *Remote {
 	return &Remote{
 		node:           n,
+		auditSyncGate:  make(chan struct{}, 1),
 		remoteIDByTag:  make(map[string]int),
 		adoptedAliases: make(map[string]string),
 		pushedFP:       make(map[string]string),
@@ -296,6 +301,25 @@ func (r *Remote) do(ctx context.Context, method, path string, body any) (*envelo
 		return &env, &remoteAPIError{msg: env.Msg}
 	}
 	return &env, nil
+}
+
+// FORK(audit-retention): Reconcile desired policy before pulling source records, and retry after restarts.
+func (r *Remote) SyncAudit(ctx context.Context, state audit.Control) error {
+	select {
+	case r.auditSyncGate <- struct{}{}:
+		defer func() { <-r.auditSyncGate }()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	if r.auditControl == state && time.Since(r.auditSyncedAt) < time.Minute {
+		return nil
+	}
+	if _, err := r.do(ctx, http.MethodPost, "panel/api/audit/sync", state); err != nil {
+		return err
+	}
+	r.auditControl = state
+	r.auditSyncedAt = time.Now()
+	return nil
 }
 
 func (r *Remote) FetchAudit(ctx context.Context) ([]audit.Event, error) {

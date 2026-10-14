@@ -441,6 +441,14 @@ export const sections: readonly Section[] = [
         body: '{"ids":["event-id"]}',
       },
       {
+        method: 'POST',
+        path: '/panel/api/audit/sync',
+        security: [{ bearerAuth: [] }],
+        summary:
+          'Apply the master audit retention and absolute cleanup watermark on a direct child. Requires a parent node-sync/admin token or mTLS; browser sessions are rejected. Versioned, idempotent, and retried before audit export.',
+        body: '{"detailHours":24,"summaryDays":30,"revision":1,"clearBefore":"2026-10-14T00:00:00Z"}',
+      },
+      {
         method: 'GET',
         path: '/panel/api/audit/settings',
         summary: 'Get detailed-hour and daily-summary audit retention.',
@@ -449,14 +457,15 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/audit/settings',
-        summary: 'Save audit retention and compact/expire existing records.',
+        summary:
+          'Save audit retention, compact/expire existing records, and broadcast the persisted policy to enabled child nodes. Partial failures are reported and retried automatically.',
         body: '{"detailHours":24,"summaryDays":30}',
       },
       {
         method: 'POST',
         path: '/panel/api/audit/clear',
         summary:
-          'Clear both audit tables. Zero clears all; a positive day count clears before that UTC date.',
+          'Clear audit details, daily summaries, receipts and pending spool; broadcast the same absolute cutoff to enabled child nodes. Zero clears existing logs; a positive day count clears before that UTC date. Offline children reconcile before export.',
         body: '{"olderThanDays":7}',
       },
       {

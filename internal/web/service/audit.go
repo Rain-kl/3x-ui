@@ -163,25 +163,25 @@ func ingestAudit(nodeID int, events []audit.Event) error {
 	return database.GetDB().Transaction(func(tx *gorm.DB) error {
 		fresh := make([]model.AuditEvent, 0, len(rows))
 		groups := make(map[string]model.AuditDailyStat)
+
+		archived := make([]model.AuditEvent, 0, len(rows))
 		for _, row := range rows {
 			if !row.Time.Before(cutoff) && summaries[row.ID] == nil {
 				fresh = append(fresh, row)
+			} else {
+				archived = append(archived, row)
+			}
+		}
+		accepted, err := recordAuditReceipts(tx, archived)
+		if err != nil {
+			return err
+		}
+		for _, row := range archived {
+			if !accepted[row.ID] {
 				continue
 			}
-			var existing int64
-			if err := tx.Model(&model.AuditEvent{}).Where("id = ?", row.ID).Count(&existing).Error; err != nil {
-				return err
-			}
-			if existing > 0 {
-				continue
-			}
-			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&model.AuditReceipt{ID: row.ID, NodeID: nodeID, Time: row.Time})
-			if result.Error != nil {
-				return result.Error
-			}
-			if result.RowsAffected == 0 {
-				continue
-			}
+			delete(accepted, row.ID)
+
 			day := row.Time.UTC().Format("2006-01-02")
 			key := fmt.Sprintf("%s\x00%d\x00%s\x00%s", day, nodeID, row.Client, row.Site)
 			group := groups[key]
@@ -234,10 +234,10 @@ func upsertAuditDays(tx *gorm.DB, groups []model.AuditDailyStat) error {
 	return tx.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "day"}, {Name: "node_id"}, {Name: "client"}, {Name: "site"}}, DoUpdates: clause.Assignments(assignments)}).CreateInBatches(groups, 200).Error
 }
 
-func auditScopedQuery(db *gorm.DB, f AuditFilter, policy AuditRetention) *gorm.DB {
+func auditScopedQuery(db *gorm.DB, f AuditFilter, policy AuditRetention, now time.Time) *gorm.DB {
 	// FORK(audit-retention): Detail pagination never exposes archived visits.
 	hours := min(auditHours(f.Hours), policy.DetailHours)
-	db = db.Where("inbound <> ? AND time >= ? AND time <= ?", "api", time.Now().UTC().Add(-time.Duration(hours)*time.Hour), time.Now().UTC())
+	db = db.Where("inbound <> ? AND time >= ? AND time <= ?", "api", now.Add(-time.Duration(hours)*time.Hour), now)
 	if f.Day != "" {
 		start, _ := time.Parse("2006-01-02", f.Day)
 		db = db.Where("time >= ? AND time < ?", start, start.AddDate(0, 0, 1))
@@ -245,11 +245,11 @@ func auditScopedQuery(db *gorm.DB, f AuditFilter, policy AuditRetention) *gorm.D
 	return auditDimensions(db, f)
 }
 
-func auditMetricsQuery(db *gorm.DB, f AuditFilter, policy AuditRetention) *gorm.DB {
+func auditMetricsQuery(db *gorm.DB, f AuditFilter, policy AuditRetention, now time.Time) *gorm.DB {
 	hours := auditHours(f.Hours)
-	since := time.Now().UTC().Add(-time.Duration(hours) * time.Hour)
+	since := now.Add(-time.Duration(hours) * time.Hour)
 	if hours > policy.DetailHours {
-		since, _ = time.Parse("2006-01-02", time.Now().UTC().AddDate(0, 0, -(hours+23)/24+1).Format("2006-01-02"))
+		since, _ = time.Parse("2006-01-02", now.AddDate(0, 0, -(hours+23)/24+1).Format("2006-01-02"))
 	}
 	dateExpr := "strftime('%Y-%m-%d', time)"
 	if database.IsPostgres() {
@@ -263,14 +263,14 @@ func auditMetricsQuery(db *gorm.DB, f AuditFilter, policy AuditRetention) *gorm.
 		sql += " AND time < ?"
 		args = []any{"api", since, start.AddDate(0, 0, 1)}
 		sql += " AND time >= ?"
-		args = append(args, time.Now().UTC().AddDate(0, 0, -policy.SummaryDays+1).Format("2006-01-02"))
+		args = append(args, now.AddDate(0, 0, -policy.SummaryDays+1).Format("2006-01-02"))
 	}
 	sql += " AND time <= ?"
-	args = append(args, time.Now().UTC())
+	args = append(args, now)
 	if hours > policy.DetailHours || f.Day != "" {
-		day := time.Now().UTC().AddDate(0, 0, -(hours+23)/24+1).Format("2006-01-02")
+		day := now.AddDate(0, 0, -(hours+23)/24+1).Format("2006-01-02")
 		if f.Day != "" {
-			day = time.Now().UTC().AddDate(0, 0, -policy.SummaryDays+1).Format("2006-01-02")
+			day = now.AddDate(0, 0, -policy.SummaryDays+1).Format("2006-01-02")
 		}
 		sql += " UNION ALL SELECT day, node_id, client, site, connections, uplink, downlink, measured FROM audit_daily_stats WHERE day >= ?"
 		args = append(args, day)
@@ -283,15 +283,26 @@ func auditMetricsQuery(db *gorm.DB, f AuditFilter, policy AuditRetention) *gorm.
 	// FORK(audit-retention): Enforce configured retention and reject abnormal future rows in all windows.
 	if hours > policy.DetailHours || f.Day != "" {
 		sql = "SELECT * FROM (" + sql + ") AS source_metrics WHERE day >= ? AND day <= ?"
-		args = append(args, time.Now().UTC().AddDate(0, 0, -policy.SummaryDays+1).Format("2006-01-02"), time.Now().UTC().Format("2006-01-02"))
+		args = append(args, now.AddDate(0, 0, -policy.SummaryDays+1).Format("2006-01-02"), now.Format("2006-01-02"))
 	}
 	return auditDimensions(db.Table("(?) AS audit_metrics", db.Raw(sql, args...)), f)
 }
 
+// FORK(audit-retention): Consistent read snapshots keep dashboard scans from blocking source ingestion.
 func (AuditService) Query(f AuditFilter) (*AuditSummary, error) {
-	auditRetentionMu.Lock()
-	defer auditRetentionMu.Unlock()
-	policy, err := (AuditService{}).Retention()
+	var result *AuditSummary
+	err := auditReadSnapshot(func(tx *gorm.DB) error {
+		var err error
+		result, err = queryAudit(tx, f)
+		return err
+	})
+	return result, err
+}
+
+func queryAudit(db *gorm.DB, f AuditFilter) (*AuditSummary, error) {
+	now := time.Now().UTC()
+	state, err := readAuditControl(db)
+	policy := retentionFromControl(state)
 	if err != nil {
 		return nil, err
 	}
@@ -306,22 +317,21 @@ func (AuditService) Query(f AuditFilter) (*AuditSummary, error) {
 	if f.Offset > 100000 {
 		f.Offset = 100000
 	}
-	db := database.GetDB()
 	result := &AuditSummary{
 		Days:  []model.AuditDailyStat{},
 		Sites: []AuditAggregate{}, Clients: []AuditAggregate{}, Alerts: []AuditAggregate{},
 		Hours: []AuditAggregate{}, Events: []model.AuditEvent{}, Nodes: []AuditNode{},
 	}
 	// FORK(audit-node-consistency): Child panels do not advertise independent local audit totals.
-	if (AuditService{}).IsChild() {
+	if isAuditChild(db) {
 		result.Centralized = true
 		return result, nil
 	}
 	if err := db.Model(&model.Node{}).Select("id, name").Order("id").Scan(&result.Nodes).Error; err != nil {
 		return nil, err
 	}
-	base := func() *gorm.DB { return auditMetricsQuery(db, f, policy) }
-	details := func() *gorm.DB { return auditScopedQuery(db.Model(&model.AuditEvent{}), f, policy) }
+	base := func() *gorm.DB { return auditMetricsQuery(db, f, policy, now) }
+	details := func() *gorm.DB { return auditScopedQuery(db.Model(&model.AuditEvent{}), f, policy, now) }
 	if f.Day == "" && auditHours(f.Hours) <= policy.DetailHours {
 		if err := details().Count(&result.Total).Error; err != nil {
 			return nil, err

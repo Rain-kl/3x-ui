@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSpoolCapturesMeasuredAndLegacyAccess(t *testing.T) {
@@ -92,5 +93,47 @@ func TestSpoolBoundsOfflineCache(t *testing.T) {
 	}
 	if stat.Size() > MaxSpoolBytes {
 		t.Fatalf("spool size %d exceeds %d", stat.Size(), MaxSpoolBytes)
+	}
+}
+
+func TestSpoolPrunePersistsAndRejectsClearedEvents(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "spool.jsonl")
+	spool := NewSpool(path)
+	cutoff := time.Now().UTC().Add(-time.Minute)
+	spool.Add(Event{ID: "old", Time: cutoff.Add(-time.Second), Destination: "old.example"})
+	spool.Add(Event{ID: "fresh", Time: cutoff, Destination: "fresh.example"})
+	if err := spool.Prune(time.Time{}, cutoff); err != nil {
+		t.Fatal(err)
+	}
+	if spool.Add(Event{ID: "late", Time: cutoff.Add(-time.Second), Destination: "late.example"}) {
+		t.Fatal("late cleared event was accepted")
+	}
+	rows := NewSpool(path).Snapshot(1000)
+	if len(rows) != 1 || rows[0].ID != "fresh" {
+		t.Fatalf("persistent cleanup = %+v", rows)
+	}
+}
+
+func TestSpoolCaptureContinuesWhileDiskFlushIsSerialized(t *testing.T) {
+	spool := NewSpool(filepath.Join(t.TempDir(), "spool.jsonl"))
+	spool.flushMu.Lock()
+	done := make(chan error, 1)
+	go func() { done <- spool.Flush() }()
+	added := make(chan bool, 1)
+	go func() { added <- spool.Add(Event{ID: "new", Time: time.Now().UTC(), Destination: "example.com"}) }()
+	select {
+	case ok := <-added:
+		if !ok {
+			t.Error("capture failed")
+		}
+	case <-time.After(time.Second):
+		t.Error("disk serialization blocked capture")
+	}
+	spool.flushMu.Unlock()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if len(NewSpool(spool.path).Snapshot(1000)) != 1 {
+		t.Fatal("concurrent event was lost")
 	}
 }

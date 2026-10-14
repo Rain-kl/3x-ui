@@ -15,6 +15,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 
+	"github.com/mhsanaei/3x-ui/v3/internal/audit"
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/dbtest"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
@@ -270,6 +271,9 @@ func TestMasterNodeContract(t *testing.T) {
 				{"FetchTrafficSnapshot reads every part of the snapshot", []string{"FetchTrafficSnapshot"}, func() error {
 					_, err := master.FetchTrafficSnapshot(ctx)
 					return err
+				}, nil},
+				{"parent audit policy sync is accepted", []string{"SyncAudit"}, func() error {
+					return master.SyncAudit(ctx, audit.Control{DetailHours: 24, SummaryDays: 30, Revision: 1})
 				}, nil},
 				{"audit pending and ack are accepted", []string{"FetchAudit", "AckAudit"}, func() error {
 					if _, err := master.FetchAudit(ctx); err != nil {

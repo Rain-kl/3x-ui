@@ -634,7 +634,7 @@ func (a *ServerController) getRouting(c *gin.Context) {
 	jsonObj(c, rules, err)
 }
 
-// setRouting replaces routing rules in the template config and restarts Xray if running.
+// setRouting persists routing rules and reconciles the running core immediately.
 func (a *ServerController) setRouting(c *gin.Context) {
 	var rules []map[string]any
 	if formVal := c.PostForm("rules"); formVal != "" {
@@ -664,10 +664,13 @@ func (a *ServerController) setRouting(c *gin.Context) {
 			jsonMsg(c, "failed to save xray template", err)
 			return
 		}
-		if a.xrayService.IsXrayRunning() {
-			if err := a.serverService.RestartXrayService(); err != nil {
-				logger.Warning("restart xray after routing sync failed:", err)
-			}
+	}
+	// FORK(node-scoped-routing): Remote saves need the same immediate reconcile and visible failures as local saves.
+	// Retry unchanged desired rules too: a previous runtime apply may have failed after persistence.
+	if a.xrayService.IsXrayRunning() {
+		if err := a.xrayService.RestartXray(false); err != nil {
+			jsonMsg(c, "routing rules saved but applying to running Xray failed", err)
+			return
 		}
 	}
 
