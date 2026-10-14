@@ -115,8 +115,11 @@ func TestAuditSitesValidationAndChildMode(t *testing.T) {
 		f          AuditFilter
 		page, size int
 	}{
-		{AuditFilter{}, 0, 20}, {AuditFilter{}, -1, 20}, {AuditFilter{}, 1, 30},
-		{AuditFilter{}, int(^uint(0) >> 1), 100}, {AuditFilter{Day: "invalid"}, 1, 20},
+		{AuditFilter{}, 0, 20},
+		{AuditFilter{}, -1, 20},
+		{AuditFilter{}, 1, 30},
+		{AuditFilter{}, int(^uint(0) >> 1), 100},
+		{AuditFilter{Day: "invalid"}, 1, 20},
 		{AuditFilter{Client: strings.Repeat("x", 257)}, 1, 20},
 	} {
 		if _, err := (AuditService{}).QuerySites(tc.f, tc.page, tc.size); err == nil {

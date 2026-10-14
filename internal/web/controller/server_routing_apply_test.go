@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -177,7 +178,7 @@ func TestRemoteRoutingSaveKeepsStoppedCoreStopped(t *testing.T) {
 	engine := gin.New()
 	controller := &ServerController{}
 	engine.POST("/routing", controller.setRouting)
-	req := httptest.NewRequest("POST", "/routing", strings.NewReader(`[{"type":"field","domain":["domain:example.com"],"outboundTag":"blocked"}]`))
+	req := httptest.NewRequest(http.MethodPost, "/routing", strings.NewReader(`[{"type":"field","domain":["domain:example.com"],"outboundTag":"blocked"}]`))
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	engine.ServeHTTP(response, req)

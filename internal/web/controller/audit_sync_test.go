@@ -19,8 +19,11 @@ func TestAuditSyncRequiresAuthenticatedParentChannel(t *testing.T) {
 		mtls        bool
 		want        int
 	}{
-		{"session", "", false, 403}, {"monitor", model.ApiScopeMonitor, false, 403},
-		{"node-sync", model.ApiScopeNodeSync, false, 200}, {"admin", model.ApiScopeAdmin, false, 200}, {"mtls", "", true, 200},
+		{"session", "", false, 403},
+		{"monitor", model.ApiScopeMonitor, false, 403},
+		{"node-sync", model.ApiScopeNodeSync, false, 200},
+		{"admin", model.ApiScopeAdmin, false, 200},
+		{"mtls", "", true, 200},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			engine, auth := newAPIAuthTestEngine(t)

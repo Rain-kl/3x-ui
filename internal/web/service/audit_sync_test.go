@@ -27,7 +27,7 @@ func TestAuditMasterBroadcastPersistsFailuresAndRetries(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/panel/api/audit/sync" || r.Method != http.MethodPost || r.Header.Get("Authorization") != "Bearer tok" {
 			t.Errorf("unexpected audit RPC: %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 		var state audit.Control
@@ -39,7 +39,7 @@ func TestAuditMasterBroadcastPersistsFailuresAndRetries(t *testing.T) {
 		failing := fail
 		mu.Unlock()
 		if failing {
-			w.WriteHeader(503)
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		_, _ = w.Write([]byte(`{"success":true}`))

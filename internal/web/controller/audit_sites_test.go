@@ -23,8 +23,13 @@ func TestAuditSitesEndpointPaginationDefaultsAndValidation(t *testing.T) {
 		success bool
 		size    int
 	}{
-		{"", true, 20}, {"?page=2&pageSize=50", true, 50}, {"?pageSize=100", true, 100},
-		{"?page=bad", false, 0}, {"?page=0", false, 0}, {"?pageSize=40", false, 0}, {"?day=bad", false, 0},
+		{"", true, 20},
+		{"?page=2&pageSize=50", true, 50},
+		{"?pageSize=100", true, 100},
+		{"?page=bad", false, 0},
+		{"?page=0", false, 0},
+		{"?pageSize=40", false, 0},
+		{"?day=bad", false, 0},
 	} {
 		req := httptest.NewRequest(http.MethodGet, "/panel/api/audit/sites"+tc.query, nil)
 		req.Header.Set("Authorization", "Bearer sites-token")

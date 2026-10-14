@@ -3,8 +3,6 @@ package job
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mhsanaei/3x-ui/v3/internal/audit"
-	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +12,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/audit"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
@@ -59,7 +60,7 @@ func TestAuditSyncJobSendsPolicyBeforeExportAndACK(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				paths = append(paths, r.URL.Path)
 				if legacy && r.URL.Path == "/panel/api/audit/sync" {
-					w.WriteHeader(404)
+					w.WriteHeader(http.StatusNotFound)
 					return
 				}
 				if r.URL.Path == "/panel/api/audit/pending" {
@@ -87,7 +88,6 @@ func TestAuditSyncJobSendsPolicyBeforeExportAndACK(t *testing.T) {
 			if err := database.GetDB().Model(&model.AuditEvent{}).Where("id = ? AND node_id = ? AND delivered = ?", "from-child", node.Id, true).Count(&count).Error; err != nil || count != 1 {
 				t.Fatalf("delivery count=%d err=%v", count, err)
 			}
-
 		})
 	}
 }

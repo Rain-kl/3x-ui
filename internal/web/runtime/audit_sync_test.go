@@ -20,7 +20,7 @@ func TestRemoteAuditSyncCachesSuccessAndRetriesFailure(t *testing.T) {
 			t.Errorf("wrong endpoint: %s %s", r.Method, r.URL.Path)
 		}
 		if failing.Load() {
-			w.WriteHeader(503)
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		_, _ = w.Write([]byte(`{"success":true}`))
