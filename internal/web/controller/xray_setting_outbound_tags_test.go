@@ -101,6 +101,7 @@ func TestGetXraySetting_NodeIdIncludesOutboundTags(t *testing.T) {
 
 func TestGetXraySetting_LocalIncludesOutboundTags(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	t.Setenv("XRAY_LOCATION_ASSET", t.TempDir())
 	if err := database.InitDB(filepath.Join(t.TempDir(), "x-ui.db")); err != nil {
 		t.Fatalf("InitDB: %v", err)
 	}

@@ -31,6 +31,7 @@ func TestRemoteRoutingSaveImmediatelyAppliesToRunningCore(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XUI_BIN_FOLDER", dir)
 	t.Setenv("XUI_LOG_FOLDER", dir)
+	t.Setenv("XRAY_LOCATION_ASSET", dir)
 	if err := os.Symlink(binary, filepath.Join(dir, xray.GetBinaryName())); err != nil {
 		t.Fatal(err)
 	}
@@ -167,6 +168,7 @@ func TestRemoteRoutingSaveImmediatelyAppliesToRunningCore(t *testing.T) {
 }
 
 func TestRemoteRoutingSaveKeepsStoppedCoreStopped(t *testing.T) {
+	t.Setenv("XRAY_LOCATION_ASSET", t.TempDir())
 	if err := database.InitDB(filepath.Join(t.TempDir(), "panel.db")); err != nil {
 		t.Fatal(err)
 	}
