@@ -12,10 +12,12 @@ async function fetchInboundOptions(): Promise<InboundOption[]> {
   return Array.isArray(validated.obj) ? validated.obj : [];
 }
 
-export function useInboundOptions() {
+// FORK(audit-workbench): Audit history and child views should not fetch unused inbound metadata.
+export function useInboundOptions(enabled = true) {
   return useQuery({
     queryKey: keys.inbounds.options(),
     queryFn: fetchInboundOptions,
+    enabled,
     staleTime: Infinity,
   });
 }

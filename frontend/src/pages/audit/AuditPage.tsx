@@ -28,9 +28,11 @@ import dayjs from 'dayjs';
 
 import AppSidebar from '@/layouts/AppSidebar';
 import { useTheme } from '@/hooks/useTheme';
+import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import { HttpUtil } from '@/utils';
 import { AuditRetentionSchema, AuditSummarySchema, type AuditSummary } from '@/schemas/audit';
 import AuditSettingsModal from './AuditSettingsModal';
+import { buildAuditInboundRemarks } from './inboundRemarks';
 import './AuditPage.css';
 
 function bytes(value: number): string {
@@ -127,6 +129,13 @@ export default function AuditPage() {
     enabled: !!policy,
     refetchInterval: 15000,
   });
+  // FORK(audit-workbench): Resolve current remarks once from the shared inbound list, not per audit event.
+  const showInboundRemarks = detailed && !!data && !data.centralized && data.events.length > 0;
+  const inboundOptions = useInboundOptions(showInboundRemarks);
+  const inboundRemarks = useMemo(
+    () => buildAuditInboundRemarks(inboundOptions.data ?? []),
+    [inboundOptions.data],
+  );
   const nodes = useMemo(
     () => new Map(data?.nodes.map((node) => [node.id, node.name]) ?? []),
     [data?.nodes],
@@ -188,7 +197,11 @@ export default function AuditPage() {
                       type="primary"
                       icon={<ReloadOutlined />}
                       loading={isFetching}
-                      onClick={() => refetch()}
+                      onClick={() => {
+                        // FORK(audit-workbench): Explicit refresh should also reflect updated inbound remarks.
+                        void refetch();
+                        if (showInboundRemarks) void inboundOptions.refetch();
+                      }}
                     >
                       {t('refresh')}
                     </Button>
@@ -479,7 +492,15 @@ export default function AuditPage() {
                               nodes.get(value) ||
                               (value === 0 ? t('pages.audit.localNode') : `#${value}`),
                           },
-                          { title: t('pages.audit.inbound'), dataIndex: 'inbound' },
+                          {
+                            title: t('pages.audit.inbound'),
+                            dataIndex: 'inbound',
+                            // FORK(audit-workbench): Display current remarks without persisting them with audit events.
+                            render: (tag: string, record: AuditSummary['events'][number]) => {
+                              const remark = inboundRemarks.get(record.nodeId)?.get(tag);
+                              return remark ? `${tag}（${remark}）` : tag;
+                            },
+                          },
                           {
                             title: t('pages.audit.client'),
                             dataIndex: 'client',
