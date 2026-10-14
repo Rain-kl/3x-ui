@@ -140,20 +140,23 @@ func (s *Spool) Add(e Event) bool {
 }
 
 func (s *Spool) Capture(line string) bool {
-	match := accessLine.FindStringSubmatch(line)
+	// FORK(audit-workbench): Address boundaries keep IPv6 brackets out of route parsing.
+	match := accessLine.FindStringSubmatchIndex(line)
 	if match == nil {
 		return false
 	}
-	e := Event{Source: match[1], Destination: match[2], Time: time.Now().UTC()}
+	e := Event{Source: line[match[2]:match[3]], Destination: line[match[4]:match[5]], Time: time.Now().UTC()}
 	fields := strings.Fields(line)
 	if len(fields) >= 2 {
 		if t, err := time.ParseInLocation("2006/01/02 15:04:05.999999", fields[0]+" "+fields[1], time.Local); err == nil {
 			e.Time = t.UTC()
 		}
 	}
-	if left := strings.IndexByte(line, '['); left >= 0 {
-		if right := strings.IndexByte(line[left:], ']'); right > 0 {
-			route := strings.Fields(line[left+1 : left+right])
+	// FORK(audit-workbench): Only the block immediately after the destination describes the route.
+	tail := strings.TrimSpace(line[match[1]:])
+	if strings.HasPrefix(tail, "[") {
+		if right := strings.IndexByte(tail, ']'); right > 0 {
+			route := strings.Fields(tail[1:right])
 			if len(route) >= 3 {
 				e.Inbound = route[0]
 				e.Outbound = route[len(route)-1]
