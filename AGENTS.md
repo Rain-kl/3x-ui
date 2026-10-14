@@ -193,6 +193,7 @@ file locations when it can answer in one hop.
   back to en-US; Go (`internal/web/locale/`) returns "" for an unknown key.
 - DB / model changes require a migration in `internal/database/db.go`.
 - New persisted models must appear in both `allModels()` and the FK-ordered `migrationModels()` in `internal/database/migrate_data.go`; check their consistency before committing. A successful build does not verify this contract.
+- Before pushing, run `make push-check` after committing. The Husky `pre-push` hook checks the actual pushed commit tips in isolated worktrees and blocks failures; fix the reported failure instead of disabling the hook. Local PostgreSQL/browser checks require the dedicated environments documented in CONTRIBUTING.md.
 - Every state-changing inbound/client op dispatches through `runtime.Runtime`
   (`internal/web/runtime/`) — never straight to `internal/xray/api.go`, never from
   a controller or cron job. A direct call passes every local test and silently

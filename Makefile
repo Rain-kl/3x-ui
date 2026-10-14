@@ -7,6 +7,10 @@ FRONTEND = frontend
 
 .DEFAULT_GOAL := help
 
+.PHONY: push-check
+push-check: ## Check the committed HEAD in isolation using the Git pre-push gate
+	bash scripts/check-before-push.sh
+
 .PHONY: help
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \

@@ -80,6 +80,45 @@ Drop the xray binary (`xray-windows-amd64.exe` on Windows, `xray-linux-amd64` on
 
 ## Running
 
+### Local checks before pushing
+
+Installing the frontend dependencies enables the existing Husky hooks. The new
+`pre-push` hook runs the checks in `scripts/check-before-push.sh` and blocks the
+push when any stage fails. Verify installation with
+`git config --get core.hooksPath` (normally `frontend/.husky/_`).
+
+```bash
+# Run after committing; this checks HEAD without pushing.
+make push-check
+
+# Optionally include browser Storybook tests; install Chromium first.
+cd frontend && pnpm exec playwright install chromium && cd ..
+PUSH_CHECK_BROWSER=1 make push-check
+
+# Optionally include PostgreSQL checks, using a dedicated test database only.
+# Set XUI_TEST_PG_DSN in your environment, then:
+PUSH_CHECK_POSTGRES=1 make push-check
+```
+
+Checks use temporary detached worktrees for the actual commits being pushed,
+including non-HEAD branches and annotated tags. Uncommitted work stays intact.
+The default checks cover model and route contracts, frozen dependency installs,
+generated API/types/docs (the docs generator skips unused optional platform
+binaries), Go and frontend lint, frontend formatting, unit and component tests,
+frontend/Storybook builds, all Go package tests, audit/node race
+checks, fork guards, and the published custom core's assets, checksum, version,
+traffic logging and API integration. Go, Node 26, the pinned pnpm versions,
+golangci-lint, make, curl, unzip, a C compiler and network access are required.
+
+Logs and verified core downloads are stored in `.cache/push-checks` (ignored by
+Git). Only remote-ref deletion skips checks. Fix reported failures and commit
+the fix before retrying. This can take several minutes; successful local checks
+do not certify remote PostgreSQL/browser environments, full-race/fuzz jobs,
+dependency audits or future availability of published assets. Optional checks
+fail if their requested environment is missing; they never count skipped tests
+as a pass. Windows users need a Unix-like shell with the supported Go/core
+platform or can run the gate under WSL.
+
 ```bash
 go run .
 ```
