@@ -63,6 +63,8 @@ func migrationModels() []any {
 		&model.AuditEvent{},
 		&model.AuditDailyStat{},
 		&model.AuditReceipt{},
+		// FORK(audit-workbench): Cross-database migration must preserve 24-hour rate history too.
+		&model.AuditMinuteStat{},
 	}
 }
 
