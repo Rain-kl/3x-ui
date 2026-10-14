@@ -25,5 +25,14 @@ for (const name of ['internal/web/service/server.go', 'internal/web/service/sett
 }
 assert.doesNotMatch(read('frontend/src/pages/index/VersionModal.tsx'), /isLocked|selectedVersion|<Select|<Switch/);
 assert.doesNotMatch(read('frontend/src/layouts/AppSidebar.tsx'), /SponsorSlot|key: '\/sponsors'/);
+for (const file of [
+  'frontend/src/routes.tsx',
+  'frontend/src/pages/index/IndexPage.tsx',
+  'frontend/src/pages/login/LoginPage.tsx',
+  'frontend/src/pages/api-docs/endpoints.ts',
+  'internal/web/controller/index.go',
+]) {
+  assert.doesNotMatch(read(file), /SponsorSlot|sponsors|SponsorList|GetSponsor/);
+}
 assert.match(read('internal/audit/spool.go'), /e.Inbound ===? "api"/);
 console.log('custom-core-only and audit-workbench removals passed');

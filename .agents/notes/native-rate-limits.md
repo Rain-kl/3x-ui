@@ -4,7 +4,7 @@ The panel keeps its existing limit fields and translates effective Mbps values i
 
 The core feature requires `v26.10.10-feat.2`. Local version selection is guarded when active limits exist. Node-bound settings travel with node synchronization, so the child must independently use a compatible core. Limit changes restart existing sessions. Unsupported active protocol limits are rejected, while disabled inbound and inactive-client values may be retained for later reactivation.
 
-TC traffic shaping was removed. It depended on root privileges, qdisc/device state, and IP polling, which could not provide authenticated-user semantics across NAT and address changes. The native core token buckets account application bytes per authenticated user and inbound-scoped group. See [the specification](../../docs/specs/native-rate-limits.md) and [implementation notes](../../FEATURE.md).
+TC traffic shaping was removed. It depended on root privileges, qdisc/device state, and IP polling, which could not provide authenticated-user semantics across NAT and address changes. The native core token buckets account application bytes per authenticated user and inbound-scoped group. See [the specification](../../docs/specs/native-rate-limits.md) and [implementation notes](../../FEATURES.md).
 
 ## Fork synchronization and verification
 

@@ -451,7 +451,6 @@ export default function AppSidebar() {
           onClick={onMenuClick}
         />
         <div className="sider-footer">
-          {/* FORK(audit-workbench): Sidebar sponsorship is removed in both layouts. */}
           <VersionBadge version={panelVersion} collapsed={railCollapsed} />
         </div>
       </Layout.Sider>

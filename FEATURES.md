@@ -1,36 +1,96 @@
-# Product features
+# 二开功能目录
 
-## Native core user rate limits (native-rate-limits)
+本文记录本项目面向用户的功能、行为和体验改动。括号内的英文标识用于对应源码中的 `FORK(...)` 标记；文件、接口、字段、协议和命令等专有名称保留原文。
 
-- **Background:** TC/qdisc shaping and client-IP polling cannot reliably cap authenticated clients across NAT, address changes, and concurrent sessions. The panel needs limits tied to Xray user identities.
-- **Change:** Maps existing Mbps downlink settings to native bytes-per-second user caps, with inbound override > client-wide value > inbound default and a separate inbound-shared downlink group. Active unsupported protocols and incompatible local core versions are rejected; inactive stored caps remain available. Changes restart existing sessions. TC shaping is removed.
-- **Files:** Panel integration spans `internal/web/service/`, `internal/xray/`, runtime/API wiring, and inbound/client configuration UI. See [FEATURE.md](FEATURE.md) for implementation detail and [the spec](docs/specs/native-rate-limits.md) for behavior and bounds.
-- **Upstream fork markers:** Product edits to upstream files use `FORK(native-rate-limits)` markers. TC removal is recorded in the fork-removal guard.
-- **Core provenance:** Rain-kl/Xray-core native implementation is based on upstream [PR #6050](https://github.com/XTLS/Xray-core/pull/6050), original commit `da56e92`, cherry-picked as `4e99a70`; see the [core feature entry](https://github.com/Rain-kl/Xray-core/blob/main/FEATURES.md#native-authenticated-user-rate-limits-native-rate-limits) and [core specification](https://github.com/Rain-kl/Xray-core/blob/main/docs/specs/native-rate-limits.md).
+## 流量控制与计费
 
-- **移除回归守卫**：`node scripts/check-fork-removals.mjs` 验证 TC 模块与旧钩子缺席，并检查原生配置、API 与重启接线。
+### Xray 原生用户限速（native-rate-limits）
 
-## Sniffed domains in audit (sniffed-audit-domains)
+- **背景**：基于 TC/qdisc 的流量整形和按客户端 IP 轮询，无法在 NAT、地址变化及多会话场景下稳定地按认证用户限速。
+- **功能**：将面板的 Mbps 下行限速转换为 Xray 核心使用的字节/秒限速。优先级为入站级客户端覆盖值、客户端全局值、入站默认值；另提供按入站共享的下行总带宽组。修改限速后会重启现有连接。启用状态下配置不支持的协议或不兼容的核心版本会明确报错；停用的限速值仍可保存。原 TC 限速已移除。
+- **范围与维护**：涉及 `internal/web/service/`、`internal/xray/`、运行时/API 接线和入站、客户端配置界面。上游文件改动使用 `FORK(native-rate-limits)` 标记；移除 TC 的检查纳入移除回归守卫。
+- **支持范围**：VLESS、VMess、Trojan、多用户 Shadowsocks、Hysteria 和 MASQUE 支持原生限速；WireGuard、TUIC、MTProto、AmneziaWG 及匿名 SOCKS/HTTP 不支持用户限速。核心配置支持双向限速，面板当前提供下行限速，单位为 Mbps。需要 Xray 核心 `v26.10.10-feat.2` 或更新版本。
+- **设计与实现**：[行为规格](docs/specs/native-rate-limits.md)、[实现说明](.agents/notes/native-rate-limits.md)。核心实现基于上游 [PR #6050](https://github.com/XTLS/Xray-core/pull/6050)，原始提交 `da56e92`，移植提交 `4e99a70`；详见 [核心功能说明](https://github.com/Rain-kl/Xray-core/blob/main/FEATURES.md) 和 [核心规格](https://github.com/Rain-kl/Xray-core/blob/main/docs/specs/native-rate-limits.md)。
 
-- Preserve original IP destinations and export observed HTTP/TLS/QUIC/FakeDNS domains separately for website audit, including route-only sniffing.
-- Core integration: common/log/access.go and both app/dispatcher dispatch paths; panel: internal/audit/spool.go, audit ingestion and audit event display.
-- Design: [specification](docs/specs/sniffed-audit-domains.md). Implementation decision: [Agent Note](.agents/notes/sniffed-audit-domains.md). Upstream markers: FORK(sniffed-audit-domains). Legacy logs remain compatible; no retroactive IP-to-domain inference.
+### 客户端分级限速与入站计费倍率（client-rate-and-traffic-ratio）
 
-## Latest custom core only (custom-core-only)
-- Always bundle/use the latest Rain-kl/Xray-core feat release; remove locking and official/arbitrary core switching. Legacy lock state no longer preserves old binaries during upgrades.
-- Validate the selected binary's audit and user rate-limit behavior before publishing panel packages.
-- Design: [spec](docs/specs/custom-core-only.md). Implementation and sync notes: [Agent Note](.agents/notes/custom-core-only.md). Integration marker: FORK(custom-core-only).
+- **背景**：不同客户端的带宽套餐不同，同一客户端在不同入站也可能需要不同限速或计费策略。
+- **功能**：客户端可设置全局下行限速 `downLimit`，并按入站设置 `downLimitByInbound` 覆盖值。生效顺序为入站覆盖值、客户端全局值、入站默认单客户端限速。客户端列表在桌面表格和移动卡片中显示限速状态，并可查看入站明细。入站的 `trafficRatio`（默认 `1.0`）按倍率计入客户端流量；多节点同步保留限速配置，由各节点本地核心执行。
+- **实现说明**：`trafficRatio` 为 `0.5` 时按一半流量计费，为 `2.0` 时按双倍流量计费。客户端表单和列表使用 `downLimit`、`downLimitByInbound` 展示配置和生效值。
 
-## Audit workbench consistency (audit-workbench)
-- Share the existing page shell, cards and theme variants; remove desktop/mobile sidebar sponsorship.
-- Exclude reserved api-inbound control traffic before spooling and from ingestion/queries; prune historical control records without hiding client loopback traffic.
-- [Spec](docs/specs/audit-workbench.md), [Agent Note](.agents/notes/audit-workbench.md). Marker: FORK(audit-workbench).
+### 客户端多入站统计与增量计费（multi-inbound-accounting）
 
-## Audit retention (audit-retention)
-- Preserve 24h visit details and 30 UTC calendar days of compact node/client/site totals. Historical summaries expose no per-visit timestamps; fresh detail and summary metrics share filters.
-- Configurable retention and confirmed cleanup; atomic compaction, explicit migration, UTC date filtering, and sparse deduplication for delayed delivery.
-- [Spec](docs/specs/audit-retention.md), [Agent Note](.agents/notes/audit-retention.md). Marker: FORK(audit-retention).
+- **背景**：客户端同时使用多条线路、入站计费倍率不同或从节点重启时，需要避免流量归属错误、重复扣费及节点明细与总账不一致。
+- **功能**：以入站标签和客户端 email 组成内部统计标识，采集后还原面板身份；不改变 UUID、密码和订阅凭据。按入站保存原始用量，客户端总账记录加权后的计费用量；主控保存各入站同步基线，倍率仅作用于新增流量，重复快照不会重复计费。节点计数重置后从新计数继续累计。基线、总账和明细在同一事务中提交，落库失败时回退采集基线以便重试；多入站实时速度按客户端合并展示。
+- **维护要点**：`node_client_traffics.inbound_totals` 保存原始入站基线并支持兼容迁移；已有历史总账和明细不自动追溯修正。主控与从节点应共同升级。未升级节点及不提供独立用户统计的协议，无法保证精确的多入站归属；核心异常退出前未采集的内存流量仍可能丢失。
 
-## Consistent node audit export (audit-node-consistency)
-- Persist child role from authenticated export, recover existing fresh local records and stop child queue consumption; ACK after parent commit keeps stable ID deduplication.
-- Child UI directs administrators to the central master. [Spec](docs/specs/audit-node-consistency.md), [Agent Note](.agents/notes/audit-node-consistency.md). Marker: FORK(audit-node-consistency).
+### 客户端单节点流量配额（per-node-client-quota）
+
+- **背景**：不同节点的运营成本不同，需要在客户端总套餐之外，对高成本节点单独设置用量上限，并避免耗尽单节点额度影响其他节点。
+- **功能**：客户端可按关联节点设置流量配额，并在客户端编辑界面和列表查看用量、上限、剩余流量及状态。达到节点配额时，仅在该节点断开该客户端，不更改客户端全局启用状态，也不影响其在其他节点的连接和额度。定时周期重置或手动重置时，各节点用量同步清零并恢复连接。订阅展示页保留受限节点，并展示节点配额进度和断流状态。
+
+## 日志审计
+
+### 多节点连接日志与网站流量分析（multi-node-audit）
+
+- **背景**：在主从节点部署中，管理员需要从主控查看各节点客户端访问的网站、双向流量、连接频次和高频行为，无需逐台读取 Xray 访问日志。
+- **采集与同步**：Xray 访问日志经进程标准输出传给面板解析，再写入内存队列。子节点以权限 `0600` 的本地暂存文件应对主节点离线，文件上限为 10 MiB，超限时淘汰最旧事件。主节点每 5 秒通过节点鉴权连接最多拉取 1000 条；数据库提交后按事件 ID 确认，并以 ID 去重。单机模式会将本机日志直接写入审计库；主从连接首次同步时持久化子节点身份，并将子节点仍保留的历史明细和汇总统一到主节点。
+- **记录与界面**：记录节点、入站、客户端、源地址、目标地址、网站、时间和上传/下载字节。支持节点、客户端和网站筛选，3/12/24 小时窗口，7/30 天每日汇总、UTC 日期筛选、留存设置、确认后清空、网站流量排行、每小时连接趋势、客户端排行、连接明细及高频行为提示。提示仅用于筛查，不自动判断滥用。旧版官方 Xray 缺少连接级字节字段时，界面显示「不可用」，不将缺失值当作零。
+- **定制核心与发布**：精确流量计量及 Mihomo X25519-only 兼容需要 `Rain-kl/Xray-core` 的 `v*-feat.*` 稳定版本。面板版本列表优先显示最新 feat 版本；发布流程为各架构固定同一核心 tag，Docker 初始化也会解析最新 feat tag。应先发布核心资产，再构建和发布面板。
+- **维护要点**：涉及 Xray 运行时配置、子进程输出、节点同步、数据库、API、路由和侧边栏。同步上游时重点核对 `internal/web/service/xray.go`、`internal/xray/process.go`、`internal/web/job/audit_sync_job.go` 及核心版本和下载来源；保留节点鉴权白名单和 API 契约。应用层字节不包含 TLS/QUIC 传输开销；长连接通常在结束时才产生最终计数；只有 IP 时不能推断域名。
+
+### 嗅探域名归因（sniffed-audit-domains）
+
+- **功能**：保留客户端传入的原始目标地址，并单独记录成功嗅探到的 HTTP/TLS/QUIC/FakeDNS 域名；仅启用路由模式时也可按网站归因。连接明细同时展示域名与原始目标，网站排行优先使用域名，无法识别时使用原始目标。
+- **约束与维护**：不自动开启嗅探，不改变转发目标或路由规则；兼容旧日志和节点暂存数据，不回填旧记录。需要定制核心 `v26.10.10-feat.3` 或更新版本，主控与子节点均需升级。上游相关改动使用 `FORK(sniffed-audit-domains)` 标记。
+- **设计与实现**：[行为规格](docs/specs/sniffed-audit-domains.md)、[实现说明](.agents/notes/sniffed-audit-domains.md)。
+
+### 审计留存与每日汇总（audit-retention）
+
+- **功能**：默认保留 24 小时连接明细和 30 个 UTC 日的节点、客户端及网站汇总。历史汇总不包含单次访问时间；明细和汇总使用一致的筛选条件。管理员可配置留存时间并确认清理。系统以原子方式压缩明细、显式迁移旧数据，并按 UTC 日期筛选；延迟送达的事件通过稀疏去重处理。
+- **设计与实现**：[行为规格](docs/specs/audit-retention.md)、[实现说明](.agents/notes/audit-retention.md)。上游相关改动使用 `FORK(audit-retention)` 标记。
+
+### 主从节点审计数据一致性（audit-node-consistency）
+
+- **功能**：从节点通过经过认证的导出记录并持久化节点身份；恢复仍有效的本地明细后停止子节点队列消费。主节点提交成功后才确认事件，以稳定 ID 去重。子节点界面提示管理员在中央主控查看审计数据。
+- **设计与实现**：[行为规格](docs/specs/audit-node-consistency.md)、[实现说明](.agents/notes/audit-node-consistency.md)。上游相关改动使用 `FORK(audit-node-consistency)` 标记。
+
+### 审计工作台与内部连接过滤（audit-workbench）
+
+- **功能**：审计页面复用管理页面的布局、卡片和明暗/Ultra 主题样式。移除项目赞助商展示位、侧边栏入口、赞助商页面和公开赞助商 API，以及对应的翻译和文档；MTProto Telegram 赞助频道标签仍作为独立协议能力保留。过滤保留的 `api` 入站管理连接，避免其进入暂存、入库和查询，并定期清理历史控制连接记录；真实客户端访问本地地址仍会保留。
+- **设计与实现**：[行为规格](docs/specs/audit-workbench.md)、[实现说明](.agents/notes/audit-workbench.md)。上游相关改动使用 `FORK(audit-workbench)` 标记。
+
+## 多节点管理
+
+### 从节点 ApiToken 自动登录（node-token-login）
+
+- **背景**：管理员从主控节点打开从节点面板时，无需再次手动输入账号密码。
+- **功能**：主节点提供 `/panel/api/nodes/loginUrl/:id`，节点列表据此获取从节点登录链接并在新标签页打开。从节点入口（`GET /`）校验 URL 中的 `apiToken`；仅启用且具有 `admin` 权限的令牌可创建会话并跳转至 `/panel/`。
+
+### 从节点面板与 Xray 远程重启（remote-node-restart）
+
+- **背景**：管理员可在中央控制台处理从节点配置变更或运行异常，无需逐台通过 SSH 操作。
+- **功能**：主节点通过受信通道（mTLS/Node Token）调用从节点 `/panel/api/setting/restartPanel`。从节点执行面板热重启并带动 Xray 进程重启；节点列表提供重启操作和二次确认。
+
+### 控制端权威的代理出站同步（authoritative-outbound-sync）
+
+- **背景**：多节点环境需要从控制端统一管理代理出站，并隔离单节点同步故障，兼容未实现同步接口的旧版或官方节点。
+- **功能**：识别 VMess、VLESS、Trojan、Shadowsocks、Hysteria、Hysteria2、WireGuard、SOCKS 和 HTTP 代理出站；同步时仅替换代理出站并保留各节点的 `freedom`、`blackhole`、`dns` 等系统出站。控制端为权威来源，其新增、修改和删除会单向同步至从节点；从节点本地新增项不会回传。各节点推送独立执行，单节点失败不阻塞其他节点；旧节点返回 404 时清除脏标记，避免重复重试。标签为 `warp`、`warp-*` 或 `warp_*` 的 WARP 出站保留在各节点本地，不参与同步。
+
+### 跨节点路由配置与节点级标签隔离（node-scoped-routing）
+
+- **背景**：管理员需要从主控管理各节点路由，同时避免将其他节点的入站或出站标签误用于当前节点。
+- **功能**：路由界面可选择本机或从节点，并查看、新增、编辑、删除、排序、导入和导出目标节点的规则；保存后通过远程 RPC 下发。从节点视图只显示本节点入站及其备注，出站列表只显示节点模板中存在的标签（含 `direct`、`blocked` 等系统出站）。控制端用于去重的 `n{id}-` 入站前缀只用于控制端展示，下发时还原为从节点原生 tag。`POST /panel/api/xray/` 响应增加 `outboundTags` 字段。
+
+### 节点列表批量操作（node-batch-operations）
+
+- **背景**：桌面端节点操作按钮过于拥挤，且批量操作无法涵盖离线节点删除。
+- **功能**：桌面端将探测、重启、编辑和删除操作收纳到更多菜单；在线节点仍保留更新快捷入口。工具栏支持批量更新、重启和删除；离线节点可参与批量删除，更新和重启仅作用于已启用且在线的节点。
+
+## 定制核心版本管理
+
+### 仅使用最新定制 Xray 核心（custom-core-only）
+
+- **功能**：面板安装、升级和手动更新统一使用 Rain-kl/Xray-core 最新 `-feat.x` 发布版；移除版本锁定、官方核心和任意旧版切换。更新前先下载并校验核心，成功后再停止现有核心。版本列表自动获取并优先展示最新 feat 版本。
+- **发布验证**：核心发布前验证审计、嗅探域名、原生限速及竞态行为；面板发布前验证实际打包核心的版本、校验和、网站审计、限速及 gRPC，并执行前端检查。验证失败则停止发布。
+- **设计与实现**：[行为规格](docs/specs/custom-core-only.md)、[实现说明](.agents/notes/custom-core-only.md)。上游相关改动使用 `FORK(custom-core-only)` 标记。
