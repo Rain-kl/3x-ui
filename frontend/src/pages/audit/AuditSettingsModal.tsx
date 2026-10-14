@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Button, Divider, Form, InputNumber, Modal, Space, Typography } from 'antd';
 import { HttpUtil } from '@/utils';
 import type { AuditRetention } from '@/schemas/audit';
+import './AuditSettingsModal.css';
 
 export default function AuditSettingsModal({
   policy,
@@ -96,6 +97,10 @@ export default function AuditSettingsModal({
   return (
     <Modal
       open
+      centered
+      width={760}
+      className="audit-settings-modal"
+      styles={{ body: { maxHeight: 'calc(100dvh - 160px)', overflowY: 'auto' } }}
       title={t('pages.audit.settings')}
       onCancel={() => {
         if (!busy) onClose();
@@ -105,74 +110,86 @@ export default function AuditSettingsModal({
       footer={null}
     >
       {contextHolder}
-      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+      <Space direction="vertical" size={12} style={{ width: '100%' }}>
         {notice && <Alert type={notice.type} showIcon title={notice.text} />}
         <Alert type="info" showIcon title={t('pages.audit.retentionHelp')} />
-        <Form layout="vertical">
-          <Form.Item label={t('pages.audit.detailRetention')}>
-            <InputNumber
-              min={1}
-              max={720}
-              precision={0}
-              value={detailHours}
-              disabled={busy}
-              onChange={setDetailHours}
-              addonAfter={t('hour')}
-            />
-          </Form.Item>
-          <Form.Item
-            label={t('pages.audit.summaryRetention')}
-            validateStatus={retentionValid ? undefined : 'error'}
-            help={retentionValid ? undefined : t('pages.audit.invalidRetention')}
-          >
-            <InputNumber
-              min={1}
-              max={365}
-              precision={0}
-              value={summaryDays}
-              disabled={busy}
-              onChange={setSummaryDays}
-              addonAfter={t('day')}
-            />
-          </Form.Item>
+        {/* FORK(audit-workbench): Paired fields use the available width while keeping mobile controls readable. */}
+        <Form layout="vertical" className="audit-settings-form">
+          <div className="audit-settings-fields">
+            <Form.Item label={t('pages.audit.detailRetention')}>
+              <InputNumber
+                min={1}
+                max={720}
+                precision={0}
+                value={detailHours}
+                disabled={busy}
+                onChange={setDetailHours}
+                addonAfter={t('hour')}
+              />
+            </Form.Item>
+            <Form.Item
+              label={t('pages.audit.summaryRetention')}
+              validateStatus={retentionValid ? undefined : 'error'}
+              help={retentionValid ? undefined : t('pages.audit.invalidRetention')}
+            >
+              <InputNumber
+                min={1}
+                max={365}
+                precision={0}
+                value={summaryDays}
+                disabled={busy}
+                onChange={setSummaryDays}
+                addonAfter={t('day')}
+              />
+            </Form.Item>
+          </div>
           {/* FORK(audit-workbench): Explain the shared 60-second rate window and explicit zero-disable semantics. */}
-          <Typography.Title level={5}>{t('pages.audit.frequencySettings')}</Typography.Title>
+          <Typography.Title level={5} style={{ margin: '0 0 8px' }}>
+            {t('pages.audit.frequencySettings')}
+          </Typography.Title>
           <Typography.Paragraph type="secondary">
             {t('pages.audit.frequencyHelp')}
           </Typography.Paragraph>
-          <Form.Item label={t('pages.audit.connectionRateLimit')}>
-            <InputNumber
-              min={0}
-              max={1000000}
-              precision={3}
-              value={connectionRateLimit}
-              disabled={busy}
-              onChange={setConnectionRateLimit}
-            />
-          </Form.Item>
-          <Form.Item
-            label={t('pages.audit.siteRateLimit')}
-            validateStatus={ratesValid ? undefined : 'error'}
-            help={ratesValid ? undefined : t('pages.audit.invalidRateLimit')}
-          >
-            <InputNumber
-              min={0}
-              max={1000000}
-              precision={3}
-              value={siteRateLimit}
-              disabled={busy}
-              onChange={setSiteRateLimit}
-            />
-          </Form.Item>
-          <Button type="primary" loading={busy} disabled={!valid} onClick={save}>
-            {t('pages.audit.saveSettings')}
-          </Button>
+          <div className="audit-settings-fields">
+            <Form.Item label={t('pages.audit.connectionRateLimit')}>
+              <InputNumber
+                min={0}
+                max={1000000}
+                precision={3}
+                value={connectionRateLimit}
+                disabled={busy}
+                onChange={setConnectionRateLimit}
+              />
+            </Form.Item>
+            <Form.Item
+              label={t('pages.audit.siteRateLimit')}
+              validateStatus={ratesValid ? undefined : 'error'}
+              help={ratesValid ? undefined : t('pages.audit.invalidRateLimit')}
+            >
+              <InputNumber
+                min={0}
+                max={1000000}
+                precision={3}
+                value={siteRateLimit}
+                disabled={busy}
+                onChange={setSiteRateLimit}
+              />
+            </Form.Item>
+          </div>
+          <div className="audit-settings-save">
+            <Button type="primary" loading={busy} disabled={!valid} onClick={save}>
+              {t('pages.audit.saveSettings')}
+            </Button>
+          </div>
         </Form>
         <Divider style={{ margin: 0 }} />
-        <Typography.Title level={5}>{t('pages.audit.maintenance')}</Typography.Title>
+        <Typography.Title level={5} style={{ margin: 0 }}>
+          {t('pages.audit.maintenance')}
+        </Typography.Title>
         <Typography.Text type="secondary">{t('pages.audit.clearHelp')}</Typography.Text>
         <Space wrap>
           <InputNumber
+            style={{ width: 140 }}
             min={1}
             max={3650}
             precision={0}
@@ -190,10 +207,10 @@ export default function AuditSettingsModal({
           >
             {t('pages.audit.clearOlder')}
           </Button>
+          <Button danger disabled={busy} onClick={() => clear(0)}>
+            {t('pages.audit.clearAll')}
+          </Button>
         </Space>
-        <Button danger disabled={busy} onClick={() => clear(0)}>
-          {t('pages.audit.clearAll')}
-        </Button>
       </Space>
     </Modal>
   );

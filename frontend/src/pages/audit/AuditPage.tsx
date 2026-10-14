@@ -412,9 +412,10 @@ export default function AuditPage() {
                   </Card>
                   <Row gutter={[16, 16]}>
                     <Col xs={24} xl={12}>
-                      {/* FORK(audit-workbench): Keep the compact ranking while exposing all sites in a paginated dialog. */}
+                      {/* FORK(audit-workbench): Equal card heights keep both rankings within independent scroll regions. */}
                       <Card
                         size="small"
+                        className="audit-overview-card"
                         title={t('pages.audit.topSites')}
                         extra={
                           <Button type="link" size="small" onClick={() => setSitesOpen(true)}>
@@ -455,31 +456,38 @@ export default function AuditPage() {
                     <Col xs={24} xl={12}>
                       <Card
                         size="small"
+                        className="audit-overview-card"
                         title={detailed ? t('pages.audit.hourlyTrend') : t('menu.clients')}
                       >
                         {detailed && <Trend points={data.hours} />}
-                        <Table
-                          size="small"
-                          pagination={false}
-                          rowKey="name"
-                          dataSource={data.clients.slice(0, 8)}
-                          columns={[
-                            {
-                              title: t('pages.audit.client'),
-                              dataIndex: 'name',
-                              render: (value: string) => (
-                                <Button type="link" onClick={() => chooseClient(value)}>
-                                  {value || '—'}
-                                </Button>
-                              ),
-                            },
-                            { title: t('pages.audit.connections'), dataIndex: 'connections' },
-                            {
-                              title: t('pages.audit.traffic'),
-                              render: (_, row) => bytes(row.uplink + row.downlink),
-                            },
-                          ]}
-                        />
+                        <div
+                          className="audit-client-ranking"
+                          role="region"
+                          aria-label={t('pages.audit.client')}
+                        >
+                          <Table
+                            size="small"
+                            pagination={false}
+                            rowKey="name"
+                            dataSource={data.clients}
+                            columns={[
+                              {
+                                title: t('pages.audit.client'),
+                                dataIndex: 'name',
+                                render: (value: string) => (
+                                  <Button type="link" onClick={() => chooseClient(value)}>
+                                    {value || '—'}
+                                  </Button>
+                                ),
+                              },
+                              { title: t('pages.audit.connections'), dataIndex: 'connections' },
+                              {
+                                title: t('pages.audit.traffic'),
+                                render: (_, row) => bytes(row.uplink + row.downlink),
+                              },
+                            ]}
+                          />
+                        </div>
                       </Card>
                     </Col>
                   </Row>

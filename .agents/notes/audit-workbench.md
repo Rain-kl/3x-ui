@@ -2,6 +2,10 @@
 
 Audit was missing from shared CSS selectors and omitted dark/ultra root classes, which caused the visual mismatch. Extend the existing styles rather than create a new theme. Drop reserved api inbound control-plane events at capture, ingestion and query boundaries; pruning clears old records. Keep legitimate client loopback traffic and all existing client metrics. Remove project sponsor UI routes, dashboard/login/sidebar placements, and the public sponsor API. MTProto sponsored-channel tags remain separate.
 
+## 排行与设置布局
+
+两张首页排行卡片统一 460px 内容高度（含内边距的 body 为 484px）；客户端表格复用 summary 的全部最多 20 项，在固定趋势图下方通过 flex 的剩余空间滚动，不新增查询。设置弹窗采用 760px 桌面宽度和响应式两列字段，窄屏转为单列，内容区按视口限高滚动。Ant Design 6 的 InputNumber 旧 addonAfter 使用 Space.Compact 包装，必须同时让该包装填满字段列宽，不能沿用旧 group-wrapper 选择器。保存、校验与清理确认逻辑沿用原实现。
+
 
 ## 入站备注仅在前端展示
 

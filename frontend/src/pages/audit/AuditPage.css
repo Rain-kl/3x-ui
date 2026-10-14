@@ -10,8 +10,17 @@
 .audit-header h4 {
   margin-bottom: 0;
 }
-.audit-ranking {
-  max-height: 460px;
+/* FORK(audit-workbench): Bound both cards so ranking rows cannot stretch the dashboard. */
+.audit-overview-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  height: 484px;
+  padding: 12px;
+}
+.audit-ranking,
+.audit-client-ranking {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 .audit-rank {
@@ -35,6 +44,7 @@
   grid-column: 1 / -1;
 }
 .audit-trend {
+  flex-shrink: 0;
   height: 170px;
   margin-bottom: 20px;
 }
