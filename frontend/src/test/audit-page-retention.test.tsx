@@ -10,6 +10,26 @@ vi.mock('@/layouts/AppSidebar', () => ({ default: () => null }));
 describe('AuditPage retention windows', () => {
   it('limits available windows to the configured detail and summary retention', async () => {
     vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
+      if (url.endsWith('/audit/rates'))
+        return {
+          success: true,
+          obj: {
+            windowStart: '2026-10-14T00:00:00Z',
+            windowEnd: '2026-10-14T00:01:00Z',
+            current: { connections: 0, sites: 0 },
+            alerts: [],
+          },
+        } as never;
+      if (url.endsWith('/audit/rates/history'))
+        return {
+          success: true,
+          obj: {
+            windowStart: '2026-10-13T00:00:00Z',
+            windowEnd: '2026-10-14T00:00:00Z',
+            availableFrom: '2026-10-14T00:00:00Z',
+            points: [],
+          },
+        } as never;
       if (url.endsWith('/audit/settings')) {
         return { success: true, obj: { detailHours: 6, summaryDays: 3 } } as never;
       }
@@ -55,6 +75,26 @@ describe('AuditPage retention windows', () => {
 
   it('disables today minus N days and allows the Nth retained UTC date', async () => {
     vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
+      if (url.endsWith('/audit/rates'))
+        return {
+          success: true,
+          obj: {
+            windowStart: '2026-10-14T00:00:00Z',
+            windowEnd: '2026-10-14T00:01:00Z',
+            current: { connections: 0, sites: 0 },
+            alerts: [],
+          },
+        } as never;
+      if (url.endsWith('/audit/rates/history'))
+        return {
+          success: true,
+          obj: {
+            windowStart: '2026-10-13T00:00:00Z',
+            windowEnd: '2026-10-14T00:00:00Z',
+            availableFrom: '2026-10-14T00:00:00Z',
+            points: [],
+          },
+        } as never;
       if (url.endsWith('/audit/settings')) {
         return { success: true, obj: { detailHours: 6, summaryDays: 3 } } as never;
       }

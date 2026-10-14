@@ -79,6 +79,10 @@ func auditHistoryStart(policy AuditRetention, now time.Time) time.Time {
 
 func pruneChildAudit(tx *gorm.DB, policy AuditRetention) error {
 	now := time.Now().UTC()
+	// FORK(audit-workbench): Expire standalone minute history after the panel becomes a child.
+	if err := expireAuditMinutes(tx, now); err != nil {
+		return err
+	}
 	if err := clearAuditBefore(tx, policy.ClearBefore); err != nil {
 		return err
 	}
@@ -128,6 +132,8 @@ func (svc AuditService) ApplyControl(spool *audit.Spool, state audit.Control) er
 		}
 		if state.Revision > version {
 			current.DetailHours, current.SummaryDays = state.DetailHours, state.SummaryDays
+			// FORK(audit-workbench): Parent versioning applies to high-frequency thresholds too.
+			current.ConnectionRateLimit, current.SiteRateLimit = state.ConnectionRateLimit, state.SiteRateLimit
 			if err := saveAuditValue(tx, "auditParentRevision", strconv.FormatInt(state.Revision, 10)); err != nil {
 				return err
 			}

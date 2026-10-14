@@ -17,10 +17,15 @@ export default function AuditSettingsModal({
   const [modal, contextHolder] = Modal.useModal();
   const [detailHours, setDetailHours] = useState<number | null>(policy.detailHours);
   const [summaryDays, setSummaryDays] = useState<number | null>(policy.summaryDays);
+  // FORK(audit-workbench): Rate thresholds share the existing atomic audit settings operation.
+  const [connectionRateLimit, setConnectionRateLimit] = useState<number | null>(
+    policy.connectionRateLimit,
+  );
+  const [siteRateLimit, setSiteRateLimit] = useState<number | null>(policy.siteRateLimit);
   const [clearDays, setClearDays] = useState<number | null>(7);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string }>();
-  const valid =
+  const retentionValid =
     detailHours !== null &&
     summaryDays !== null &&
     Number.isInteger(detailHours) &&
@@ -30,6 +35,10 @@ export default function AuditSettingsModal({
     summaryDays >= 1 &&
     summaryDays <= 365 &&
     detailHours <= summaryDays * 24;
+  const ratesValid = [connectionRateLimit, siteRateLimit].every(
+    (value) => value !== null && Number.isFinite(value) && value >= 0 && value <= 1000000,
+  );
+  const valid = retentionValid && ratesValid;
 
   async function perform(path: string, body: unknown, next: AuditRetention) {
     setBusy(true);
@@ -50,8 +59,15 @@ export default function AuditSettingsModal({
   }
 
   function save() {
-    if (!valid || detailHours === null || summaryDays === null) return;
-    const next = { detailHours, summaryDays };
+    if (
+      !valid ||
+      detailHours === null ||
+      summaryDays === null ||
+      connectionRateLimit === null ||
+      siteRateLimit === null
+    )
+      return;
+    const next = { detailHours, summaryDays, connectionRateLimit, siteRateLimit };
     const apply = () => perform('/panel/api/audit/settings', next, next);
     if (detailHours < policy.detailHours || summaryDays < policy.summaryDays) {
       modal.confirm({
@@ -106,8 +122,8 @@ export default function AuditSettingsModal({
           </Form.Item>
           <Form.Item
             label={t('pages.audit.summaryRetention')}
-            validateStatus={valid ? undefined : 'error'}
-            help={valid ? undefined : t('pages.audit.invalidRetention')}
+            validateStatus={retentionValid ? undefined : 'error'}
+            help={retentionValid ? undefined : t('pages.audit.invalidRetention')}
           >
             <InputNumber
               min={1}
@@ -119,8 +135,37 @@ export default function AuditSettingsModal({
               addonAfter={t('day')}
             />
           </Form.Item>
+          {/* FORK(audit-workbench): Explain the shared 60-second rate window and explicit zero-disable semantics. */}
+          <Typography.Title level={5}>{t('pages.audit.frequencySettings')}</Typography.Title>
+          <Typography.Paragraph type="secondary">
+            {t('pages.audit.frequencyHelp')}
+          </Typography.Paragraph>
+          <Form.Item label={t('pages.audit.connectionRateLimit')}>
+            <InputNumber
+              min={0}
+              max={1000000}
+              precision={3}
+              value={connectionRateLimit}
+              disabled={busy}
+              onChange={setConnectionRateLimit}
+            />
+          </Form.Item>
+          <Form.Item
+            label={t('pages.audit.siteRateLimit')}
+            validateStatus={ratesValid ? undefined : 'error'}
+            help={ratesValid ? undefined : t('pages.audit.invalidRateLimit')}
+          >
+            <InputNumber
+              min={0}
+              max={1000000}
+              precision={3}
+              value={siteRateLimit}
+              disabled={busy}
+              onChange={setSiteRateLimit}
+            />
+          </Form.Item>
           <Button type="primary" loading={busy} disabled={!valid} onClick={save}>
-            {t('pages.audit.saveRetention')}
+            {t('pages.audit.saveSettings')}
           </Button>
         </Form>
         <Divider style={{ margin: 0 }} />

@@ -433,6 +433,52 @@ export const AuditAggregateSchema = z.object({
 });
 export type AuditAggregate = z.infer<typeof AuditAggregateSchema>;
 
+export const AuditRateAlertSchema = z.object({
+  client: z.string(),
+  connections: z.number().int(),
+  sites: z.number().int(),
+});
+export type AuditRateAlert = z.infer<typeof AuditRateAlertSchema>;
+
+export const AuditRateCountsSchema = z.object({
+  connections: z.number().int(),
+  sites: z.number().int(),
+});
+export type AuditRateCounts = z.infer<typeof AuditRateCountsSchema>;
+
+export const AuditRateHistorySchema = z.object({
+  availableFrom: z.string(),
+  centralized: z.boolean(),
+  points: z.array(z.lazy(() => AuditRatePointSchema)),
+  windowEnd: z.string(),
+  windowStart: z.string(),
+});
+export type AuditRateHistory = z.infer<typeof AuditRateHistorySchema>;
+
+export const AuditRatePointSchema = z.object({
+  connections: z.number().int(),
+  sites: z.number().int(),
+  time: z.number().int(),
+});
+export type AuditRatePoint = z.infer<typeof AuditRatePointSchema>;
+
+export const AuditRateSnapshotSchema = z.object({
+  alerts: z.array(z.lazy(() => AuditRateAlertSchema)),
+  centralized: z.boolean(),
+  current: z.lazy(() => AuditRateCountsSchema),
+  windowEnd: z.string(),
+  windowStart: z.string(),
+});
+export type AuditRateSnapshot = z.infer<typeof AuditRateSnapshotSchema>;
+
+export const AuditRetentionSchema = z.object({
+  connectionRateLimit: z.number(),
+  detailHours: z.number().int(),
+  siteRateLimit: z.number(),
+  summaryDays: z.number().int(),
+});
+export type AuditRetention = z.infer<typeof AuditRetentionSchema>;
+
 export const AuditSitesPageSchema = z.object({
   centralized: z.boolean(),
   items: z.array(z.lazy(() => AuditAggregateSchema)),

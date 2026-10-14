@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -15,45 +16,76 @@ import (
 )
 
 type AuditRetention struct {
-	ClearBefore time.Time `json:"-"`
-	DetailHours int       `json:"detailHours" example:"24"`
-	SummaryDays int       `json:"summaryDays" example:"30"`
+	// FORK(audit-workbench): Persist adjustable per-second thresholds without changing retention semantics.
+	ConnectionRateLimit float64   `json:"connectionRateLimit" example:"10"`
+	SiteRateLimit       float64   `json:"siteRateLimit" example:"1"`
+	ClearBefore         time.Time `json:"-"`
+	DetailHours         int       `json:"detailHours" example:"24"`
+	SummaryDays         int       `json:"summaryDays" example:"30"`
 }
 
 func readAuditControl(tx *gorm.DB) (audit.Control, error) {
+	state, err := readAuditPolicyState(tx)
+	return state.Control, err
+}
+
+// Local rate coverage is not part of the master's broadcast policy.
+type auditPolicyState struct {
+	audit.Control
+	rateAvailableFrom time.Time
+}
+
+func readAuditPolicyState(tx *gorm.DB) (auditPolicyState, error) {
 	var rows []model.Setting
-	if err := tx.Where("key IN ?", []string{"auditDetailHours", "auditSummaryDays", "auditClearBefore", "auditPolicyRevision"}).Find(&rows).Error; err != nil {
-		return audit.Control{}, fmt.Errorf("read audit policy: %w", err)
+	// FORK(audit-workbench): Read the entire audit policy in one database query.
+	if err := tx.Where("key IN ?", []string{"auditDetailHours", "auditSummaryDays", "auditClearBefore", "auditPolicyRevision", "auditConnectionRateLimit", "auditSiteRateLimit", "auditRateAvailableFrom"}).Find(&rows).Error; err != nil {
+		return auditPolicyState{}, fmt.Errorf("read audit policy: %w", err)
 	}
 	values := map[string]string{"auditDetailHours": defaultValueMap["auditDetailHours"], "auditSummaryDays": defaultValueMap["auditSummaryDays"], "auditClearBefore": "", "auditPolicyRevision": "0"}
+	values["auditConnectionRateLimit"], values["auditSiteRateLimit"] = defaultValueMap["auditConnectionRateLimit"], defaultValueMap["auditSiteRateLimit"]
 	for _, row := range rows {
 		values[row.Key] = row.Value
 	}
 	hours, err := strconv.Atoi(values["auditDetailHours"])
 	if err != nil {
-		return audit.Control{}, fmt.Errorf("read audit detail retention: %w", err)
+		return auditPolicyState{}, fmt.Errorf("read audit detail retention: %w", err)
 	}
 	days, err := strconv.Atoi(values["auditSummaryDays"])
 	if err != nil {
-		return audit.Control{}, fmt.Errorf("read audit summary retention: %w", err)
+		return auditPolicyState{}, fmt.Errorf("read audit summary retention: %w", err)
 	}
 	revision, err := strconv.ParseInt(values["auditPolicyRevision"], 10, 64)
 	if err != nil || revision < 0 {
-		return audit.Control{}, fmt.Errorf("invalid audit policy revision %q", values["auditPolicyRevision"])
+		return auditPolicyState{}, fmt.Errorf("invalid audit policy revision %q", values["auditPolicyRevision"])
 	}
 	var clear time.Time
 	if values["auditClearBefore"] != "" {
 		clear, err = time.Parse(time.RFC3339Nano, values["auditClearBefore"])
 		if err != nil {
-			return audit.Control{}, fmt.Errorf("read audit cleanup watermark: %w", err)
+			return auditPolicyState{}, fmt.Errorf("read audit cleanup watermark: %w", err)
 		}
 	}
-	policy := audit.Control{DetailHours: hours, SummaryDays: days, Revision: revision, ClearBefore: clear}
-	return policy, validateAuditRetention(retentionFromControl(policy))
+	connectionLimit, err := strconv.ParseFloat(values["auditConnectionRateLimit"], 64)
+	if err != nil {
+		return auditPolicyState{}, fmt.Errorf("read audit connection rate limit: %w", err)
+	}
+	siteLimit, err := strconv.ParseFloat(values["auditSiteRateLimit"], 64)
+	if err != nil {
+		return auditPolicyState{}, fmt.Errorf("read audit site rate limit: %w", err)
+	}
+	policy := audit.Control{DetailHours: hours, SummaryDays: days, Revision: revision, ClearBefore: clear, ConnectionRateLimit: connectionLimit, SiteRateLimit: siteLimit}
+	state := auditPolicyState{Control: policy}
+	if values["auditRateAvailableFrom"] != "" {
+		state.rateAvailableFrom, err = time.Parse(time.RFC3339Nano, values["auditRateAvailableFrom"])
+		if err != nil {
+			return auditPolicyState{}, fmt.Errorf("read audit rate history coverage: %w", err)
+		}
+	}
+	return state, validateAuditRetention(retentionFromControl(policy))
 }
 
 func retentionFromControl(c audit.Control) AuditRetention {
-	return AuditRetention{DetailHours: c.DetailHours, SummaryDays: c.SummaryDays, ClearBefore: c.ClearBefore}
+	return AuditRetention{DetailHours: c.DetailHours, SummaryDays: c.SummaryDays, ClearBefore: c.ClearBefore, ConnectionRateLimit: c.ConnectionRateLimit, SiteRateLimit: c.SiteRateLimit}
 }
 
 func (AuditService) Retention() (AuditRetention, error) {
@@ -68,6 +100,12 @@ func (AuditService) Control() (audit.Control, error) {
 }
 
 func validateAuditRetention(policy AuditRetention) error {
+	// FORK(audit-workbench): Zero explicitly disables a threshold; non-finite values are never valid.
+	for _, value := range []float64{policy.ConnectionRateLimit, policy.SiteRateLimit} {
+		if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || value > 1000000 {
+			return fmt.Errorf("audit rate thresholds must be finite values between 0 and 1000000 per second")
+		}
+	}
 	if policy.DetailHours < 1 || policy.DetailHours > 720 || policy.SummaryDays < 1 || policy.SummaryDays > 365 || policy.DetailHours > policy.SummaryDays*24 {
 		return fmt.Errorf("audit details must be 1..720 hours and summaries 1..365 days covering the detail window")
 	}
@@ -91,8 +129,12 @@ func saveAuditValue(tx *gorm.DB, key, value string) error {
 
 func saveAuditControl(tx *gorm.DB, c audit.Control) error {
 	for _, item := range []struct{ key, value string }{
-		{"auditDetailHours", strconv.Itoa(c.DetailHours)}, {"auditSummaryDays", strconv.Itoa(c.SummaryDays)},
-		{"auditPolicyRevision", strconv.FormatInt(c.Revision, 10)}, {"auditClearBefore", c.ClearBefore.UTC().Format(time.RFC3339Nano)},
+		{"auditConnectionRateLimit", strconv.FormatFloat(c.ConnectionRateLimit, 'f', -1, 64)},
+		{"auditSiteRateLimit", strconv.FormatFloat(c.SiteRateLimit, 'f', -1, 64)},
+		{"auditDetailHours", strconv.Itoa(c.DetailHours)},
+		{"auditSummaryDays", strconv.Itoa(c.SummaryDays)},
+		{"auditPolicyRevision", strconv.FormatInt(c.Revision, 10)},
+		{"auditClearBefore", c.ClearBefore.UTC().Format(time.RFC3339Nano)},
 	} {
 		if err := saveAuditValue(tx, item.key, item.value); err != nil {
 			return fmt.Errorf("save %s: %w", item.key, err)
@@ -116,6 +158,7 @@ func (svc AuditService) SetRetention(policy AuditRetention) error {
 				return err
 			}
 			current.DetailHours, current.SummaryDays = policy.DetailHours, policy.SummaryDays
+			current.ConnectionRateLimit, current.SiteRateLimit = policy.ConnectionRateLimit, policy.SiteRateLimit
 			current.Revision++
 			if err := saveAuditControl(tx, current); err != nil {
 				return err
@@ -133,6 +176,10 @@ func (svc AuditService) SetRetention(policy AuditRetention) error {
 func clearAuditBefore(tx *gorm.DB, cutoff time.Time) error {
 	if cutoff.IsZero() {
 		return nil
+	}
+	// FORK(audit-workbench): Rate history must disappear together with cleared connection logs.
+	if err := tx.Where("minute < ?", cutoff.Unix()).Delete(&model.AuditMinuteStat{}).Error; err != nil {
+		return fmt.Errorf("clear audit minute metrics: %w", err)
 	}
 	if err := tx.Where("time < ?", cutoff).Delete(&model.AuditEvent{}).Error; err != nil {
 		return err

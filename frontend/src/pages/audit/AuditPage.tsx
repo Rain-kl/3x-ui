@@ -30,9 +30,16 @@ import AppSidebar from '@/layouts/AppSidebar';
 import { useTheme } from '@/hooks/useTheme';
 import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import { HttpUtil } from '@/utils';
-import { AuditRetentionSchema, AuditSummarySchema, type AuditSummary } from '@/schemas/audit';
+import {
+  AuditRetentionSchema,
+  AuditSummarySchema,
+  AuditRatesSchema,
+  AuditRateHistorySchema,
+  type AuditSummary,
+} from '@/schemas/audit';
 import AuditSettingsModal from './AuditSettingsModal';
 import AuditSitesModal from './AuditSitesModal';
+import AuditRateChart from './AuditRateChart';
 import { formatAuditBytes as bytes } from './format';
 import { buildAuditInboundRemarks } from './inboundRemarks';
 import './AuditPage.css';
@@ -120,6 +127,30 @@ export default function AuditPage() {
     enabled: !!policy,
     refetchInterval: 15000,
   });
+  // FORK(audit-workbench): Fixed-window rates follow identity filters, with minute history refreshed less often.
+  const rateFilters = { nodeId, client, site };
+  const rates = useQuery({
+    queryKey: ['audit', 'rates', nodeId, client, site],
+    queryFn: async () => {
+      const response = await HttpUtil.get('/panel/api/audit/rates', rateFilters, { silent: true });
+      if (!response.success) throw new Error(response.msg || t('pages.audit.operationFailed'));
+      return AuditRatesSchema.parse(response.obj);
+    },
+    enabled: !!policy && !data?.centralized,
+    refetchInterval: 15000,
+  });
+  const rateHistory = useQuery({
+    queryKey: ['audit', 'rate-history', nodeId, client, site],
+    queryFn: async () => {
+      const response = await HttpUtil.get('/panel/api/audit/rates/history', rateFilters, {
+        silent: true,
+      });
+      if (!response.success) throw new Error(response.msg || t('pages.audit.operationFailed'));
+      return AuditRateHistorySchema.parse(response.obj);
+    },
+    enabled: !!policy && !data?.centralized,
+    refetchInterval: 60000,
+  });
   // FORK(audit-workbench): Resolve current remarks once from the shared inbound list, not per audit event.
   const showInboundRemarks = detailed && !!data && !data.centralized && data.events.length > 0;
   const inboundOptions = useInboundOptions(showInboundRemarks);
@@ -132,7 +163,7 @@ export default function AuditPage() {
     [data?.nodes],
   );
   const totalMeasuredBytes = Math.max(1, (data?.uplink ?? 0) + (data?.downlink ?? 0));
-  const suspicious = data?.alerts ?? [];
+  const suspicious = rates.data?.alerts ?? [];
   const chooseClient = (value: string) => {
     setClient(value);
     setClientInput(value);
@@ -171,6 +202,8 @@ export default function AuditPage() {
               setOffset(0);
               void settings.refetch();
               void refetch();
+              void rates.refetch();
+              void rateHistory.refetch();
             }}
           />
         )}
@@ -198,6 +231,8 @@ export default function AuditPage() {
                       onClick={() => {
                         // FORK(audit-workbench): Explicit refresh should also reflect updated inbound remarks.
                         void refetch();
+                        void rates.refetch();
+                        void rateHistory.refetch();
                         if (showInboundRemarks) void inboundOptions.refetch();
                       }}
                     >
@@ -323,27 +358,58 @@ export default function AuditPage() {
                     </Col>
                     <Col xs={12} lg={6}>
                       <Card size="small" hoverable className="summary-card">
+                        {/* FORK(audit-workbench): Show rolling 60-second rates instead of a redundant measured count. */}
                         <Statistic
-                          title={t('pages.audit.measured')}
-                          value={`${data.measured}/${data.connections}`}
+                          title={t('pages.audit.currentRates')}
+                          value={
+                            rates.data && !rates.data.centralized
+                              ? `${(rates.data.current.connections / 60).toFixed(3)} / ${(rates.data.current.sites / 60).toFixed(3)}`
+                              : '—'
+                          }
                         />
                       </Card>
                     </Col>
                   </Row>
+                  {rates.error && <Alert type="error" showIcon title={rates.error.message} />}
                   {suspicious.length > 0 && (
                     <Alert
                       type="warning"
                       showIcon
                       title={t('pages.audit.reviewHighFrequency')}
                       description={suspicious.map((item) => (
-                        <Button key={item.name} type="link" onClick={() => chooseClient(item.name)}>
-                          {item.name}: {item.connections}{' '}
-                          {t('pages.audit.connections').toLowerCase()}, {item.uniqueSites ?? 0}{' '}
-                          {t('pages.audit.sites').toLowerCase()}
+                        <Button
+                          key={item.client}
+                          type="link"
+                          onClick={() => chooseClient(item.client)}
+                        >
+                          {item.client}: {(item.connections / 60).toFixed(3)}{' '}
+                          {t('pages.audit.connectionsPerSecond')}, {(item.sites / 60).toFixed(3)}{' '}
+                          {t('pages.audit.sitesPerSecond')}
                         </Button>
                       ))}
                     />
                   )}
+                  {/* FORK(audit-workbench): A minute chart exposes recent bursts independently of cumulative totals. */}
+                  <Card
+                    size="small"
+                    title={t('pages.audit.rateHistory')}
+                    extra={<Tag>{client || t('pages.audit.allClients')}</Tag>}
+                    loading={rateHistory.isFetching && !rateHistory.data}
+                  >
+                    {rateHistory.error && (
+                      <Alert
+                        type="error"
+                        showIcon
+                        title={rateHistory.error.message}
+                        action={
+                          <Button onClick={() => rateHistory.refetch()}>{t('refresh')}</Button>
+                        }
+                      />
+                    )}
+                    {rateHistory.data && !rateHistory.data.centralized && policy && (
+                      <AuditRateChart history={rateHistory.data} policy={policy} client={client} />
+                    )}
+                  </Card>
                   <Row gutter={[16, 16]}>
                     <Col xs={24} xl={12}>
                       {/* FORK(audit-workbench): Keep the compact ranking while exposing all sites in a paginated dialog. */}

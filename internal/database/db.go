@@ -91,6 +91,8 @@ func allModels() []any {
 		&model.AuditEvent{},
 		&model.AuditDailyStat{},
 		&model.AuditReceipt{},
+		// FORK(audit-workbench): Preserve 24-hour rate history independently of detailed retention.
+		&model.AuditMinuteStat{},
 	}
 }
 
@@ -301,8 +303,13 @@ func initModels() error {
 }
 
 func migrateAuditEvents() error {
-	// FORK(audit-retention): Existing installations need the compact historical metrics table.
-	return db.AutoMigrate(&model.AuditEvent{}, &model.AuditDailyStat{}, &model.AuditReceipt{})
+	// FORK(audit-workbench): Existing installations need compact daily and minute audit metrics.
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.AutoMigrate(&model.AuditEvent{}, &model.AuditDailyStat{}, &model.AuditReceipt{}); err != nil {
+			return err
+		}
+		return migrateAuditRateHistory(tx)
+	})
 }
 
 func postgresModelSettled(mdl any) bool {

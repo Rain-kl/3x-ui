@@ -90,6 +90,26 @@ describe('Audit full site rankings', () => {
 
   it('loads only after clicking More in the dashboard title and follows applied client/site filters', async () => {
     const get = vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string, params) => {
+      if (url.endsWith('/audit/rates'))
+        return {
+          success: true,
+          obj: {
+            windowStart: '2026-10-14T00:00:00Z',
+            windowEnd: '2026-10-14T00:01:00Z',
+            current: { connections: 0, sites: 0 },
+            alerts: [],
+          },
+        } as never;
+      if (url.endsWith('/audit/rates/history'))
+        return {
+          success: true,
+          obj: {
+            windowStart: '2026-10-13T00:00:00Z',
+            windowEnd: '2026-10-14T00:00:00Z',
+            availableFrom: '2026-10-14T00:00:00Z',
+            points: [],
+          },
+        } as never;
       if (url.endsWith('/audit/settings'))
         return { success: true, obj: { detailHours: 24, summaryDays: 30 } } as never;
       if (url.endsWith('/audit/summary'))

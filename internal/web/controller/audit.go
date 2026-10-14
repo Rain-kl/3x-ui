@@ -14,12 +14,28 @@ func newAuditController(g *gin.RouterGroup) {
 	// FORK(audit-retention): Administrator-only configuration and cleanup routes.
 	g.GET("/settings", func(c *gin.Context) { policy, err := (service.AuditService{}).Retention(); jsonObj(c, policy, err) })
 	g.POST("/settings", func(c *gin.Context) {
-		var policy service.AuditRetention
+		// FORK(audit-workbench): Legacy requests omitting rate thresholds preserve the current values.
+		policy, err := (service.AuditService{}).Retention()
+		if err != nil {
+			jsonObj(c, nil, err)
+			return
+		}
 		if err := c.ShouldBindJSON(&policy); err != nil {
 			jsonObj(c, nil, err)
 			return
 		}
 		jsonObj(c, true, (service.AuditService{}).SetRetention(policy))
+	})
+	// FORK(audit-workbench): Recent rates and minute history use fixed windows, independent of historical totals.
+	g.GET("/rates", func(c *gin.Context) {
+		nodeID, _ := strconv.Atoi(c.Query("nodeId"))
+		result, err := (service.AuditService{}).QueryRates(service.AuditFilter{NodeID: nodeID, Client: c.Query("client"), Site: c.Query("site")})
+		jsonObj(c, result, err)
+	})
+	g.GET("/rates/history", func(c *gin.Context) {
+		nodeID, _ := strconv.Atoi(c.Query("nodeId"))
+		result, err := (service.AuditService{}).QueryRateHistory(service.AuditFilter{NodeID: nodeID, Client: c.Query("client"), Site: c.Query("site")})
+		jsonObj(c, result, err)
 	})
 	g.POST("/clear", func(c *gin.Context) {
 		var body struct {

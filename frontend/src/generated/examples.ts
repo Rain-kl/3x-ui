@@ -412,6 +412,55 @@ export const EXAMPLES: Record<string, unknown> = {
     "uniqueSites": 1,
     "uplink": 1024
   },
+  "AuditRateAlert": {
+    "client": "alice",
+    "connections": 600,
+    "sites": 60
+  },
+  "AuditRateCounts": {
+    "connections": 600,
+    "sites": 60
+  },
+  "AuditRateHistory": {
+    "availableFrom": "2026-10-13T00:01:00Z",
+    "centralized": false,
+    "points": [
+      {
+        "connections": 120,
+        "sites": 30,
+        "time": 1791936000
+      }
+    ],
+    "windowEnd": "2026-10-14T00:01:00Z",
+    "windowStart": "2026-10-13T00:01:00Z"
+  },
+  "AuditRatePoint": {
+    "connections": 120,
+    "sites": 30,
+    "time": 1791936000
+  },
+  "AuditRateSnapshot": {
+    "alerts": [
+      {
+        "client": "alice",
+        "connections": 600,
+        "sites": 60
+      }
+    ],
+    "centralized": false,
+    "current": {
+      "connections": 600,
+      "sites": 60
+    },
+    "windowEnd": "2026-10-14T00:01:00Z",
+    "windowStart": "2026-10-14T00:00:00Z"
+  },
+  "AuditRetention": {
+    "connectionRateLimit": 10,
+    "detailHours": 24,
+    "siteRateLimit": 1,
+    "summaryDays": 30
+  },
   "AuditSitesPage": {
     "centralized": false,
     "items": [

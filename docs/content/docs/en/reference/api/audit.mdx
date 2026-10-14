@@ -19,19 +19,33 @@ _openapi:
         export.
       url: '#apply-the-master-audit-retention-and-absolute-cleanup-watermark-on-a-direct-child-requires-a-parent-node-syncadmin-token-or-mtls-browser-sessions-are-rejected-versioned-idempotent-and-retried-before-audit-export'
     - depth: 2
-      title: Get detailed-hour and daily-summary audit retention.
-      url: '#get-detailed-hour-and-daily-summary-audit-retention'
+      title: Get audit retention and configurable one-minute high-frequency rate
+        thresholds.
+      url: '#get-audit-retention-and-configurable-one-minute-high-frequency-rate-thresholds'
     - depth: 2
-      title: Save audit retention, compact/expire existing records, and broadcast the
-        persisted policy to enabled child nodes. Partial failures are reported
-        and retried automatically.
-      url: '#save-audit-retention-compactexpire-existing-records-and-broadcast-the-persisted-policy-to-enabled-child-nodes-partial-failures-are-reported-and-retried-automatically'
+      title: Save audit retention and one-minute rate thresholds, compact/expire
+        existing records, and broadcast the persisted policy to enabled child
+        nodes. Zero disables a threshold; omitted thresholds preserve current
+        settings. Partial failures are reported and retried automatically.
+      url: '#save-audit-retention-and-one-minute-rate-thresholds-compactexpire-existing-records-and-broadcast-the-persisted-policy-to-enabled-child-nodes-zero-disables-a-threshold-omitted-thresholds-preserve-current-settings-partial-failures-are-reported-and-retried-automatically'
     - depth: 2
       title: Clear audit details, daily summaries, receipts and pending spool;
         broadcast the same absolute cutoff to enabled child nodes. Zero clears
         existing logs; a positive day count clears before that UTC date. Offline
         children reconcile before export.
       url: '#clear-audit-details-daily-summaries-receipts-and-pending-spool-broadcast-the-same-absolute-cutoff-to-enabled-child-nodes-zero-clears-existing-logs-a-positive-day-count-clears-before-that-utc-date-offline-children-reconcile-before-export'
+    - depth: 2
+      title: Count connections and distinct websites in the rolling last 60 seconds;
+        divide each count by 60 for its per-second rate. Return up to 20 clients
+        reaching configurable rate thresholds. Fixed window ignores hours/day
+        filters.
+      url: '#count-connections-and-distinct-websites-in-the-rolling-last-60-seconds-divide-each-count-by-60-for-its-per-second-rate-return-up-to-20-clients-reaching-configurable-rate-thresholds-fixed-window-ignores-hoursday-filters'
+    - depth: 2
+      title: Return 1440 complete minute buckets over the last 24 hours with
+        connection and distinct-website counts. Divide each by 60 for rates.
+        availableFrom marks missing history; archived minute data is retained
+        separately from details.
+      url: '#return-1440-complete-minute-buckets-over-the-last-24-hours-with-connection-and-distinct-website-counts-divide-each-by-60-for-rates-availablefrom-marks-missing-history-archived-minute-data-is-retained-separately-from-details'
     - depth: 2
       title: Paginate all websites by combined upload/download bytes using the
         dashboard filters. Defaults to page 1 and 20 items; allowed sizes are
@@ -52,17 +66,29 @@ _openapi:
           sessions are rejected. Versioned, idempotent, and retried before audit
           export.
         id: apply-the-master-audit-retention-and-absolute-cleanup-watermark-on-a-direct-child-requires-a-parent-node-syncadmin-token-or-mtls-browser-sessions-are-rejected-versioned-idempotent-and-retried-before-audit-export
-      - content: Get detailed-hour and daily-summary audit retention.
-        id: get-detailed-hour-and-daily-summary-audit-retention
-      - content: Save audit retention, compact/expire existing records, and broadcast
-          the persisted policy to enabled child nodes. Partial failures are
-          reported and retried automatically.
-        id: save-audit-retention-compactexpire-existing-records-and-broadcast-the-persisted-policy-to-enabled-child-nodes-partial-failures-are-reported-and-retried-automatically
+      - content: Get audit retention and configurable one-minute high-frequency rate
+          thresholds.
+        id: get-audit-retention-and-configurable-one-minute-high-frequency-rate-thresholds
+      - content: Save audit retention and one-minute rate thresholds, compact/expire
+          existing records, and broadcast the persisted policy to enabled child
+          nodes. Zero disables a threshold; omitted thresholds preserve current
+          settings. Partial failures are reported and retried automatically.
+        id: save-audit-retention-and-one-minute-rate-thresholds-compactexpire-existing-records-and-broadcast-the-persisted-policy-to-enabled-child-nodes-zero-disables-a-threshold-omitted-thresholds-preserve-current-settings-partial-failures-are-reported-and-retried-automatically
       - content: Clear audit details, daily summaries, receipts and pending spool;
           broadcast the same absolute cutoff to enabled child nodes. Zero clears
           existing logs; a positive day count clears before that UTC date.
           Offline children reconcile before export.
         id: clear-audit-details-daily-summaries-receipts-and-pending-spool-broadcast-the-same-absolute-cutoff-to-enabled-child-nodes-zero-clears-existing-logs-a-positive-day-count-clears-before-that-utc-date-offline-children-reconcile-before-export
+      - content: Count connections and distinct websites in the rolling last 60 seconds;
+          divide each count by 60 for its per-second rate. Return up to 20
+          clients reaching configurable rate thresholds. Fixed window ignores
+          hours/day filters.
+        id: count-connections-and-distinct-websites-in-the-rolling-last-60-seconds-divide-each-count-by-60-for-its-per-second-rate-return-up-to-20-clients-reaching-configurable-rate-thresholds-fixed-window-ignores-hoursday-filters
+      - content: Return 1440 complete minute buckets over the last 24 hours with
+          connection and distinct-website counts. Divide each by 60 for rates.
+          availableFrom marks missing history; archived minute data is retained
+          separately from details.
+        id: return-1440-complete-minute-buckets-over-the-last-24-hours-with-connection-and-distinct-website-counts-divide-each-by-60-for-rates-availablefrom-marks-missing-history-archived-minute-data-is-retained-separately-from-details
       - content: Paginate all websites by combined upload/download bytes using the
           dashboard filters. Defaults to page 1 and 20 items; allowed sizes are
           20, 50 and 100. Equal traffic is ordered by site name.
@@ -80,7 +106,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/sites","method":"get"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/rates","method":"get"},{"path":"/panel/api/audit/rates/history","method":"get"},{"path":"/panel/api/audit/sites","method":"get"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
     </>
   );
 }

@@ -446,20 +446,20 @@ export const sections: readonly Section[] = [
         security: [{ bearerAuth: [] }],
         summary:
           'Apply the master audit retention and absolute cleanup watermark on a direct child. Requires a parent node-sync/admin token or mTLS; browser sessions are rejected. Versioned, idempotent, and retried before audit export.',
-        body: '{"detailHours":24,"summaryDays":30,"revision":1,"clearBefore":"2026-10-14T00:00:00Z"}',
+        body: '{"detailHours":24,"summaryDays":30,"connectionRateLimit":10,"siteRateLimit":1,"revision":1,"clearBefore":"2026-10-14T00:00:00Z"}',
       },
       {
         method: 'GET',
         path: '/panel/api/audit/settings',
-        summary: 'Get detailed-hour and daily-summary audit retention.',
-        response: '{"success":true,"obj":{"detailHours":24,"summaryDays":30}}',
+        summary: 'Get audit retention and configurable one-minute high-frequency rate thresholds.',
+        responseSchema: 'AuditRetention',
       },
       {
         method: 'POST',
         path: '/panel/api/audit/settings',
         summary:
-          'Save audit retention, compact/expire existing records, and broadcast the persisted policy to enabled child nodes. Partial failures are reported and retried automatically.',
-        body: '{"detailHours":24,"summaryDays":30}',
+          'Save audit retention and one-minute rate thresholds, compact/expire existing records, and broadcast the persisted policy to enabled child nodes. Zero disables a threshold; omitted thresholds preserve current settings. Partial failures are reported and retried automatically.',
+        body: '{"detailHours":24,"summaryDays":30,"connectionRateLimit":10,"siteRateLimit":1}',
       },
       {
         method: 'POST',
@@ -467,6 +467,42 @@ export const sections: readonly Section[] = [
         summary:
           'Clear audit details, daily summaries, receipts and pending spool; broadcast the same absolute cutoff to enabled child nodes. Zero clears existing logs; a positive day count clears before that UTC date. Offline children reconcile before export.',
         body: '{"olderThanDays":7}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/audit/rates',
+        summary:
+          'Count connections and distinct websites in the rolling last 60 seconds; divide each count by 60 for its per-second rate. Return up to 20 clients reaching configurable rate thresholds. Fixed window ignores hours/day filters.',
+        responseSchema: 'AuditRateSnapshot',
+        params: [
+          {
+            name: 'nodeId',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            desc: '0 for all nodes; -1 for local; positive for one child.',
+          },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+          { name: 'site', in: 'query', type: 'string', optional: true },
+        ],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/audit/rates/history',
+        summary:
+          'Return 1440 complete minute buckets over the last 24 hours with connection and distinct-website counts. Divide each by 60 for rates. availableFrom marks missing history; archived minute data is retained separately from details.',
+        responseSchema: 'AuditRateHistory',
+        params: [
+          {
+            name: 'nodeId',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            desc: '0 for all nodes; -1 for local; positive for one child.',
+          },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+          { name: 'site', in: 'query', type: 'string', optional: true },
+        ],
       },
       {
         method: 'GET',

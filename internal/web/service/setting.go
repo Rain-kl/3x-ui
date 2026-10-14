@@ -209,6 +209,9 @@ var defaultValueMap = map[string]string{
 	"auditDetailHours": "24",
 	"auditClearBefore": "",
 	"auditSummaryDays": "30",
+	// FORK(audit-workbench): One-minute average rates replace cumulative high-frequency heuristics.
+	"auditConnectionRateLimit": "10",
+	"auditSiteRateLimit":       "1",
 
 	// LDAP defaults
 	"ldapEnable":             "false",

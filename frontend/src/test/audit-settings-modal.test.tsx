@@ -7,7 +7,12 @@ import AuditSettingsModal from '@/pages/audit/AuditSettingsModal';
 import type { AuditRetention } from '@/schemas/audit';
 import { renderWithProviders } from './test-utils';
 
-const policy: AuditRetention = { detailHours: 24, summaryDays: 30 };
+const policy: AuditRetention = {
+  detailHours: 24,
+  summaryDays: 30,
+  connectionRateLimit: 10,
+  siteRateLimit: 1,
+};
 
 function renderModal() {
   const onClose = vi.fn();
@@ -25,16 +30,16 @@ describe('AuditSettingsModal', () => {
     const { onChanged } = renderModal();
 
     fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '36' } });
-    await user.click(screen.getByRole('button', { name: 'Save retention settings' }));
+    await user.click(screen.getByRole('button', { name: 'Save audit settings' }));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
         '/panel/api/audit/settings',
-        { detailHours: 36, summaryDays: 30 },
+        { ...policy, detailHours: 36 },
         expect.objectContaining({ headers: { 'Content-Type': 'application/json' }, silent: true }),
       ),
     );
-    expect(onChanged).toHaveBeenCalledWith({ detailHours: 36, summaryDays: 30 });
+    expect(onChanged).toHaveBeenCalledWith({ ...policy, detailHours: 36 });
   });
 
   it('confirms clear-all before posting the destructive request', async () => {
@@ -68,7 +73,7 @@ describe('AuditSettingsModal', () => {
     const { onChanged } = renderModal();
 
     fireEvent.change(screen.getAllByRole('spinbutton')[0], { target: { value: '36' } });
-    await user.click(screen.getByRole('button', { name: 'Save retention settings' }));
+    await user.click(screen.getByRole('button', { name: 'Save audit settings' }));
 
     expect(await screen.findByText('database unavailable')).toBeTruthy();
     expect(onChanged).not.toHaveBeenCalled();

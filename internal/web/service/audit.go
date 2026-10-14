@@ -164,6 +164,8 @@ func ingestAudit(nodeID int, events []audit.Event) error {
 	return database.GetDB().Transaction(func(tx *gorm.DB) error {
 		fresh := make([]model.AuditEvent, 0, len(rows))
 		groups := make(map[string]model.AuditDailyStat)
+		// FORK(audit-workbench): Only newly accepted visits contribute to compact minute history.
+		minutes := make(map[string]model.AuditMinuteStat)
 
 		archived := make([]model.AuditEvent, 0, len(rows))
 		for _, row := range rows {
@@ -184,6 +186,9 @@ func ingestAudit(nodeID int, events []audit.Event) error {
 			delete(accepted, row.ID)
 
 			day := row.Time.UTC().Format("2006-01-02")
+			if summaries[row.ID] == nil && !row.Time.Before(now.Add(-24*time.Hour).Truncate(time.Minute)) {
+				addAuditMinute(minutes, row)
+			}
 			key := fmt.Sprintf("%s\x00%d\x00%s\x00%s", day, nodeID, row.Client, row.Site)
 			group := groups[key]
 			group.Day = day
@@ -208,11 +213,25 @@ func ingestAudit(nodeID int, events []audit.Event) error {
 			groups[key] = group
 		}
 		if len(fresh) > 0 {
-			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).CreateInBatches(fresh, 200).Error; err != nil {
+			accepted, err := insertAuditDetails(tx, fresh)
+			if err != nil {
 				return err
 			}
+			for _, row := range fresh {
+				if accepted[row.ID] && !row.Time.Before(now.Add(-24*time.Hour).Truncate(time.Minute)) {
+					addAuditMinute(minutes, row)
+					delete(accepted, row.ID)
+				}
+			}
 		}
-		return upsertAuditDays(tx, groupsToSlice(groups))
+		if err := upsertAuditDays(tx, groupsToSlice(groups)); err != nil {
+			return err
+		}
+		minuteRows := make([]model.AuditMinuteStat, 0, len(minutes))
+		for _, row := range minutes {
+			minuteRows = append(minuteRows, row)
+		}
+		return upsertAuditMinutes(tx, minuteRows)
 	})
 }
 
@@ -373,14 +392,7 @@ func queryAudit(db *gorm.DB, f AuditFilter) (*AuditSummary, error) {
 			return nil, err
 		}
 	}
-	alertHours := auditHours(f.Hours)
-	if f.Day != "" {
-		alertHours = 24
-	}
-	alertExpr := "client AS name, SUM(connections) AS connections, COALESCE(SUM(uplink), 0) AS uplink, COALESCE(SUM(downlink), 0) AS downlink, SUM(measured) AS measured, COUNT(DISTINCT site) AS unique_sites"
-	if err := base().Select(alertExpr).Group("client").Having("SUM(connections) >= ? OR COUNT(DISTINCT site) >= ?", 100*alertHours, 50).Order("connections DESC").Limit(20).Scan(&result.Alerts).Error; err != nil {
-		return nil, err
-	}
+	// FORK(audit-workbench): High-frequency detection belongs to the fixed one-minute rate query.
 	if auditHours(f.Hours) <= policy.DetailHours && f.Day == "" {
 		hourExpr := "strftime('%Y-%m-%dT%H:00:00Z', time)"
 		if database.IsPostgres() {
@@ -419,6 +431,10 @@ func pruneAudit(tx *gorm.DB, policy AuditRetention) error {
 	now := time.Now().UTC()
 	cutoff := now.Add(-time.Duration(policy.DetailHours) * time.Hour)
 	day := now.AddDate(0, 0, -policy.SummaryDays+1).Format("2006-01-02")
+	// FORK(audit-workbench): Minute counters retain a fixed 24-hour history independent of detail retention.
+	if err := expireAuditMinutes(tx, now); err != nil {
+		return err
+	}
 	if err := tx.Where("inbound = ? OR (time < ? AND time < ?) OR time > ?", "api", day, cutoff, now).Delete(&model.AuditEvent{}).Error; err != nil {
 		return err
 	}

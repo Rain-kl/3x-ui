@@ -1716,6 +1716,172 @@
         ],
         "type": "object"
       },
+      "AuditRateAlert": {
+        "properties": {
+          "client": {
+            "example": "alice",
+            "type": "string"
+          },
+          "connections": {
+            "example": 600,
+            "format": "int64",
+            "type": "integer"
+          },
+          "sites": {
+            "example": 60,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "client",
+          "connections",
+          "sites"
+        ],
+        "type": "object"
+      },
+      "AuditRateCounts": {
+        "properties": {
+          "connections": {
+            "example": 600,
+            "format": "int64",
+            "type": "integer"
+          },
+          "sites": {
+            "example": 60,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "connections",
+          "sites"
+        ],
+        "type": "object"
+      },
+      "AuditRateHistory": {
+        "properties": {
+          "availableFrom": {
+            "example": "2026-10-13T00:01:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "centralized": {
+            "type": "boolean"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRatePoint"
+            },
+            "type": "array"
+          },
+          "windowEnd": {
+            "example": "2026-10-14T00:01:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "windowStart": {
+            "example": "2026-10-13T00:01:00Z",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "availableFrom",
+          "centralized",
+          "points",
+          "windowEnd",
+          "windowStart"
+        ],
+        "type": "object"
+      },
+      "AuditRatePoint": {
+        "properties": {
+          "connections": {
+            "example": 120,
+            "format": "int64",
+            "type": "integer"
+          },
+          "sites": {
+            "example": 30,
+            "format": "int64",
+            "type": "integer"
+          },
+          "time": {
+            "example": 1791936000,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "connections",
+          "sites",
+          "time"
+        ],
+        "type": "object"
+      },
+      "AuditRateSnapshot": {
+        "properties": {
+          "alerts": {
+            "items": {
+              "$ref": "#/components/schemas/AuditRateAlert"
+            },
+            "type": "array"
+          },
+          "centralized": {
+            "type": "boolean"
+          },
+          "current": {
+            "$ref": "#/components/schemas/AuditRateCounts"
+          },
+          "windowEnd": {
+            "example": "2026-10-14T00:01:00Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "windowStart": {
+            "example": "2026-10-14T00:00:00Z",
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "alerts",
+          "centralized",
+          "current",
+          "windowEnd",
+          "windowStart"
+        ],
+        "type": "object"
+      },
+      "AuditRetention": {
+        "properties": {
+          "connectionRateLimit": {
+            "description": "FORK(audit-workbench): Persist adjustable per-second thresholds without changing retention semantics.",
+            "example": 10,
+            "type": "number"
+          },
+          "detailHours": {
+            "example": 24,
+            "type": "integer"
+          },
+          "siteRateLimit": {
+            "example": 1,
+            "type": "number"
+          },
+          "summaryDays": {
+            "example": 30,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "connectionRateLimit",
+          "detailHours",
+          "siteRateLimit",
+          "summaryDays"
+        ],
+        "type": "object"
+      },
       "AuditSitesPage": {
         "properties": {
           "centralized": {
@@ -6326,6 +6492,8 @@
               "example": {
                 "detailHours": 24,
                 "summaryDays": 30,
+                "connectionRateLimit": 10,
+                "siteRateLimit": 1,
                 "revision": 1,
                 "clearBefore": "2026-10-14T00:00:00Z"
               }
@@ -6365,7 +6533,7 @@
         "tags": [
           "Audit"
         ],
-        "summary": "Get detailed-hour and daily-summary audit retention.",
+        "summary": "Get audit retention and configurable one-minute high-frequency rate thresholds.",
         "operationId": "get_panel_api_audit_settings",
         "responses": {
           "200": {
@@ -6381,13 +6549,17 @@
                     "msg": {
                       "type": "string"
                     },
-                    "obj": {}
+                    "obj": {
+                      "$ref": "#/components/schemas/AuditRetention"
+                    }
                   }
                 },
                 "example": {
                   "success": true,
                   "obj": {
+                    "connectionRateLimit": 10,
                     "detailHours": 24,
+                    "siteRateLimit": 1,
                     "summaryDays": 30
                   }
                 }
@@ -6400,7 +6572,7 @@
         "tags": [
           "Audit"
         ],
-        "summary": "Save audit retention, compact/expire existing records, and broadcast the persisted policy to enabled child nodes. Partial failures are reported and retried automatically.",
+        "summary": "Save audit retention and one-minute rate thresholds, compact/expire existing records, and broadcast the persisted policy to enabled child nodes. Zero disables a threshold; omitted thresholds preserve current settings. Partial failures are reported and retried automatically.",
         "operationId": "post_panel_api_audit_settings",
         "requestBody": {
           "required": true,
@@ -6411,7 +6583,9 @@
               },
               "example": {
                 "detailHours": 24,
-                "summaryDays": 30
+                "summaryDays": 30,
+                "connectionRateLimit": 10,
+                "siteRateLimit": 1
               }
             }
           }
@@ -6474,6 +6648,163 @@
                       "type": "string"
                     },
                     "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/rates": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Count connections and distinct websites in the rolling last 60 seconds; divide each count by 60 for its per-second rate. Return up to 20 clients reaching configurable rate thresholds. Fixed window ignores hours/day filters.",
+        "operationId": "get_panel_api_audit_rates",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "description": "0 for all nodes; -1 for local; positive for one child.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "site",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AuditRateSnapshot"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "alerts": [
+                      {
+                        "client": "alice",
+                        "connections": 600,
+                        "sites": 60
+                      }
+                    ],
+                    "centralized": false,
+                    "current": {
+                      "connections": 600,
+                      "sites": 60
+                    },
+                    "windowEnd": "2026-10-14T00:01:00Z",
+                    "windowStart": "2026-10-14T00:00:00Z"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/rates/history": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Return 1440 complete minute buckets over the last 24 hours with connection and distinct-website counts. Divide each by 60 for rates. availableFrom marks missing history; archived minute data is retained separately from details.",
+        "operationId": "get_panel_api_audit_rates_history",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "description": "0 for all nodes; -1 for local; positive for one child.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "site",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AuditRateHistory"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "availableFrom": "2026-10-13T00:01:00Z",
+                    "centralized": false,
+                    "points": [
+                      {
+                        "connections": 120,
+                        "sites": 30,
+                        "time": 1791936000
+                      }
+                    ],
+                    "windowEnd": "2026-10-14T00:01:00Z",
+                    "windowStart": "2026-10-13T00:01:00Z"
                   }
                 }
               }

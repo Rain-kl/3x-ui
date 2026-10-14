@@ -18,7 +18,7 @@ func TestAuditRetentionSettingsDefaultsAndPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != (AuditRetention{DetailHours: 24, SummaryDays: 30}) {
+	if got != (AuditRetention{DetailHours: 24, SummaryDays: 30, ConnectionRateLimit: 10, SiteRateLimit: 1}) {
 		t.Fatalf("default retention = %+v, want detailHours=24 summaryDays=30", got)
 	}
 

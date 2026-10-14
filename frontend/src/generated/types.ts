@@ -411,6 +411,46 @@ export interface AuditAggregate {
   uplink: number;
 }
 
+export interface AuditRateAlert {
+  client: string;
+  connections: number;
+  sites: number;
+}
+
+export interface AuditRateCounts {
+  connections: number;
+  sites: number;
+}
+
+export interface AuditRateHistory {
+  availableFrom: string;
+  centralized: boolean;
+  points: AuditRatePoint[];
+  windowEnd: string;
+  windowStart: string;
+}
+
+export interface AuditRatePoint {
+  connections: number;
+  sites: number;
+  time: number;
+}
+
+export interface AuditRateSnapshot {
+  alerts: AuditRateAlert[];
+  centralized: boolean;
+  current: AuditRateCounts;
+  windowEnd: string;
+  windowStart: string;
+}
+
+export interface AuditRetention {
+  connectionRateLimit: number;
+  detailHours: number;
+  siteRateLimit: number;
+  summaryDays: number;
+}
+
 export interface AuditSitesPage {
   centralized: boolean;
   items: AuditAggregate[];

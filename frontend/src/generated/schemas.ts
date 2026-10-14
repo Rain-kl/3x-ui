@@ -1690,6 +1690,172 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "AuditRateAlert": {
+    "properties": {
+      "client": {
+        "example": "alice",
+        "type": "string"
+      },
+      "connections": {
+        "example": 600,
+        "format": "int64",
+        "type": "integer"
+      },
+      "sites": {
+        "example": 60,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "client",
+      "connections",
+      "sites"
+    ],
+    "type": "object"
+  },
+  "AuditRateCounts": {
+    "properties": {
+      "connections": {
+        "example": 600,
+        "format": "int64",
+        "type": "integer"
+      },
+      "sites": {
+        "example": 60,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "connections",
+      "sites"
+    ],
+    "type": "object"
+  },
+  "AuditRateHistory": {
+    "properties": {
+      "availableFrom": {
+        "example": "2026-10-13T00:01:00Z",
+        "format": "date-time",
+        "type": "string"
+      },
+      "centralized": {
+        "type": "boolean"
+      },
+      "points": {
+        "items": {
+          "$ref": "#/components/schemas/AuditRatePoint"
+        },
+        "type": "array"
+      },
+      "windowEnd": {
+        "example": "2026-10-14T00:01:00Z",
+        "format": "date-time",
+        "type": "string"
+      },
+      "windowStart": {
+        "example": "2026-10-13T00:01:00Z",
+        "format": "date-time",
+        "type": "string"
+      }
+    },
+    "required": [
+      "availableFrom",
+      "centralized",
+      "points",
+      "windowEnd",
+      "windowStart"
+    ],
+    "type": "object"
+  },
+  "AuditRatePoint": {
+    "properties": {
+      "connections": {
+        "example": 120,
+        "format": "int64",
+        "type": "integer"
+      },
+      "sites": {
+        "example": 30,
+        "format": "int64",
+        "type": "integer"
+      },
+      "time": {
+        "example": 1791936000,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "connections",
+      "sites",
+      "time"
+    ],
+    "type": "object"
+  },
+  "AuditRateSnapshot": {
+    "properties": {
+      "alerts": {
+        "items": {
+          "$ref": "#/components/schemas/AuditRateAlert"
+        },
+        "type": "array"
+      },
+      "centralized": {
+        "type": "boolean"
+      },
+      "current": {
+        "$ref": "#/components/schemas/AuditRateCounts"
+      },
+      "windowEnd": {
+        "example": "2026-10-14T00:01:00Z",
+        "format": "date-time",
+        "type": "string"
+      },
+      "windowStart": {
+        "example": "2026-10-14T00:00:00Z",
+        "format": "date-time",
+        "type": "string"
+      }
+    },
+    "required": [
+      "alerts",
+      "centralized",
+      "current",
+      "windowEnd",
+      "windowStart"
+    ],
+    "type": "object"
+  },
+  "AuditRetention": {
+    "properties": {
+      "connectionRateLimit": {
+        "description": "FORK(audit-workbench): Persist adjustable per-second thresholds without changing retention semantics.",
+        "example": 10,
+        "type": "number"
+      },
+      "detailHours": {
+        "example": 24,
+        "type": "integer"
+      },
+      "siteRateLimit": {
+        "example": 1,
+        "type": "number"
+      },
+      "summaryDays": {
+        "example": 30,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "connectionRateLimit",
+      "detailHours",
+      "siteRateLimit",
+      "summaryDays"
+    ],
+    "type": "object"
+  },
   "AuditSitesPage": {
     "properties": {
       "centralized": {
