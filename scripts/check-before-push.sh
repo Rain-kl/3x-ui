@@ -166,7 +166,7 @@ while read -r commit; do
     git -C "$repo_root" worktree add --quiet --detach "$worktree" "$commit"
     cd "$worktree"
     printf 'Checking commit %s in an isolated worktree.\n' "$commit" | tee "$log_file"
-    unset XUI_DB_TYPE XUI_DB_DSN XUI_TEST_PG_DSN XRAY_E2E_BINARY XRAY_TRAFFICLOG_BIN
+    unset XUI_DB_TYPE XUI_DB_DSN XUI_TEST_PG_DSN XRAY_E2E_BINARY XRAY_TRAFFICLOG_BIN XRAY_LOCATION_ASSET xray.location.asset
     if [ "${PUSH_CHECK_POSTGRES:-0}" = 1 ]; then export XUI_TEST_PG_DSN="$postgres_test_dsn"; fi
     export XUI_DB_FOLDER="$task_tmp/runtime-db" XUI_LOG_FOLDER="$task_tmp/runtime-logs" XUI_BIN_FOLDER="$task_tmp/runtime-bin"
     mkdir -p "$XUI_DB_FOLDER" "$XUI_LOG_FOLDER" "$XUI_BIN_FOLDER"

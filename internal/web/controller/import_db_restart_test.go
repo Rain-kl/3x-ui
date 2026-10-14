@@ -40,6 +40,7 @@ func TestImportDBSchedulesPanelRestart(t *testing.T) {
 	newHostTestDB(t)
 	binDir := t.TempDir()
 	t.Setenv("XUI_BIN_FOLDER", binDir)
+	t.Setenv("XRAY_LOCATION_ASSET", binDir)
 	t.Setenv("XUI_LOG_FOLDER", t.TempDir())
 	if err := os.WriteFile(filepath.Join(binDir, xray.GetBinaryName()), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatalf("write stub xray: %v", err)
