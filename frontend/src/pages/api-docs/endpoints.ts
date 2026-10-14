@@ -470,6 +470,41 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'GET',
+        path: '/panel/api/audit/sites',
+        summary:
+          'Paginate all websites by combined upload/download bytes using the dashboard filters. Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100. Equal traffic is ordered by site name.',
+        responseSchema: 'AuditSitesPage',
+        params: [
+          { name: 'hours', in: 'query', type: 'integer', optional: true },
+          {
+            name: 'day',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'UTC date YYYY-MM-DD, matching the dashboard date filter.',
+          },
+          {
+            name: 'nodeId',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            desc: '0 for all nodes; -1 for local; positive for one child.',
+          },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+          { name: 'site', in: 'query', type: 'string', optional: true },
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          {
+            name: 'pageSize',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            defaultValue: 20,
+            enum: [20, 50, 100],
+          },
+        ],
+      },
+      {
+        method: 'GET',
         path: '/panel/api/audit/summary',
         summary:
           'Query connection counts, exact measured bytes, top sites and clients, hourly trends, daily summaries, and recent events.',

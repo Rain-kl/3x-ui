@@ -32,20 +32,10 @@ import { useInboundOptions } from '@/api/queries/useInboundOptions';
 import { HttpUtil } from '@/utils';
 import { AuditRetentionSchema, AuditSummarySchema, type AuditSummary } from '@/schemas/audit';
 import AuditSettingsModal from './AuditSettingsModal';
+import AuditSitesModal from './AuditSitesModal';
+import { formatAuditBytes as bytes } from './format';
 import { buildAuditInboundRemarks } from './inboundRemarks';
 import './AuditPage.css';
-
-function bytes(value: number): string {
-  if (value < 1024) return `${value} B`;
-  const units = ['KiB', 'MiB', 'GiB', 'TiB'];
-  let scaled = value;
-  let index = -1;
-  do {
-    scaled /= 1024;
-    index++;
-  } while (scaled >= 1024 && index < units.length - 1);
-  return `${scaled.toFixed(1)} ${units[index]}`;
-}
 
 function Trend({ points }: { points: AuditSummary['hours'] }) {
   const max = Math.max(1, ...points.map((p) => p.connections));
@@ -82,6 +72,7 @@ export default function AuditPage() {
   const { t } = useTranslation();
   const { isDark, isUltra, antdThemeConfig } = useTheme();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sitesOpen, setSitesOpen] = useState(false);
   const settings = useQuery({
     queryKey: ['audit-settings'],
     queryFn: async () => {
@@ -158,6 +149,13 @@ export default function AuditPage() {
       {/* FORK(audit-workbench): Use the same theme variants as other management pages. */}
       <Layout className={`audit-page${isDark ? ' is-dark' : ''}${isUltra ? ' is-ultra' : ''}`}>
         <AppSidebar />
+        {/* FORK(audit-workbench): Full ranking follows the applied dashboard filters and loads only when opened. */}
+        {sitesOpen && !data?.centralized && (
+          <AuditSitesModal
+            filters={{ hours, day, nodeId, client, site }}
+            onClose={() => setSitesOpen(false)}
+          />
+        )}
         {settingsOpen && policy && (
           <AuditSettingsModal
             policy={policy}
@@ -348,7 +346,16 @@ export default function AuditPage() {
                   )}
                   <Row gutter={[16, 16]}>
                     <Col xs={24} xl={12}>
-                      <Card size="small" title={t('pages.audit.topSites')}>
+                      {/* FORK(audit-workbench): Keep the compact ranking while exposing all sites in a paginated dialog. */}
+                      <Card
+                        size="small"
+                        title={t('pages.audit.topSites')}
+                        extra={
+                          <Button type="link" size="small" onClick={() => setSitesOpen(true)}>
+                            {t('more')}
+                          </Button>
+                        }
+                      >
                         <div className="audit-ranking">
                           {data.sites.length === 0 && (
                             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />

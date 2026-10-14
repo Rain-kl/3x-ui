@@ -404,6 +404,30 @@ export const EXAMPLES: Record<string, unknown> = {
     "scope": "admin",
     "token": "new-token-string"
   },
+  "AuditAggregate": {
+    "connections": 12,
+    "downlink": 8192,
+    "measured": 12,
+    "name": "example.com",
+    "uniqueSites": 1,
+    "uplink": 1024
+  },
+  "AuditSitesPage": {
+    "centralized": false,
+    "items": [
+      {
+        "connections": 12,
+        "downlink": 8192,
+        "measured": 12,
+        "name": "example.com",
+        "uniqueSites": 1,
+        "uplink": 1024
+      }
+    ],
+    "page": 1,
+    "pageSize": 20,
+    "total": 1
+  },
   "Client": {
     "adTag": "0123456789abcdef0123456789abcdef",
     "allowedIPs": [

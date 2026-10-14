@@ -61,3 +61,12 @@ export const AuditRetentionSchema = z.object({
   summaryDays: z.number().int().min(1).max(365),
 });
 export type AuditRetention = z.infer<typeof AuditRetentionSchema>;
+
+// FORK(audit-workbench): Validate full site rankings independently of the dashboard's top 20.
+export const AuditSitesPageSchema = z.object({
+  items: z.array(AggregateSchema),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().min(1),
+  pageSize: z.union([z.literal(20), z.literal(50), z.literal(100)]),
+  centralized: z.boolean().default(false),
+});

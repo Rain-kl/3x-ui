@@ -61,6 +61,27 @@ func newAuditController(g *gin.RouterGroup) {
 		}
 		jsonObj(c, true, (service.AuditService{}).AckPending(audit.Local(), body.IDs))
 	})
+	// FORK(audit-workbench): Fetch all ranked sites in bounded pages using the dashboard's filters.
+	g.GET("/sites", func(c *gin.Context) {
+		page, pageSize := 1, 20
+		for _, param := range []struct {
+			name  string
+			value *int
+		}{{"page", &page}, {"pageSize", &pageSize}} {
+			if raw := c.Query(param.name); raw != "" {
+				parsed, err := strconv.Atoi(raw)
+				if err != nil {
+					jsonObj(c, nil, errors.New("invalid audit "+param.name))
+					return
+				}
+				*param.value = parsed
+			}
+		}
+		hours, _ := strconv.Atoi(c.Query("hours"))
+		nodeID, _ := strconv.Atoi(c.Query("nodeId"))
+		result, err := (service.AuditService{}).QuerySites(service.AuditFilter{Hours: hours, NodeID: nodeID, Client: c.Query("client"), Site: c.Query("site"), Day: c.Query("day")}, page, pageSize)
+		jsonObj(c, result, err)
+	})
 	g.GET("/summary", func(c *gin.Context) {
 		hours, _ := strconv.Atoi(c.Query("hours"))
 		nodeID, _ := strconv.Atoi(c.Query("nodeId"))

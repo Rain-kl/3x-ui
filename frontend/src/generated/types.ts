@@ -402,6 +402,23 @@ export interface ApiTokenView {
   token?: string;
 }
 
+export interface AuditAggregate {
+  connections: number;
+  downlink: number;
+  measured: number;
+  name: string;
+  uniqueSites: number;
+  uplink: number;
+}
+
+export interface AuditSitesPage {
+  centralized: boolean;
+  items: AuditAggregate[];
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
 export interface Client {
   adTag?: string;
   allowedIPs?: string[];

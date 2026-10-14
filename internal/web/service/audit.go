@@ -27,13 +27,14 @@ type AuditFilter struct {
 	Offset int
 }
 
+// FORK(audit-workbench): Keep ranking API examples derived from the response contract.
 type AuditAggregate struct {
-	Name        string `json:"name"`
-	Connections int64  `json:"connections"`
-	Uplink      int64  `json:"uplink"`
-	Downlink    int64  `json:"downlink"`
-	Measured    int64  `json:"measured"`
-	UniqueSites int64  `json:"uniqueSites"`
+	Name        string `json:"name" example:"example.com"`
+	Connections int64  `json:"connections" example:"12"`
+	Uplink      int64  `json:"uplink" example:"1024"`
+	Downlink    int64  `json:"downlink" example:"8192"`
+	Measured    int64  `json:"measured" example:"12"`
+	UniqueSites int64  `json:"uniqueSites" example:"1"`
 }
 
 type AuditSummary struct {
@@ -353,11 +354,12 @@ func queryAudit(db *gorm.DB, f AuditFilter) (*AuditSummary, error) {
 		target *[]AuditAggregate
 	}{{"site", &result.Sites}, {"client", &result.Clients}} {
 		selectExpr := item.field + " AS name, SUM(connections) AS connections, COALESCE(SUM(uplink), 0) AS uplink, COALESCE(SUM(downlink), 0) AS downlink, SUM(measured) AS measured, COUNT(DISTINCT site) AS unique_sites"
-		order := "connections DESC"
+		query := base().Select(selectExpr).Group(item.field).Order("connections DESC")
+		// FORK(audit-workbench): Dashboard and full site ranking must share grouping and stable ordering.
 		if item.field == "site" {
-			order = "COALESCE(SUM(uplink), 0) + COALESCE(SUM(downlink), 0) DESC"
+			query = auditSiteRanking(base())
 		}
-		if err := base().Select(selectExpr).Group(item.field).Order(order).Limit(20).Scan(item.target).Error; err != nil {
+		if err := query.Limit(20).Scan(item.target).Error; err != nil {
 			return nil, err
 		}
 	}

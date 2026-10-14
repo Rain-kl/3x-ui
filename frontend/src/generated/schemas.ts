@@ -1647,6 +1647,83 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "AuditAggregate": {
+    "description": "FORK(audit-workbench): Keep ranking API examples derived from the response contract.",
+    "properties": {
+      "connections": {
+        "example": 12,
+        "format": "int64",
+        "type": "integer"
+      },
+      "downlink": {
+        "example": 8192,
+        "format": "int64",
+        "type": "integer"
+      },
+      "measured": {
+        "example": 12,
+        "format": "int64",
+        "type": "integer"
+      },
+      "name": {
+        "example": "example.com",
+        "type": "string"
+      },
+      "uniqueSites": {
+        "example": 1,
+        "format": "int64",
+        "type": "integer"
+      },
+      "uplink": {
+        "example": 1024,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "connections",
+      "downlink",
+      "measured",
+      "name",
+      "uniqueSites",
+      "uplink"
+    ],
+    "type": "object"
+  },
+  "AuditSitesPage": {
+    "properties": {
+      "centralized": {
+        "type": "boolean"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/AuditAggregate"
+        },
+        "type": "array"
+      },
+      "page": {
+        "example": 1,
+        "type": "integer"
+      },
+      "pageSize": {
+        "example": 20,
+        "type": "integer"
+      },
+      "total": {
+        "example": 1,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "centralized",
+      "items",
+      "page",
+      "pageSize",
+      "total"
+    ],
+    "type": "object"
+  },
   "Client": {
     "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
     "properties": {

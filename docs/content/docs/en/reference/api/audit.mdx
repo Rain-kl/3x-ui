@@ -33,6 +33,11 @@ _openapi:
         children reconcile before export.
       url: '#clear-audit-details-daily-summaries-receipts-and-pending-spool-broadcast-the-same-absolute-cutoff-to-enabled-child-nodes-zero-clears-existing-logs-a-positive-day-count-clears-before-that-utc-date-offline-children-reconcile-before-export'
     - depth: 2
+      title: Paginate all websites by combined upload/download bytes using the
+        dashboard filters. Defaults to page 1 and 20 items; allowed sizes are
+        20, 50 and 100. Equal traffic is ordered by site name.
+      url: '#paginate-all-websites-by-combined-uploaddownload-bytes-using-the-dashboard-filters-defaults-to-page-1-and-20-items-allowed-sizes-are-20-50-and-100-equal-traffic-is-ordered-by-site-name'
+    - depth: 2
       title: Query connection counts, exact measured bytes, top sites and clients,
         hourly trends, daily summaries, and recent events.
       url: '#query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trends-daily-summaries-and-recent-events'
@@ -58,6 +63,10 @@ _openapi:
           existing logs; a positive day count clears before that UTC date.
           Offline children reconcile before export.
         id: clear-audit-details-daily-summaries-receipts-and-pending-spool-broadcast-the-same-absolute-cutoff-to-enabled-child-nodes-zero-clears-existing-logs-a-positive-day-count-clears-before-that-utc-date-offline-children-reconcile-before-export
+      - content: Paginate all websites by combined upload/download bytes using the
+          dashboard filters. Defaults to page 1 and 20 items; allowed sizes are
+          20, 50 and 100. Equal traffic is ordered by site name.
+        id: paginate-all-websites-by-combined-uploaddownload-bytes-using-the-dashboard-filters-defaults-to-page-1-and-20-items-allowed-sizes-are-20-50-and-100-equal-traffic-is-ordered-by-site-name
       - content: Query connection counts, exact measured bytes, top sites and clients,
           hourly trends, daily summaries, and recent events.
         id: query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trends-daily-summaries-and-recent-events
@@ -71,7 +80,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/sites","method":"get"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
     </>
   );
 }
