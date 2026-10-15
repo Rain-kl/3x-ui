@@ -1969,6 +1969,9 @@
         "useComma": "Item yang dipisahkan koma"
       },
       "routing": {
+        "sync": "Sinkronkan ke node anak",
+        "syncHelp": "Saat disimpan, aturan bertanda dikirim ke node anak aktif sebelum aturan lokal. Menonaktifkan sinkronisasi atau menghapus aturan akan menarik salinannya. Salinan hanya dapat dibaca dan tag harus tersedia pada setiap node tujuan.",
+        "syncedFromParent": "Dikelola node induk",
         "dragToReorder": "Seret untuk mengurutkan ulang"
       },
       "geoBrowser": {

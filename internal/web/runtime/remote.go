@@ -21,6 +21,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/crypto/nodetoken"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/routingsync"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/netsafe"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/wirecodec"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/entity"
@@ -1117,5 +1118,11 @@ func (r *Remote) FetchRoutingRules(ctx context.Context) ([]map[string]any, error
 // PushRoutingRules pushes routing rules to the remote node.
 func (r *Remote) PushRoutingRules(ctx context.Context, rules []map[string]any) error {
 	_, err := r.do(ctx, http.MethodPost, "panel/api/server/routing", rules)
+	return err
+}
+
+// FORK(routing-rule-sync): Parent snapshots need merge semantics rather than the legacy full replacement RPC.
+func (r *Remote) SyncRouting(ctx context.Context, state routingsync.Control) error {
+	_, err := r.do(ctx, http.MethodPost, "panel/api/server/routing/sync", state)
 	return err
 }

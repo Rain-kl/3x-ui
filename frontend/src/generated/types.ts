@@ -646,6 +646,12 @@ export interface ClientsSummary {
   total: number;
 }
 
+export interface Control {
+  revision: number;
+  rules: Record<string, unknown>[];
+  source: string;
+}
+
 export interface FallbackParentInfo {
   masterId: number;
   path?: string;

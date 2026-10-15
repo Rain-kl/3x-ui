@@ -113,6 +113,8 @@ export const OutboundTestResultListSchema = z.array(OutboundTestResultSchema);
 
 export const RuleFormSchema = z.object({
   enabled: z.boolean(),
+  // FORK(routing-rule-sync): Existing rules remain local unless synchronization is enabled.
+  sync: z.boolean().default(false),
   comment: z.string(),
   domain: z.string(),
   ip: z.string(),

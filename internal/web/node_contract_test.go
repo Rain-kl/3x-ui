@@ -19,6 +19,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/dbtest"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/routingsync"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/crypto"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/global"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
@@ -327,6 +328,13 @@ func TestMasterNodeContract(t *testing.T) {
 						return err
 					}
 					return master.PushRoutingRules(ctx, rules)
+				}, nil},
+				{"routing snapshot RPC accepts node-sync tokens", []string{"SyncRouting"}, func() error {
+					// This contract fixture has no geodata assets; use explicit self-contained outbounds.
+					if err := (&service.XraySettingService{}).SaveXraySetting(`{"outbounds":[{"tag":"direct","protocol":"freedom"}],"routing":{"rules":[]}}`); err != nil {
+						return err
+					}
+					return master.SyncRouting(ctx, routingsync.Control{Source: "contract-master", Revision: 1, Rules: []map[string]any{}})
 				}, nil},
 				{"RestartXray is accepted by the node", []string{"RestartXray"}, func() error {
 					// No core binary here: only the node's own restart failure may come back.

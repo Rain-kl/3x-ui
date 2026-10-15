@@ -168,6 +168,9 @@ export default function RoutingTab({
         .map((rule, idx) => {
           const r: RuleRow = { key: idx };
           r.enabled = rule.enabled !== false;
+          // FORK(routing-rule-sync): Preserve opt-in and parent ownership in table/card rows.
+          r.sync = rule.sync === true;
+          r.panelSyncSource = rule.panelSyncSource;
           r.domain = arrJoin(rule.domain);
           r.ip = arrJoin(rule.ip);
           r.port = rule.port;
@@ -347,6 +350,8 @@ export default function RoutingTab({
   }
   function openEdit(idx: number) {
     const target = originalRuleIndex(rowsRef.current, idx);
+    // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
+    if (rulesRef.current[target]?.panelSyncSource) return;
     setEditingRule(rulesRef.current[target]);
     setEditingIndex(target);
     setRuleModalOpen(true);
@@ -366,6 +371,8 @@ export default function RoutingTab({
 
   function confirmDelete(idx: number) {
     const target = originalRuleIndex(rowsRef.current, idx);
+    // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
+    if (rulesRef.current[target]?.panelSyncSource) return;
     modal.confirm({
       title: `${t('delete')} ${t('pages.xray.Routings')} #${idx + 1}?`,
       okText: t('delete'),
@@ -384,6 +391,8 @@ export default function RoutingTab({
     const prev = originalRuleIndex(rowsRef.current, idx - 1);
     mutate((listRules) => {
       if (!listRules[target] || !listRules[prev]) return;
+      // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
+      if (listRules[target].panelSyncSource || listRules[prev].panelSyncSource) return;
       [listRules[prev], listRules[target]] = [listRules[target], listRules[prev]];
     });
   }
@@ -393,6 +402,8 @@ export default function RoutingTab({
     const next = originalRuleIndex(rowsRef.current, idx + 1);
     mutate((listRules) => {
       if (!listRules[target] || !listRules[next]) return;
+      // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
+      if (listRules[target].panelSyncSource || listRules[next].panelSyncSource) return;
       [listRules[next], listRules[target]] = [listRules[target], listRules[next]];
     });
   }
@@ -400,11 +411,15 @@ export default function RoutingTab({
     const target = originalRuleIndex(rowsRef.current, idx);
     mutate((listRules) => {
       if (!listRules[target]) return;
+      // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
+      if (listRules[target].panelSyncSource) return;
       listRules[target].enabled = enabled;
     });
   }
 
   function onHandlePointerDown(idx: number, ev: React.PointerEvent) {
+    // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
+    if (rowsRef.current[idx]?.panelSyncSource) return;
     if (ev.button != null && ev.button !== 0) return;
     ev.preventDefault();
     try {
@@ -443,6 +458,13 @@ export default function RoutingTab({
       if (!moved || from == null || to == null || from === to) return;
       const fromOrig = originalRuleIndex(rowsRef.current, from);
       const toOrig = originalRuleIndex(rowsRef.current, to);
+      // FORK(routing-rule-sync): Local rules cannot cross the authoritative group during dragging.
+      if (
+        rulesRef.current
+          .slice(Math.min(fromOrig, toOrig), Math.max(fromOrig, toOrig) + 1)
+          .some((rule) => rule.panelSyncSource)
+      )
+        return;
       mutate((listRules) => {
         const [movedItem] = listRules.splice(fromOrig, 1);
         listRules.splice(toOrig, 0, movedItem);
@@ -491,6 +513,15 @@ export default function RoutingTab({
     <>
       {modalContextHolder}
       {messageContextHolder}
+      {/* FORK(routing-rule-sync): Explain authority and precedence before the operator saves. */}
+      {(nodesList.length > 0 && selectedNodeId === 0) || rows.some((row) => row.panelSyncSource) ? (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title={t('pages.xray.routing.syncHelp')}
+        />
+      ) : null}
       {routingScript.trim() !== '' && (
         <Alert
           type="warning"
@@ -612,6 +643,8 @@ export default function RoutingTab({
       />
       <RuleFormModal
         open={ruleModalOpen}
+        // FORK(routing-rule-sync): Child editors cannot opt local rules into parent broadcasts.
+        allowSync={selectedNodeId === 0 && !rows.some((row) => row.panelSyncSource)}
         rule={editingRule}
         inboundTags={inboundTagOptions}
         outboundTags={outboundTagOptions}

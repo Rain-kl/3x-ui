@@ -1969,6 +1969,9 @@
         "useComma": "Elementos separados por comas"
       },
       "routing": {
+        "sync": "Sincronizar con nodos secundarios",
+        "syncHelp": "Al guardar, las reglas marcadas se sincronizan con los nodos secundarios habilitados antes de sus reglas locales. Desactivar la sincronización o eliminar la regla retira sus copias. Las copias son de solo lectura y las etiquetas deben existir en cada destino.",
+        "syncedFromParent": "Gestionada por el principal",
         "dragToReorder": "Arrastra para reordenar"
       },
       "geoBrowser": {

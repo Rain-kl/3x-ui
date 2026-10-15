@@ -11,6 +11,42 @@ import { chooseSelectOption, renderWithProviders } from './test-utils';
 describe('RuleFormModal edit preserves unsurfaced fields', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it('persists switching synchronization off instead of retaining the old true value', () => {
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue(new Msg(true, '', []));
+    const onConfirm = vi.fn();
+    renderWithProviders(
+      <RuleFormModal
+        open
+        rule={{ type: 'field', outboundTag: 'direct', sync: true }}
+        inboundTags={[]}
+        outboundTags={['direct']}
+        balancerTags={[]}
+        onClose={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+    fireEvent.click(screen.getByRole('switch', { name: /Sync to child nodes/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ sync: false }));
+  });
+
+  it('hides synchronization when editing a child node local rule', () => {
+    vi.spyOn(HttpUtil, 'get').mockResolvedValue(new Msg(true, '', []));
+    renderWithProviders(
+      <RuleFormModal
+        open
+        rule={null}
+        allowSync={false}
+        inboundTags={[]}
+        outboundTags={['direct']}
+        balancerTags={[]}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('switch', { name: /Sync to child nodes/ })).toBeNull();
+  });
+
   it('keeps a field the form does not surface (ruleTag) when saving an edit', () => {
     vi.spyOn(HttpUtil, 'get').mockResolvedValue(new Msg(true, '', []));
     const onConfirm = vi.fn();

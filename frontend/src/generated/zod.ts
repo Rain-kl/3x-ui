@@ -686,6 +686,13 @@ export const ClientsSummarySchema = z.object({
 });
 export type ClientsSummary = z.infer<typeof ClientsSummarySchema>;
 
+export const ControlSchema = z.object({
+  revision: z.number().int(),
+  rules: z.array(z.record(z.string(), z.unknown())),
+  source: z.string(),
+});
+export type Control = z.infer<typeof ControlSchema>;
+
 export const FallbackParentInfoSchema = z.object({
   masterId: z.number().int(),
   path: z.string().optional(),

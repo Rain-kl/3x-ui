@@ -705,6 +705,13 @@ export const EXAMPLES: Record<string, unknown> = {
     "onlineCount": 1,
     "total": 2000
   },
+  "Control": {
+    "revision": 0,
+    "rules": [
+      {}
+    ],
+    "source": ""
+  },
   "FallbackParentInfo": {
     "masterId": 0,
     "path": ""

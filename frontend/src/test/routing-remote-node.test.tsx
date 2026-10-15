@@ -54,6 +54,35 @@ afterEach(() => {
 });
 
 describe('RoutingTab remote node rules', () => {
+  it('protects parent managed copies while leaving child local rules editable', async () => {
+    vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
+      if (url.includes('/panel/api/nodes/list'))
+        return new Msg(true, '', [{ id: 7, name: 'worker', address: '10.0.0.2' }]);
+      return new Msg(true, '', []);
+    });
+    vi.spyOn(HttpUtil, 'post').mockResolvedValue(
+      new Msg(
+        true,
+        '',
+        JSON.stringify({
+          xraySetting: {
+            routing: { rules: [{ ...REMOTE_RULE, panelSyncSource: 'master' }, LOCAL_RULE] },
+          },
+          inboundTags: [],
+          clientReverseTags: [],
+          outboundTags: ['direct', 'remote-proxy'],
+        }),
+      ),
+    );
+    renderTab();
+    await openRulesTab();
+    await selectWorkerNode();
+    await screen.findByText('Managed by parent');
+    const edits = screen.getAllByRole('button', { name: /edit/i });
+    expect((edits[0] as HTMLButtonElement).disabled).toBe(true);
+    expect((edits[1] as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('shows the child node rules returned as a JSON-string xray/ envelope', async () => {
     vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
       if (url.includes('/panel/api/nodes/list')) {

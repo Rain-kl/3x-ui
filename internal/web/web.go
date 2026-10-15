@@ -358,6 +358,8 @@ func (s *Server) startTask(restartXray bool, loc *time.Location) {
 
 	_, _ = s.cron.AddJob(cadenceNodeTraffic, job.NewNodeTrafficSyncJob())
 	_, _ = s.cron.AddJob(cadenceNodeTraffic, job.NewAuditSyncJob())
+	// FORK(routing-rule-sync): Persisted snapshots converge after offline recovery and panel restarts.
+	_, _ = s.cron.AddJob("@every 30s", job.NewRoutingSyncJob())
 
 	// Outbound subscription auto-refresh (respects per-sub updateInterval)
 	_, _ = s.cron.AddJob(cadenceOutboundSub, job.NewOutboundSubscriptionJob())

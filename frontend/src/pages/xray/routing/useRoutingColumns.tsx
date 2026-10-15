@@ -92,10 +92,12 @@ export function useRoutingColumns({
                 size="small"
                 icon={<EditOutlined />}
                 aria-label={t('edit')}
+                disabled={!!_r.panelSyncSource}
                 onClick={() => openEdit(index)}
               />
             )}
             <Dropdown
+              disabled={!!_r.panelSyncSource}
               trigger={['click']}
               menu={{
                 items: [
@@ -160,9 +162,23 @@ export function useRoutingColumns({
             size="small"
             checked={_r.enabled !== false}
             onChange={(checked) => toggleRule(index, checked)}
-            disabled={isApiRule(_r)}
+            disabled={isApiRule(_r) || !!_r.panelSyncSource}
           />
         ),
+      },
+      // FORK(routing-rule-sync): Parent-managed copies must be recognizable without opening the editor.
+      {
+        title: t('pages.xray.routing.sync'),
+        key: 'sync',
+        width: 130,
+        render: (_v, record) =>
+          record.panelSyncSource ? (
+            <Tag color="blue">{t('pages.xray.routing.syncedFromParent')}</Tag>
+          ) : record.sync ? (
+            <Tag color="green">{t('pages.xray.routing.sync')}</Tag>
+          ) : (
+            '—'
+          ),
       },
       {
         title: t('pages.xray.rules.source'),

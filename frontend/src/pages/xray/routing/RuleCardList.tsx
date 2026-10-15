@@ -79,7 +79,18 @@ export default function RuleCardList({
                 onPointerDown={(ev) => onHandlePointerDown(index, ev)}
               />
               <span className="rule-number">#{index + 1}</span>
+              {/* FORK(routing-rule-sync): Mobile cards expose the same synchronization ownership as the table. */}
+              {(rule.sync || rule.panelSyncSource) && (
+                <Tag color={rule.panelSyncSource ? 'blue' : 'green'}>
+                  {t(
+                    rule.panelSyncSource
+                      ? 'pages.xray.routing.syncedFromParent'
+                      : 'pages.xray.routing.sync',
+                  )}
+                </Tag>
+              )}
               <Dropdown
+                disabled={!!rule.panelSyncSource}
                 trigger={['click']}
                 menu={{
                   items: [
@@ -136,7 +147,7 @@ export default function RuleCardList({
                 size="small"
                 checked={rule.enabled !== false}
                 onChange={(checked) => toggleRule(index, checked)}
-                disabled={isApiRule(rule)}
+                disabled={isApiRule(rule) || !!rule.panelSyncSource}
                 style={{ marginLeft: 8 }}
               />
             </div>

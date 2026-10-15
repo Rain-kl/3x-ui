@@ -18,6 +18,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+	"github.com/mhsanaei/3x-ui/v3/internal/routingsync"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/runtime"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 	"github.com/mhsanaei/3x-ui/v3/internal/xray"
@@ -100,6 +101,7 @@ func TestRemoteRoutingSaveImmediatelyAppliesToRunningCore(t *testing.T) {
 	engine := gin.New()
 	controller := &ServerController{}
 	engine.POST("/panel/api/server/routing", controller.setRouting)
+	engine.POST("/panel/api/server/routing/sync", controller.syncRouting)
 	child := httptest.NewServer(engine)
 	defer child.Close()
 	target, _ := url.Parse(child.URL)
@@ -145,6 +147,31 @@ func TestRemoteRoutingSaveImmediatelyAppliesToRunningCore(t *testing.T) {
 	if tag, err := route(); err != nil || tag != "blocked" {
 		t.Fatalf("unchanged desired rule not reconciled: %s %v", tag, err)
 	}
+	// Parent snapshots take precedence immediately while preserving the child's local rule.
+	snapshot := routingsync.Control{Source: "master-test", Revision: 1, Rules: []map[string]any{{"type": "field", "domain": []string{"domain:example.com"}, "outboundTag": "direct", "sync": true}}}
+	for range 2 {
+		if err := remote.SyncRouting(context.Background(), snapshot); err != nil {
+			t.Fatal(err)
+		}
+		if tag, err := route(); err != nil || tag != "direct" {
+			t.Fatalf("snapshot not immediately active: %s %v", tag, err)
+		}
+	}
+	if service.XrayProcess() != process || !process.IsRunning() {
+		t.Fatal("snapshot restarted a hot-applicable core")
+	}
+	cfgJSON, _ := json.Marshal(process.GetConfig())
+	if strings.Contains(string(cfgJSON), "panelSyncSource") || strings.Contains(string(cfgJSON), `"sync"`) {
+		t.Fatal("panel routing metadata leaked into core configuration")
+	}
+	snapshot.Revision = 2
+	snapshot.Rules = []map[string]any{}
+	if err := remote.SyncRouting(context.Background(), snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if tag, err := route(); err != nil || tag != "blocked" {
+		t.Fatalf("withdrawal did not restore local rule: %s %v", tag, err)
+	}
 	// A pending listener conflict must be visible to the master, including on retry.
 	saved, err := (&service.SettingService{}).GetXrayConfigTemplate()
 	if err != nil {
@@ -164,6 +191,31 @@ func TestRemoteRoutingSaveImmediatelyAppliesToRunningCore(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "applying to running Xray failed") {
 			t.Fatalf("runtime failure masked: %v", err)
 		}
+	}
+
+	snapshot.Revision = 3
+	snapshot.Rules = []map[string]any{{"type": "field", "domain": []string{"domain:example.com"}, "outboundTag": "direct"}}
+	for range 2 {
+		err := remote.SyncRouting(context.Background(), snapshot)
+		if err == nil || !strings.Contains(err.Error(), "applying synchronized routing failed") {
+			t.Fatalf("snapshot apply failure masked on retry: %v", err)
+		}
+	}
+	broken, err := (&service.SettingService{}).GetXrayConfigTemplate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	json.Unmarshal([]byte(broken), &desired)
+	desired["inbounds"] = inbounds
+	repaired, _ := json.Marshal(desired)
+	if err := database.GetDB().Model(&model.Setting{}).Where("key = ?", "xrayTemplateConfig").Update("value", string(repaired)).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := remote.SyncRouting(context.Background(), snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if tag, err := route(); err != nil || tag != "direct" {
+		t.Fatalf("failed revision not reapplied after repair: %s %v", tag, err)
 	}
 }
 

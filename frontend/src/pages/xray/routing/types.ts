@@ -1,6 +1,9 @@
 export interface RuleRow {
   key: number;
   enabled?: boolean;
+  // FORK(routing-rule-sync): Inherited rules retain explicit parent ownership.
+  sync?: boolean;
+  panelSyncSource?: string;
   comment?: string;
   domain?: string;
   ip?: string;

@@ -2790,6 +2790,31 @@
         ],
         "type": "object"
       },
+      "Control": {
+        "description": "Control is a complete authoritative snapshot, including an explicitly empty rule list.",
+        "properties": {
+          "revision": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "rules": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "rules",
+          "source"
+        ],
+        "type": "object"
+      },
       "FallbackParentInfo": {
         "description": "FallbackParentInfo carries everything the frontend needs to rewrite a\nchild inbound's client link: where to connect (the master's address\nand port) and which path matched on the master's fallbacks array.\nThe frontend already has the master inbound in its dbInbounds list,\nso we only ship identifiers + the match path here.",
         "properties": {
@@ -9228,6 +9253,70 @@
                 "example": {
                   "success": true,
                   "msg": "success"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/server/routing/sync": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Apply a versioned parent routing snapshot, preserving local rules and immediately reconciling running Xray. Requires admin or node-sync scope.",
+        "operationId": "post_panel_api_server_routing_sync",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "source",
+                  "revision",
+                  "rules"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "rules": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "msg": "apply synchronized routing rules"
                 }
               }
             }

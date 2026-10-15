@@ -92,6 +92,8 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.POST("/clientIps", a.setClientIps)
 	g.POST("/outbounds", a.setOutbounds)
 	g.POST("/routing", a.setRouting)
+	// FORK(routing-rule-sync): Parent snapshots require an atomic node-side merge, not full rule replacement.
+	g.POST("/routing/sync", a.syncRouting)
 }
 
 // startTask registers the @2s ticker that refreshes server status, samples
@@ -667,12 +669,18 @@ func (a *ServerController) setRouting(c *gin.Context) {
 	}
 	// FORK(node-scoped-routing): Remote saves need the same immediate reconcile and visible failures as local saves.
 	// Retry unchanged desired rules too: a previous runtime apply may have failed after persistence.
+
+	// FORK(routing-rule-sync): A local apply failure must not prevent delivery to healthy child nodes.
+	var applyErr error
 	if a.xrayService.IsXrayRunning() {
 		if err := a.xrayService.RestartXray(false); err != nil {
-			jsonMsg(c, "routing rules saved but applying to running Xray failed", err)
-			return
+			applyErr = fmt.Errorf("routing rules saved but applying to running Xray failed: %w", err)
 		}
 	}
-
+	syncErr := (service.RoutingSyncService{}).SyncNodes(c.Request.Context())
+	if err := errors.Join(applyErr, syncErr); err != nil {
+		jsonMsg(c, "routing reconciliation pending", err)
+		return
+	}
 	jsonMsg(c, "success", nil)
 }

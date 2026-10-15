@@ -122,8 +122,10 @@ var nodeSyncScopeAllow = map[string]map[string]struct{}{
 	"/server/outbounds":            {http.MethodGet: {}, http.MethodPost: {}},
 	"/server/outboundTags":         {http.MethodGet: {}},
 	"/server/routing":              {http.MethodGet: {}, http.MethodPost: {}},
-	"/audit/pending":               {http.MethodGet: {}},
-	"/audit/ack":                   {http.MethodPost: {}},
+	// FORK(routing-rule-sync): The authenticated parent channel may install only its managed routing group.
+	"/server/routing/sync": {http.MethodPost: {}},
+	"/audit/pending":       {http.MethodGet: {}},
+	"/audit/ack":           {http.MethodPost: {}},
 	// FORK(audit-retention): Permit only the dedicated parent policy RPC for node-sync credentials.
 	"/audit/sync": {http.MethodPost: {}},
 }

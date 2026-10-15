@@ -13,6 +13,9 @@ import { buildRemarkByTag, formatInboundTag, isApiRule } from './helpers';
 
 export interface RoutingRule {
   enabled?: boolean;
+  // FORK(routing-rule-sync): The panel owns synchronization state, not Xray.
+  sync?: boolean;
+  panelSyncSource?: string;
   comment?: string;
   type?: string;
   domain?: string | string[];
@@ -38,12 +41,14 @@ interface RuleFormModalProps {
   outboundTags: string[];
   balancerTags: string[];
   remarkByTag?: Record<string, string>;
+  allowSync?: boolean;
   onClose: () => void;
   onConfirm: (rule: Record<string, unknown>) => void;
 }
 
 const initialForm = (): RuleFormValues => ({
   enabled: true,
+  sync: false,
   comment: '',
   domain: '',
   ip: '',
@@ -78,6 +83,7 @@ export default function RuleFormModal({
   outboundTags,
   balancerTags,
   remarkByTag: customRemarkByTag,
+  allowSync = true,
   onClose,
   onConfirm,
 }: RuleFormModalProps) {
@@ -112,6 +118,7 @@ export default function RuleFormModal({
     if (rule) {
       methods.reset({
         enabled: rule.enabled !== false,
+        sync: allowSync && rule.sync === true,
         comment: rule.comment || '',
         domain: Array.isArray(rule.domain) ? rule.domain.join(',') : rule.domain || '',
         ip: Array.isArray(rule.ip) ? rule.ip.join(',') : rule.ip || '',
@@ -130,7 +137,7 @@ export default function RuleFormModal({
     } else {
       methods.reset(initialForm());
     }
-  }, [open, rule, methods]);
+  }, [open, rule, methods, allowSync]);
 
   const attrs = useWatch({ control: methods.control, name: 'attrs' }) ?? [];
 
@@ -141,6 +148,7 @@ export default function RuleFormModal({
     const built: Record<string, unknown> = {
       type: 'field',
       enabled: v.enabled,
+      sync: allowSync && v.sync,
       comment: v.comment,
       domain: csv(v.domain),
       ip: csv(v.ip),
@@ -194,6 +202,18 @@ export default function RuleFormModal({
           <FormField name="enabled" label={t('enable')} valueProp="checked">
             <Switch disabled={isApiRule(rule ?? {})} />
           </FormField>
+
+          {/* FORK(routing-rule-sync): Only the master's local editor opts rules into node broadcasts. */}
+          {allowSync && (
+            <FormField
+              name="sync"
+              label={t('pages.xray.routing.sync')}
+              valueProp="checked"
+              tooltip={t('pages.xray.routing.syncHelp')}
+            >
+              <Switch disabled={isApiRule(rule ?? {})} />
+            </FormField>
+          )}
 
           <FormField name="comment" label={t('comment')}>
             <Input maxLength={200} showCount placeholder={t('comment')} />

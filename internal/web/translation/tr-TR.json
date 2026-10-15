@@ -1969,6 +1969,9 @@
         "useComma": "Virgülle ayrılmış öğeler"
       },
       "routing": {
+        "sync": "Alt düğümlere eşitle",
+        "syncHelp": "Kaydedilen işaretli kurallar etkin alt düğümlere yerel kurallardan önce uygulanır. Eşitlemeyi kapatmak veya kaynak kuralı silmek kopyalarını kaldırır. Kopyalar salt okunurdur; etiketler her hedefte bulunmalıdır.",
+        "syncedFromParent": "Ana düğüm yönetiyor",
         "dragToReorder": "Yeniden sıralamak için sürükleyin"
       },
       "geoBrowser": {

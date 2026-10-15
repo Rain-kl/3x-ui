@@ -62,6 +62,10 @@ func run(root, outDir string) error {
 			},
 		},
 		{
+			Path:        resolveRel(root, "internal/routingsync"),
+			StructAllow: setOf("Control"),
+		},
+		{
 			Path: resolveRel(root, "internal/web/entity"),
 			StructAllow: setOf(
 				"Msg",

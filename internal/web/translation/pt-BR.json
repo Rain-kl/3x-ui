@@ -1969,6 +1969,9 @@
         "useComma": "Itens separados por vírgula"
       },
       "routing": {
+        "sync": "Sincronizar com nós filhos",
+        "syncHelp": "Ao salvar, as regras marcadas são sincronizadas com os nós filhos habilitados antes das regras locais. Desativar a sincronização ou excluir a regra remove suas cópias. As cópias são somente leitura e as tags devem existir em cada destino.",
+        "syncedFromParent": "Gerenciada pelo principal",
         "dragToReorder": "Arraste para reordenar"
       },
       "geoBrowser": {

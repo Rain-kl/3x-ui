@@ -285,12 +285,17 @@ func (a *XraySettingController) updateSetting(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return
 	}
-	// Only reconcile a running core; a manually stopped xray stays stopped.
+	// FORK(routing-rule-sync): Report local apply and node delivery failures independently after persistence.
+	var applyErr error
 	if a.XrayService.IsXrayRunning() {
 		if err := a.XrayService.RestartXray(false); err != nil {
-			jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
-			return
+			applyErr = fmt.Errorf("applying local Xray settings failed: %w", err)
 		}
+	}
+	syncErr := (service.RoutingSyncService{}).SyncNodes(c.Request.Context())
+	if err := errors.Join(applyErr, syncErr); err != nil {
+		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
+		return
 	}
 	jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), nil)
 }

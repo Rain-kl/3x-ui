@@ -5,9 +5,12 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
+
+	"gorm.io/gorm"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/amneziawg"
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
@@ -27,8 +30,19 @@ const (
 )
 
 func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
+	// FORK(routing-rule-sync): Template writes and authoritative routing snapshots must be atomic and serialized.
+	xrayTemplateMu.Lock()
+	defer xrayTemplateMu.Unlock()
 	// Strip textarea response wrappers so nested payloads cannot persist.
 	newXraySettings = UnwrapXrayTemplateConfig(newXraySettings)
+	oldTemplate, err := s.GetXrayConfigTemplate()
+	if err != nil {
+		return err
+	}
+	newXraySettings, err = keepManagedRouting(oldTemplate, newXraySettings)
+	if err != nil {
+		return err
+	}
 	if err := s.CheckXrayConfig(newXraySettings); err != nil {
 		return err
 	}
@@ -42,7 +56,17 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 		newXraySettings = spelled
 	}
 
-	oldTemplate, _ := s.GetXrayConfigTemplate()
+	syncRules, err := selectedSyncRules(newXraySettings)
+	if err != nil {
+		return err
+	}
+	var source string
+	if len(syncRules) > 0 {
+		source, err = s.getString("panelGuid")
+		if err != nil {
+			return err
+		}
+	}
 	oldProxyObs, _ := GetProxyOutboundsFromTemplate(oldTemplate)
 	newProxyObs, _ := GetProxyOutboundsFromTemplate(newXraySettings)
 	var outboundsChanged bool
@@ -54,13 +78,23 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 		outboundsChanged = !bytes.Equal(oldBytes, newBytes)
 	}
 
-	if err := s.saveSetting("xrayTemplateConfig", newXraySettings); err != nil {
-		return err
-	}
-	if outboundsChanged && database.GetDB() != nil {
-		_ = (&NodeService{}).MarkAllNodesDirtyTx(nil)
-	}
-	return nil
+	return database.GetDB().Transaction(func(tx *gorm.DB) error {
+		if source != "" {
+			if err := saveRoutingValue(tx, "panelGuid", source); err != nil {
+				return fmt.Errorf("persist routing sync identity: %w", err)
+			}
+		}
+		if err := saveRoutingValue(tx, "xrayTemplateConfig", newXraySettings); err != nil {
+			return err
+		}
+		if err := persistRoutingDesired(tx, syncRules, source); err != nil {
+			return err
+		}
+		if outboundsChanged {
+			return (&NodeService{}).MarkAllNodesDirtyTx(tx)
+		}
+		return nil
+	})
 }
 
 func (s *XraySettingService) CheckXrayConfig(XrayTemplateConfig string) error {

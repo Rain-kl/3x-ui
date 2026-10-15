@@ -15,6 +15,9 @@ export type RuleWebhook = z.infer<typeof RuleWebhookSchema>;
 export const RuleObjectSchema = z.object({
   type: z.literal('field').default('field'),
   enabled: z.boolean().optional(),
+  // FORK(routing-rule-sync): Preserve panel-only synchronization metadata in editable templates.
+  sync: z.boolean().optional(),
+  panelSyncSource: z.string().optional(),
   comment: z.string().optional(),
   domain: z.array(z.string()).optional(),
   ip: z.array(z.string()).optional(),

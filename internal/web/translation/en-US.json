@@ -2087,6 +2087,9 @@
         "useComma": "Comma-separated list"
       },
       "routing": {
+        "sync": "Sync to child nodes",
+        "syncHelp": "Enabled rules sync from this panel to enabled child nodes when saved, ahead of their local rules. Turning sync off or deleting a source rule removes its copies. Parent-managed copies are read-only. Referenced tags must exist on every target.",
+        "syncedFromParent": "Managed by parent",
         "dragToReorder": "Drag to reorder"
       },
       "geoBrowser": {

@@ -1247,6 +1247,13 @@ func stripDisabledRules(routerCfg json_util.RawMessage) json_util.RawMessage {
 			delete(rule, "comment")
 			changed = true
 		}
+		// FORK(routing-rule-sync): Synchronization state belongs to the panel, never the Xray rule schema.
+		for _, key := range []string{"sync", routingSyncSourceKey} {
+			if _, exists := rule[key]; exists {
+				delete(rule, key)
+				changed = true
+			}
+		}
 		activeRules = append(activeRules, rule)
 	}
 

@@ -1969,6 +1969,9 @@
         "useComma": "Các mục được phân tách bằng dấu phẩy"
       },
       "routing": {
+        "sync": "Đồng bộ tới nút con",
+        "syncHelp": "Khi lưu, quy tắc đã chọn được đồng bộ tới các nút con đang bật trước quy tắc cục bộ. Tắt đồng bộ hoặc xóa quy tắc nguồn sẽ thu hồi bản sao. Bản sao chỉ đọc; các thẻ phải tồn tại trên từng nút đích.",
+        "syncedFromParent": "Nút chính quản lý",
         "dragToReorder": "Kéo để sắp xếp lại"
       },
       "geoBrowser": {

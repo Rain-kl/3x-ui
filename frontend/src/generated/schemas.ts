@@ -2764,6 +2764,31 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "Control": {
+    "description": "Control is a complete authoritative snapshot, including an explicitly empty rule list.",
+    "properties": {
+      "revision": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "rules": {
+        "items": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "source": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "revision",
+      "rules",
+      "source"
+    ],
+    "type": "object"
+  },
   "FallbackParentInfo": {
     "description": "FallbackParentInfo carries everything the frontend needs to rewrite a\nchild inbound's client link: where to connect (the master's address\nand port) and which path matched on the master's fallbacks array.\nThe frontend already has the master inbound in its dbInbounds list,\nso we only ship identifiers + the match path here.",
     "properties": {

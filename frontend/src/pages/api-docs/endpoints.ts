@@ -1167,6 +1167,23 @@ export const sections: readonly Section[] = [
         },
         response: '{\n  "success": true,\n  "msg": "success"\n}',
       },
+      // FORK(routing-rule-sync): Document the dedicated merge RPC instead of suggesting full replacement.
+      {
+        method: 'POST',
+        path: '/panel/api/server/routing/sync',
+        summary:
+          'Apply a versioned parent routing snapshot, preserving local rules and immediately reconciling running Xray. Requires admin or node-sync scope.',
+        requestSchema: {
+          type: 'object',
+          required: ['source', 'revision', 'rules'],
+          properties: {
+            source: { type: 'string' },
+            revision: { type: 'integer', minimum: 1 },
+            rules: { type: 'array', items: { type: 'object' } },
+          },
+        },
+        response: '{\n  "success": true,\n  "msg": "apply synchronized routing rules"\n}',
+      },
     ],
   },
 
