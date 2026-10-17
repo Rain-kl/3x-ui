@@ -2066,6 +2066,10 @@ export const SCHEMAS: Record<string, unknown> = {
         "description": "Last update timestamp",
         "format": "int64",
         "type": "integer"
+      },
+      "username": {
+        "description": "FORK(mixed-clients): External proxy usernames must not double as scoped billing identities.",
+        "type": "string"
       }
     },
     "required": [
@@ -2328,6 +2332,10 @@ export const SCHEMAS: Record<string, unknown> = {
         "format": "int64",
         "type": "integer"
       },
+      "username": {
+        "description": "FORK(mixed-clients): Preserve login names independently of client email and accounting.",
+        "type": "string"
+      },
       "uuid": {
         "type": "string"
       }
@@ -2366,6 +2374,7 @@ export const SCHEMAS: Record<string, unknown> = {
       "trafficReset",
       "trafficResetDay",
       "updatedAt",
+      "username",
       "uuid"
     ],
     "type": "object"

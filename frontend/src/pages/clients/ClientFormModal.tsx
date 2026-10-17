@@ -61,6 +61,8 @@ const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 const VMESS_SECURITY_OPTIONS = ['auto', 'aes-128-gcm', 'chacha20-poly1305'] as const;
 
 const MULTI_CLIENT_PROTOCOLS = new Set([
+  // FORK(mixed-clients): Managed mixed inbounds must be selectable for normal client attachment.
+  'mixed',
   'shadowsocks',
   'vless',
   'vmess',
@@ -155,6 +157,7 @@ const EMPTY: Values = {
   subId: '',
   uuid: '',
   password: '',
+  username: '',
   auth: '',
   flow: '',
   security: 'auto',
@@ -302,6 +305,7 @@ export default function ClientFormModal({
     const idSet = new Set(inboundIds || []);
     return (inbounds || []).filter((ib) => idSet.has(ib.id));
   }, [inbounds, inboundIds]);
+  const hasMixed = attachedInbounds.some((ib) => ib.protocol === 'mixed');
   const hasTuic = attachedInbounds.some((ib) => ib.protocol === 'tuic');
   const {
     fields: externalLinkFields,
@@ -397,6 +401,7 @@ export default function ClientFormModal({
         subId: client.subId || '',
         uuid: client.uuid || '',
         password: client.password || '',
+        username: client.username || '',
         auth: client.auth || '',
         flow: client.flow || '',
         security:
@@ -689,6 +694,7 @@ export default function ClientFormModal({
       subId: values.subId,
       uuid: values.uuid,
       password: values.password,
+      username: values.username,
       auth: values.auth,
       flow: values.flow,
       security: values.security,
@@ -745,6 +751,7 @@ export default function ClientFormModal({
       id: values.uuid,
       uuid: values.uuid,
       password: values.password,
+      username: values.username,
       auth: values.auth,
       flow: showFlow ? values.flow || '' : '',
       security: showSecurity ? values.security || 'auto' : 'auto',
@@ -1339,6 +1346,17 @@ export default function ClientFormModal({
                           />
                         </Space.Compact>
                       </Form.Item>
+
+                      {/* FORK(mixed-clients): Login names remain stable when a client's label/email changes. */}
+                      {hasMixed && (
+                        <FormField
+                          name="username"
+                          label={t('username')}
+                          tooltip={t('pages.clients.mixedUsernameHelp')}
+                        >
+                          <Input placeholder={email || t('username')} />
+                        </FormField>
+                      )}
 
                       <Form.Item
                         label={t('pages.clients.password')}

@@ -80,12 +80,14 @@ export default function RuleCardList({
               />
               <span className="rule-number">#{index + 1}</span>
               {/* FORK(routing-rule-sync): Mobile cards expose the same synchronization ownership as the table. */}
-              {(rule.sync || rule.panelSyncSource) && (
-                <Tag color={rule.panelSyncSource ? 'blue' : 'green'}>
+              {(rule.sync || rule.panelSyncSource || rule.localPre) && (
+                <Tag color={rule.panelSyncSource ? 'blue' : rule.localPre ? 'orange' : 'green'}>
                   {t(
                     rule.panelSyncSource
                       ? 'pages.xray.routing.syncedFromParent'
-                      : 'pages.xray.routing.sync',
+                      : rule.localPre
+                        ? 'pages.xray.routing.localPre'
+                        : 'pages.xray.routing.sync',
                   )}
                 </Tag>
               )}

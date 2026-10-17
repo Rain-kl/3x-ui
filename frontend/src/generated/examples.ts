@@ -515,7 +515,8 @@ export const EXAMPLES: Record<string, unknown> = {
     "totalGBByInbound": {},
     "trafficReset": "never",
     "trafficResetDay": 1,
-    "updated_at": 0
+    "updated_at": 0,
+    "username": ""
   },
   "ClientInbound": {
     "clientId": 0,
@@ -622,6 +623,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "trafficReset": "",
     "trafficResetDay": 0,
     "updatedAt": 0,
+    "username": "",
     "uuid": ""
   },
   "ClientRenewalPreview": {

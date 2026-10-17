@@ -56,6 +56,11 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 		newXraySettings = spelled
 	}
 
+	// FORK(routing-local-pre): Persist the effective priority instead of silently restoring shared-first ordering.
+	newXraySettings, err = normalizeRoutingPriority(newXraySettings)
+	if err != nil {
+		return err
+	}
 	syncRules, err := selectedSyncRules(newXraySettings)
 	if err != nil {
 		return err

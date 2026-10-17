@@ -234,7 +234,8 @@ func InboundUserOps(oldIb, newIb *InboundConfig) (*HotDiff, bool) {
 	return diff, true
 }
 
-var userDiffableProtocols = map[string]struct{}{"vless": {}, "vmess": {}, "trojan": {}, "hysteria": {}, "masque": {}}
+// FORK(mixed-clients): Mixed credentials share a UserManager, so account changes preserve the listener.
+var userDiffableProtocols = map[string]struct{}{"vless": {}, "vmess": {}, "trojan": {}, "hysteria": {}, "masque": {}, "mixed": {}}
 
 // diffInboundUsers emits per-user AlterInbound ops when two same-tag inbounds
 // differ only in settings.clients, so the handler (and its listener) survives.

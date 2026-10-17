@@ -24,6 +24,7 @@ import RuleCardList from './RuleCardList';
 import { useRoutingColumns } from './useRoutingColumns';
 import {
   arrJoin,
+  routingRuleTier,
   buildRemarkByTag,
   originalRuleIndex,
   parseOutboundTagsFromXrayConfigObj,
@@ -170,6 +171,8 @@ export default function RoutingTab({
           r.enabled = rule.enabled !== false;
           // FORK(routing-rule-sync): Preserve opt-in and parent ownership in table/card rows.
           r.sync = rule.sync === true;
+          // FORK(routing-local-pre): Display the local access-control tier on node-specific rules.
+          r.localPre = rule.localPre === true;
           r.panelSyncSource = rule.panelSyncSource;
           r.domain = arrJoin(rule.domain);
           r.ip = arrJoin(rule.ip);
@@ -207,6 +210,8 @@ export default function RoutingTab({
         setRemoteRules((prev) => {
           const clone = JSON.parse(JSON.stringify(prev)) as RoutingRule[];
           mutator(clone);
+          // FORK(routing-local-pre): Render edits in the same protected priority groups as the backend.
+          clone.sort((a, b) => routingRuleTier(a) - routingRuleTier(b));
           return clone;
         });
       } else {
@@ -216,6 +221,10 @@ export default function RoutingTab({
           if (!clone.routing) clone.routing = { rules: [] };
           if (!Array.isArray(clone.routing.rules)) clone.routing.rules = [];
           mutator(clone.routing.rules as RoutingRule[]);
+          // FORK(routing-local-pre): Keep local access controls before shared destination routing.
+          (clone.routing.rules as RoutingRule[]).sort(
+            (a, b) => routingRuleTier(a) - routingRuleTier(b),
+          );
           return clone;
         });
       }
@@ -238,13 +247,14 @@ export default function RoutingTab({
       const resp = await HttpUtil.post('/panel/api/xray/update', payload);
       if (resp?.success) {
         messageApi.success(t('pages.settings.toasts.modifySettings'));
+        await fetchRemoteRules(selectedNodeId);
       }
     } catch {
       messageApi.error(t('somethingWentWrong'));
     } finally {
       setRemoteSaving(false);
     }
-  }, [messageApi, selectedNodeId, remoteReady, remoteRules, t]);
+  }, [messageApi, selectedNodeId, remoteReady, remoteRules, t, fetchRemoteRules]);
 
   const inboundTagOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -392,7 +402,12 @@ export default function RoutingTab({
     mutate((listRules) => {
       if (!listRules[target] || !listRules[prev]) return;
       // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
-      if (listRules[target].panelSyncSource || listRules[prev].panelSyncSource) return;
+      if (
+        listRules[target].panelSyncSource ||
+        listRules[prev].panelSyncSource ||
+        routingRuleTier(listRules[target]) !== routingRuleTier(listRules[prev])
+      )
+        return;
       [listRules[prev], listRules[target]] = [listRules[target], listRules[prev]];
     });
   }
@@ -403,7 +418,12 @@ export default function RoutingTab({
     mutate((listRules) => {
       if (!listRules[target] || !listRules[next]) return;
       // FORK(routing-rule-sync): Only the parent may change or move its managed copies.
-      if (listRules[target].panelSyncSource || listRules[next].panelSyncSource) return;
+      if (
+        listRules[target].panelSyncSource ||
+        listRules[next].panelSyncSource ||
+        routingRuleTier(listRules[target]) !== routingRuleTier(listRules[next])
+      )
+        return;
       [listRules[next], listRules[target]] = [listRules[target], listRules[next]];
     });
   }
@@ -458,6 +478,9 @@ export default function RoutingTab({
       if (!moved || from == null || to == null || from === to) return;
       const fromOrig = originalRuleIndex(rowsRef.current, from);
       const toOrig = originalRuleIndex(rowsRef.current, to);
+      // FORK(routing-local-pre): Dragging cannot cross access-control priority groups.
+      if (routingRuleTier(rulesRef.current[fromOrig]) !== routingRuleTier(rulesRef.current[toOrig]))
+        return;
       // FORK(routing-rule-sync): Local rules cannot cross the authoritative group during dragging.
       if (
         rulesRef.current

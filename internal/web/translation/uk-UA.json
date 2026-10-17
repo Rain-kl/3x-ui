@@ -106,7 +106,9 @@
     "qrTitle": "Скануйте. Імпортуйте. Підключайтеся.",
     "qrHint": "Відскануйте в клієнтському застосунку. Нікому не показуйте цей код.",
     "saveQr": "Зберегти QR",
-    "nodeQuota": "Квота трафіку вузлів"
+    "nodeQuota": "Квота трафіку вузлів",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "Тема",
@@ -544,6 +546,7 @@
         "rewritePort": "Переписати порт",
         "allowedNetwork": "Дозволена мережа",
         "followRedirect": "Слідувати redirect",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "Акаунти",
         "allowTransparent": "Дозволити прозорий",
         "encryptionMethod": "Метод шифрування",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Fail2ban недоступний у Windows, тому обмеження за IP не може бути застосоване.",
       "limitIpDisabled": "Функцію обмеження за IP вимкнено на цьому сервері.",
       "password": "Пароль",
-      "passwordDesc": "Використовується клієнтами Trojan, Shadowsocks, TUIC і MASQUE; ігнорується для VLESS, VMess, Hysteria та WireGuard.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "Використовується клієнтами Trojan, Shadowsocks, TUIC і MASQUE / mixed; ігнорується для VLESS, VMess, Hysteria та WireGuard.",
       "subId": "ID підписки",
       "subIdDesc": "Також слугує кодом запрошення цього клієнта в Telegram-боті: той, хто надішле його боту, буде прив'язаний до цього клієнта. Використовуйте довге випадкове значення — короткий або легко вгадуваний ID може привласнити хтось інший.",
       "online": "У мережі",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "Синхронізувати з дочірніми вузлами",
-        "syncHelp": "Під час збереження позначені правила передаються ввімкненим дочірнім вузлам перед локальними правилами. Вимкнення синхронізації або видалення правила видаляє копії. Копії доступні лише для читання; теги мають існувати на цільових вузлах.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "Керується головним вузлом",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "Перетягніть для зміни порядку"
       },
       "geoBrowser": {

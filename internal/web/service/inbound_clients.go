@@ -243,6 +243,8 @@ func (s *InboundService) buildTargetClientFromSource(source model.Client, target
 	target.UpdatedAt = nowTs
 
 	target.ID = ""
+	// FORK(mixed-clients): A copied client is a new identity, so it must not retain the source login.
+	target.Username = ""
 	target.Password = ""
 	target.Auth = ""
 	target.Flow = ""
@@ -259,6 +261,10 @@ func (s *InboundService) buildTargetClientFromSource(source model.Client, target
 			inboundCanEnableTlsFlow(string(targetProtocol), targetInbound.StreamSettings, targetInbound.Settings) {
 			target.Flow = flow
 		}
+	// FORK(mixed-clients): Mixed copies need independent logins to coexist on the target inbound.
+	case model.Mixed:
+		target.Username = email
+		target.Password = s.generateRandomCredential(targetProtocol)
 	case model.Trojan, model.Shadowsocks, model.MASQUE:
 		target.Password = s.generateRandomCredential(targetProtocol)
 	case model.Hysteria:

@@ -359,6 +359,11 @@ func (i *Inbound) GenXrayInboundConfig() *xray.InboundConfig {
 	protocol := string(i.Protocol)
 	settings := i.Settings
 	switch i.Protocol {
+	// FORK(mixed-clients): Hot AddInbound must project credentials before scoping the billing identity.
+	case Mixed:
+		if converted, ok := MixedClientsToCore(settings); ok {
+			settings = converted
+		}
 	case Shadowsocks:
 		if healed, ok := HealShadowsocksClientMethods(settings); ok {
 			settings = healed
@@ -930,6 +935,8 @@ type ClientReverse struct {
 
 // Client represents a client configuration for Xray inbounds with traffic limits and settings.
 type Client struct {
+	// FORK(mixed-clients): External proxy usernames must not double as scoped billing identities.
+	Username   string         `json:"username,omitempty"`
 	ID         string         `json:"id,omitempty"`       // Unique client identifier
 	Security   string         `json:"security"`           // Security method (e.g., "auto", "aes-128-gcm")
 	Password   string         `json:"password,omitempty"` // Client password
@@ -977,6 +984,8 @@ type Client struct {
 }
 
 type ClientRecord struct {
+	// FORK(mixed-clients): Preserve login names independently of client email and accounting.
+	Username        string `json:"username" gorm:"column:username"`
 	Id              int    `json:"id" gorm:"primaryKey;autoIncrement"`
 	Email           string `json:"email" gorm:"uniqueIndex;not null"`
 	SubID           string `json:"subId" gorm:"index;column:sub_id"`
@@ -1220,6 +1229,7 @@ func (c *Client) ToRecord() *ClientRecord {
 		SubID:           c.SubID,
 		UUID:            c.ID,
 		Password:        c.Password,
+		Username:        c.Username,
 		Auth:            c.Auth,
 		Flow:            c.Flow,
 		Security:        c.Security,
@@ -1280,6 +1290,7 @@ func (r *ClientRecord) ToClient() *Client {
 		Email:           r.Email,
 		SubID:           r.SubID,
 		Password:        r.Password,
+		Username:        r.Username,
 		Auth:            r.Auth,
 		Flow:            r.Flow,
 		Security:        r.Security,
@@ -1382,6 +1393,11 @@ func MergeClientRecord(existing *ClientRecord, incoming *ClientRecord) []ClientM
 			existing.UUID = incoming.UUID
 		}
 		keepSecret("uuid")
+	}
+	// FORK(mixed-clients): Preserve authentication names during imports without merging unrelated accounts.
+	if incoming.Username != "" && existing.Username != incoming.Username && (incomingNewer || existing.Username == "") {
+		keep("username", existing.Username, incoming.Username, incoming.Username)
+		existing.Username = incoming.Username
 	}
 	if existing.Password != incoming.Password && incoming.Password != "" {
 		if incomingNewer || existing.Password == "" {

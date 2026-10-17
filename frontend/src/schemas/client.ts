@@ -38,6 +38,8 @@ export const ClientRecordSchema = z
     email: z.string(),
     subId: z.string().optional(),
     uuid: z.string().optional(),
+    // FORK(mixed-clients): Preserve mixed login names in client responses.
+    username: z.string().optional(),
     password: z.string().optional(),
     auth: z.string().optional(),
     flow: z.string().optional(),
@@ -337,6 +339,8 @@ export const ClientFormSchema = z.object({
     .refine((v) => !hasForbiddenClientChars(v), 'pages.clients.emailInvalidChars'),
   subId: z.string().refine((v) => !hasForbiddenClientChars(v), 'pages.clients.subIdInvalidChars'),
   uuid: z.string(),
+  // FORK(mixed-clients): Optional login name defaults to the client email.
+  username: z.string().default(''),
   password: z.string(),
   auth: z.string(),
   flow: z.string(),

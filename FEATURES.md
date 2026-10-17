@@ -115,6 +115,13 @@
 - **范围与维护**：涉及路由编辑器、Xray 模板保存和面板字段剥离、节点运行时、控制器鉴权与重试任务；新增 `internal/routingsync/`、`internal/web/service/routing_sync.go`。上游相关改动标记为 `FORK(routing-rule-sync)`。
 - **设计与实现**：[行为规格](docs/specs/routing-rule-sync.md)、[实现说明](.agents/notes/routing-rule-sync.md)。
 
+### 本地前置路由（routing-local-pre）
+
+- **背景**：子节点来源 IP 拒绝规则不能被主控同步的目标网站直连规则提前放行。
+- **功能**：规则可设为「本地前置」，执行顺序为 API、本地前置、主节点同步、普通本地；与同步互斥，不参与广播，保存、同步刷新与撤回均保留该组。桌面及移动端展示类型，编辑后立即按组重排，禁止拖动越组。
+- **范围与维护**：路由模板保存/合并、核心字段剥离、规则表单与列表；标记 `FORK(routing-local-pre)`。
+- **设计与实现**：[行为规格](docs/specs/routing-rule-sync.md)、[实现说明](.agents/notes/routing-local-pre.md)。
+
 ### 节点列表批量操作（node-batch-operations）
 
 - **背景**：桌面端节点操作按钮过于拥挤，且批量操作无法涵盖离线节点删除。
@@ -127,3 +134,12 @@
 - **功能**：面板安装、升级和手动更新统一使用 Rain-kl/Xray-core 最新 `-feat.x` 发布版；移除版本锁定、官方核心和任意旧版切换。更新前先下载并校验核心，成功后再停止现有核心。版本列表自动获取并优先展示最新 feat 版本。
 - **发布验证**：核心发布前验证审计、嗅探域名、原生限速及竞态行为；面板发布前验证实际打包核心的版本、校验和、网站审计、限速及 gRPC，并执行前端检查。验证失败则停止发布。
 - **设计与实现**：[行为规格](docs/specs/custom-core-only.md)、[实现说明](.agents/notes/custom-core-only.md)。上游相关改动使用 `FORK(custom-core-only)` 标记。
+
+## mixed 统一客户端管理（mixed-clients）
+
+- **需求背景**：主控无法向子节点部署 mixed，独立静态账号无法复用客户端的计费、限速、到期和撤销流程。
+- **修改内容**：mixed 接入本机及子节点部署、编辑和克隆；统一使用客户端关联及 username/password 凭据。HTTP/SOCKS5 共用动态身份，支持实时改密及撤销，最后一个账号删除后仍强制认证。旧 accounts 保存/导入时幂等转换；匿名模式保留但不可关联客户端。核心最低版本为 `v26.10.10-feat.4`。
+- **订阅行为**：自动链接、JSON、Clash 排除 mixed；订阅展示页独立提供该用户可用 mixed 节点及 HTTP/SOCKS5 地址、用户名和密码的复制入口，凭据与 IPv6 正确编码。
+- **修改文件**：数据库 Client/ClientRecord 与迁移、`internal/web/service/inbound_mixed.go`、客户端及 Runtime 分发、`internal/xray` 配置/API/版本检查、`internal/sub/mixed_manual.go`、前端入站及客户端表单、订阅页、生成接口模型和 13 种语言词条。
+- **上游改动标记**：`FORK(mixed-clients)`；定制核心的对应改动见 Rain-kl/Xray-core 同名条目。
+- **设计文档**：[mixed 客户端规范](docs/specs/mixed-clients.md)；**实现文档**：[Agent Note](.agents/notes/mixed-clients.md)。

@@ -201,6 +201,12 @@ func initModels() error {
 	if err := migrateInboundRateLimitColumns(); err != nil {
 		return err
 	}
+	// FORK(mixed-clients): Existing client tables need the independent proxy login column.
+	if db.Migrator().HasTable(&model.ClientRecord{}) && !db.Migrator().HasColumn(&model.ClientRecord{}, "username") {
+		if err := db.Migrator().AddColumn(&model.ClientRecord{}, "Username"); err != nil {
+			return fmt.Errorf("migrate mixed client username column: %w", err)
+		}
+	}
 	if err := migrateClientDownLimitColumns(); err != nil {
 		return err
 	}

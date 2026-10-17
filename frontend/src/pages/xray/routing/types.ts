@@ -3,6 +3,8 @@ export interface RuleRow {
   enabled?: boolean;
   // FORK(routing-rule-sync): Inherited rules retain explicit parent ownership.
   sync?: boolean;
+  // FORK(routing-local-pre): Node-local access controls precede shared destination rules.
+  localPre?: boolean;
   panelSyncSource?: string;
   comment?: string;
   domain?: string;

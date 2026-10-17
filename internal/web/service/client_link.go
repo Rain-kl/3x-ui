@@ -26,6 +26,10 @@ func applyClientRecordMerge(row *model.ClientRecord, incoming *model.ClientRecor
 	if incoming.UUID != "" {
 		row.UUID = incoming.UUID
 	}
+	// FORK(mixed-clients): Client updates must preserve the external proxy login.
+	if incoming.Username != "" {
+		row.Username = incoming.Username
+	}
 	if incoming.Password != "" {
 		row.Password = incoming.Password
 	}
@@ -421,10 +425,14 @@ func (s *ClientService) ListForInboundBySubId(tx *gorm.DB, inboundId int, subId 
 // shares, so a client the protocol's core config would refuse never reaches it.
 func (s *ClientService) validateProtocolClients(tx *gorm.DB, inboundID int, changed []model.Client, detached []string, prune bool) error {
 	var inbound model.Inbound
-	if err := tx.Select("protocol").Where("id = ?", inboundID).Take(&inbound).Error; err != nil {
+	// FORK(mixed-clients): Validate mixed authentication mode together with client identity.
+	if err := tx.Select("protocol", "settings").Where("id = ?", inboundID).Take(&inbound).Error; err != nil {
 		return err
 	}
 	switch inbound.Protocol {
+	// FORK(mixed-clients): Username collisions must fail inside the shared attachment transaction.
+	case model.Mixed:
+		return s.validateMixedIdentities(tx, &inbound, inboundID, changed, detached, prune)
 	case model.TUIC:
 		return s.validateTuicIdentities(tx, inboundID, changed, detached, prune)
 	case model.MASQUE:

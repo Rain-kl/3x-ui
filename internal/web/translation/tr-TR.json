@@ -106,7 +106,9 @@
     "qrTitle": "Tara. İçe aktar. Bağlan.",
     "qrHint": "İstemci uygulamanızla tarayın. Bu kodu kimseyle paylaşmayın.",
     "saveQr": "QR'ı kaydet",
-    "nodeQuota": "Düğüm Trafik Kotası"
+    "nodeQuota": "Düğüm Trafik Kotası",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "Tema",
@@ -544,6 +546,7 @@
         "rewritePort": "Port'u Yeniden Yaz",
         "allowedNetwork": "İzin Verilen Ağ",
         "followRedirect": "Yönlendirmeleri İzle",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "Hesaplar",
         "allowTransparent": "Şeffafa İzin Ver",
         "encryptionMethod": "Şifreleme Yöntemi",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Fail2ban Windows'ta kullanılamadığından IP sınırı uygulanamaz.",
       "limitIpDisabled": "IP sınırı özelliği bu sunucuda devre dışı.",
       "password": "Şifre",
-      "passwordDesc": "Trojan, Shadowsocks, TUIC ve MASQUE istemcileri tarafından kullanılır; VLESS, VMess, Hysteria ve WireGuard için yok sayılır.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "Trojan, Shadowsocks, TUIC ve MASQUE / mixed istemcileri tarafından kullanılır; VLESS, VMess, Hysteria ve WireGuard için yok sayılır.",
       "subId": "Abonelik ID'si",
       "subIdDesc": "Bu istemcinin Telegram botu davet kodu olarak da kullanılır: bunu bota gönderen kişi bu istemciye bağlanır. Uzun ve rastgele tutun — kısa veya tahmin edilebilir bir kimlik başkası tarafından sahiplenilebilir.",
       "online": "Çevrimiçi",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "Alt düğümlere eşitle",
-        "syncHelp": "Kaydedilen işaretli kurallar etkin alt düğümlere yerel kurallardan önce uygulanır. Eşitlemeyi kapatmak veya kaynak kuralı silmek kopyalarını kaldırır. Kopyalar salt okunurdur; etiketler her hedefte bulunmalıdır.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "Ana düğüm yönetiyor",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "Yeniden sıralamak için sürükleyin"
       },
       "geoBrowser": {

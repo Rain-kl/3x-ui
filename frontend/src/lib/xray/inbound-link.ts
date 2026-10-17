@@ -1385,13 +1385,15 @@ export function preferPublicHost(browserHost: string, publicHost: string): strin
   return publicHost && isLoopbackHost(browserHost) ? publicHost : browserHost;
 }
 
-// Returns the client array for protocols that have one; null for http, mixed,
+// Returns the client array for protocols that have one; null for http,
 // tunnel, wireguard, hysteria2-without-clients, and any protocol without one.
 type ClientShape = {
   id?: string;
   uuid?: string;
   security?: VmessSecurity;
   flow?: VlessClient['flow'];
+  // FORK(mixed-clients): External login names are independent from email.
+  username?: string;
   password?: string;
   auth?: string;
   secret?: string;
@@ -1407,6 +1409,9 @@ function clientSubKey(client: ClientShape): string {
 
 export function getInboundClients(inbound: Inbound): ClientShape[] | null {
   switch (inbound.protocol) {
+    // FORK(mixed-clients): Mixed membership is represented by normalized clients.
+    case 'mixed':
+      return (inbound.settings.clients ?? []) as ClientShape[];
     case 'vmess':
       return (inbound.settings.clients ?? []) as ClientShape[];
     case 'vless':

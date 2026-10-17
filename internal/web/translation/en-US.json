@@ -106,7 +106,9 @@
     "qrTitle": "Scan. Import. Connect.",
     "qrHint": "Scan with your client app. Keep this code private.",
     "saveQr": "Save QR",
-    "nodeQuota": "Node Traffic Quota"
+    "nodeQuota": "Node Traffic Quota",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "Theme",
@@ -546,6 +548,7 @@
         "rewritePort": "Rewrite port",
         "allowedNetwork": "Allowed network",
         "followRedirect": "Follow redirect",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "Accounts",
         "allowTransparent": "Allow transparent",
         "encryptionMethod": "Encryption method",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Fail2ban is not available on Windows, so the IP limit cannot be enforced.",
       "limitIpDisabled": "The IP limit feature is disabled on this server.",
       "password": "Password",
-      "passwordDesc": "Used by Trojan, Shadowsocks, TUIC, and MASQUE clients; ignored for VLESS, VMess, Hysteria, and WireGuard.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "Used by Trojan, Shadowsocks, TUIC, MASQUE, and mixed clients; ignored for VLESS, VMess, Hysteria, and WireGuard.",
       "subId": "Subscription ID",
       "subIdDesc": "Also works as this client's Telegram bot invite code: whoever sends it to the bot is linked to this client. Keep it long and random — a short or guessable ID can be claimed by someone else.",
       "online": "Online",
@@ -2088,8 +2092,11 @@
       },
       "routing": {
         "sync": "Sync to child nodes",
-        "syncHelp": "Enabled rules sync from this panel to enabled child nodes when saved, ahead of their local rules. Turning sync off or deleting a source rule removes its copies. Parent-managed copies are read-only. Referenced tags must exist on every target.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "Managed by parent",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "Drag to reorder"
       },
       "geoBrowser": {

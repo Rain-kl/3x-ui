@@ -198,6 +198,10 @@ func (s *ClientService) Create(inboundSvc *InboundService, payload *ClientCreate
 		if client.ID == "" {
 			client.ID = existing.UUID
 		}
+		// FORK(mixed-clients): Reattaching an identity must retain its external login name.
+		if client.Username == "" {
+			client.Username = existing.Username
+		}
 		if client.Password == "" {
 			client.Password = existing.Password
 		}
@@ -443,6 +447,14 @@ func (s *ClientService) fillProtocolDefaults(c *model.Client, ib *model.Inbound)
 	case model.VMESS, model.VLESS:
 		if c.ID == "" {
 			c.ID = uuid.NewString()
+		}
+	// FORK(mixed-clients): One shared client owns mixed credentials across its inbounds.
+	case model.Mixed:
+		if c.Username == "" {
+			c.Username = c.Email
+		}
+		if c.Password == "" {
+			c.Password = strings.ReplaceAll(uuid.NewString(), "-", "")
 		}
 	case model.Trojan, model.MASQUE:
 		if c.Password == "" {
@@ -700,6 +712,10 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 	if updated.ID == "" {
 		updated.ID = existing.UUID
 	}
+	// FORK(mixed-clients): Partial updates must not rotate mixed login names.
+	if updated.Username == "" {
+		updated.Username = existing.Username
+	}
 	if updated.Password == "" {
 		updated.Password = existing.Password
 	}
@@ -850,9 +866,11 @@ func (s *ClientService) Update(inboundSvc *InboundService, id int, updated model
 		if err := database.GetDB().Model(&model.ClientRecord{}).
 			Where("id = ?", id).
 			Updates(map[string]any{
-				"sub_id":            merged.SubID,
-				"uuid":              merged.UUID,
-				"password":          merged.Password,
+				"sub_id":   merged.SubID,
+				"uuid":     merged.UUID,
+				"password": merged.Password,
+				// FORK(mixed-clients): Preserve the login on detached client edits too.
+				"username":          merged.Username,
 				"auth":              merged.Auth,
 				"secret":            merged.Secret,
 				"flow":              merged.Flow,

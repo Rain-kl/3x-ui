@@ -17,6 +17,8 @@ export const RuleObjectSchema = z.object({
   enabled: z.boolean().optional(),
   // FORK(routing-rule-sync): Preserve panel-only synchronization metadata in editable templates.
   sync: z.boolean().optional(),
+  // FORK(routing-local-pre): Preserve the local priority annotation through template editing.
+  localPre: z.boolean().optional(),
   panelSyncSource: z.string().optional(),
   comment: z.string().optional(),
   domain: z.array(z.string()).optional(),

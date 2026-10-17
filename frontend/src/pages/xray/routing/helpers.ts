@@ -184,3 +184,15 @@ export function ruleCriteriaChips(rule: RuleRow) {
   if (rule.vlessRoute) chips.push({ label: 'VLESS', value: rule.vlessRoute });
   return chips;
 }
+
+// FORK(routing-local-pre): Match backend grouping so edits show the effective order immediately.
+export function routingRuleTier(rule: {
+  inboundTag?: string[];
+  outboundTag?: string;
+  localPre?: boolean;
+  panelSyncSource?: string;
+}): number {
+  if (isApiRule(rule)) return 0;
+  if (rule.localPre && !rule.panelSyncSource) return 1;
+  return rule.panelSyncSource ? 2 : 3;
+}

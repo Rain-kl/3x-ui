@@ -1,6 +1,7 @@
 package tgbot
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -137,11 +138,26 @@ func (t *Tgbot) getInboundClientsFor(inbound *model.Inbound, action string) (*te
 }
 
 // addClientExcludedProtocols are the protocols with no per-client model: Tunnel
-// has no clients, Mixed/HTTP authenticate at the inbound level, not per-client.
+// has no clients, HTTP authenticates at the inbound level, not per-client.
 var addClientExcludedProtocols = map[model.Protocol]bool{
 	model.Tunnel: true,
-	model.Mixed:  true,
-	model.HTTP:   true,
+	// FORK(mixed-clients): Mixed now uses the normalized client model.
+	model.HTTP: true,
+}
+
+// FORK(mixed-clients): Anonymous and legacy mixed inbounds cannot accept normalized client attachments.
+func inboundAcceptsClients(ib *model.Inbound) bool {
+	if addClientExcludedProtocols[ib.Protocol] {
+		return false
+	}
+	if ib.Protocol != model.Mixed {
+		return true
+	}
+	var settings struct {
+		Auth    string          `json:"auth"`
+		Clients json.RawMessage `json:"clients"`
+	}
+	return json.Unmarshal([]byte(ib.Settings), &settings) == nil && settings.Auth == "password" && len(settings.Clients) > 0
 }
 
 // getInboundsAddClient creates an inline keyboard for adding clients to inbounds.
@@ -159,7 +175,7 @@ func (t *Tgbot) getInboundsAddClient() (*telego.InlineKeyboardMarkup, error) {
 
 	var buttons []telego.InlineKeyboardButton
 	for _, inbound := range inbounds {
-		if addClientExcludedProtocols[inbound.Protocol] {
+		if !inboundAcceptsClients(inbound) {
 			continue
 		}
 
@@ -205,7 +221,7 @@ func (t *Tgbot) getInboundsAttachPicker(draft *clientDraft) (*telego.InlineKeybo
 	}
 	var buttons []telego.InlineKeyboardButton
 	for _, ib := range inbounds {
-		if addClientExcludedProtocols[ib.Protocol] {
+		if !inboundAcceptsClients(ib) {
 			continue
 		}
 		mark := "☐"

@@ -106,7 +106,9 @@
     "qrTitle": "Escaneie. Importe. Conecte.",
     "qrHint": "Escaneie com seu aplicativo cliente. Mantenha este código em sigilo.",
     "saveQr": "Salvar QR",
-    "nodeQuota": "Cota de tráfego do nó"
+    "nodeQuota": "Cota de tráfego do nó",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "Tema",
@@ -565,6 +567,7 @@
         "rewritePort": "Reescrever porta",
         "allowedNetwork": "Rede permitida",
         "followRedirect": "Seguir redirect",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "Contas",
         "allowTransparent": "Permitir transparente",
         "encryptionMethod": "Método de criptografia",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "O Fail2ban não está disponível no Windows, portanto o limite de IP não pode ser aplicado.",
       "limitIpDisabled": "O recurso de limite de IP está desativado neste servidor.",
       "password": "Senha",
-      "passwordDesc": "Usada pelos clientes Trojan, Shadowsocks, TUIC e MASQUE; ignorada para VLESS, VMess, Hysteria e WireGuard.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "Usada pelos clientes Trojan, Shadowsocks, TUIC e MASQUE / mixed; ignorada para VLESS, VMess, Hysteria e WireGuard.",
       "subId": "ID da assinatura",
       "subIdDesc": "Também funciona como código de convite deste cliente no bot do Telegram: quem enviá-lo ao bot fica vinculado a este cliente. Mantenha-o longo e aleatório — um ID curto ou fácil de adivinhar pode ser reivindicado por outra pessoa.",
       "online": "Online",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "Sincronizar com nós filhos",
-        "syncHelp": "Ao salvar, as regras marcadas são sincronizadas com os nós filhos habilitados antes das regras locais. Desativar a sincronização ou excluir a regra remove suas cópias. As cópias são somente leitura e as tags devem existir em cada destino.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "Gerenciada pelo principal",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "Arraste para reordenar"
       },
       "geoBrowser": {

@@ -106,7 +106,9 @@
     "qrTitle": "Pindai. Impor. Terhubung.",
     "qrHint": "Pindai dengan aplikasi klien Anda. Jaga kerahasiaan kode ini.",
     "saveQr": "Simpan QR",
-    "nodeQuota": "Kuota Trafik Node"
+    "nodeQuota": "Kuota Trafik Node",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "Tema",
@@ -544,6 +546,7 @@
         "rewritePort": "Tulis ulang port",
         "allowedNetwork": "Jaringan yang diizinkan",
         "followRedirect": "Ikuti redirect",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "Akun",
         "allowTransparent": "Izinkan transparan",
         "encryptionMethod": "Metode enkripsi",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Fail2ban tidak tersedia di Windows, sehingga batas IP tidak dapat diterapkan.",
       "limitIpDisabled": "Fitur batas IP dinonaktifkan di server ini.",
       "password": "Kata sandi",
-      "passwordDesc": "Digunakan oleh klien Trojan, Shadowsocks, TUIC, dan MASQUE; diabaikan untuk VLESS, VMess, Hysteria, dan WireGuard.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "Digunakan oleh klien Trojan, Shadowsocks, TUIC, dan MASQUE / mixed; diabaikan untuk VLESS, VMess, Hysteria, dan WireGuard.",
       "subId": "ID Langganan",
       "subIdDesc": "Juga berfungsi sebagai kode undangan bot Telegram untuk klien ini: siapa pun yang mengirimkannya ke bot akan ditautkan ke klien ini. Buat panjang dan acak — ID yang pendek atau mudah ditebak bisa diklaim orang lain.",
       "online": "Online",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "Sinkronkan ke node anak",
-        "syncHelp": "Saat disimpan, aturan bertanda dikirim ke node anak aktif sebelum aturan lokal. Menonaktifkan sinkronisasi atau menghapus aturan akan menarik salinannya. Salinan hanya dapat dibaca dan tag harus tersedia pada setiap node tujuan.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "Dikelola node induk",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "Seret untuk mengurutkan ulang"
       },
       "geoBrowser": {

@@ -372,6 +372,23 @@ export default function ClientInfoModal({
                     </td>
                   </tr>
                 )}
+                {/* FORK(mixed-clients): Display the actual external username separately from the client label. */}
+                {(client.username ||
+                  client.inboundIds?.some((id) => inboundsById[id]?.protocol === 'mixed')) && (
+                  <tr>
+                    <td>{t('username')}</td>
+                    <td>
+                      <Tag className="info-large-tag">{client.username || client.email}</Tag>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<CopyOutlined />}
+                        aria-label={t('copy')}
+                        onClick={() => copyValue(client.username || client.email)}
+                      />
+                    </td>
+                  </tr>
+                )}
                 {client.password && (
                   <tr>
                     <td>{t('password')}</td>

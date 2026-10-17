@@ -486,9 +486,13 @@ func (s *SubService) getSubs(subId string) ([]string, []string, int64, xray.Clie
 		if len(clients) == 0 {
 			continue
 		}
-		if inbound.ExcludeFromSub {
+		// FORK(mixed-clients): Mixed contributes usage but is available only for manual copying on the info page.
+		if inbound.ExcludeFromSub || inbound.Protocol == model.Mixed {
 			if countHiddenClients(clients, seenEmails) {
 				hasEnabledClient = true
+			}
+			if inbound.Protocol == model.Mixed && result == nil {
+				result = []string{}
 			}
 			continue
 		}
@@ -680,13 +684,14 @@ func subscriptionExpiryFromClient(nowMs, expiryTime int64) int64 {
 func (s *SubService) getInboundsBySubId(subId string) ([]*model.Inbound, error) {
 	db := database.GetDB()
 	var inbounds []*model.Inbound
+	// FORK(mixed-clients): Include mixed for usage metadata; every automatic renderer explicitly excludes its credentials.
 	err := db.Model(model.Inbound{}).Where(`id in (
 		SELECT DISTINCT inbounds.id
 		FROM inbounds
 		JOIN client_inbounds ON client_inbounds.inbound_id = inbounds.id
 		JOIN clients ON clients.id = client_inbounds.client_id
 		WHERE
-			inbounds.protocol in ('vmess','vless','trojan','shadowsocks','hysteria','wireguard','amneziawg','mtproto','tuic','masque')
+			inbounds.protocol in ('vmess','vless','trojan','shadowsocks','hysteria','wireguard','amneziawg','mtproto','tuic','masque','mixed')
 			AND clients.sub_id = ? AND inbounds.enable = ?
 	)`, subId, true).Order("sub_sort_index ASC").Order("id ASC").Find(&inbounds).Error
 	if err != nil {
@@ -3074,6 +3079,8 @@ type SubNodeLimit struct {
 
 // PageData is a view model for subpage.html and subscription metadata.
 type PageData struct {
+	// FORK(mixed-clients): Manual credentials never enter the automatic subscription result.
+	MixedNodes    []SubMixedNode
 	Host          string
 	BasePath      string
 	SId           string

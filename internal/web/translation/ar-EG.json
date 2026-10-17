@@ -106,7 +106,9 @@
     "qrTitle": "امسح. استورد. اتصل.",
     "qrHint": "امسح الرمز بتطبيق العميل. لا تشارك هذا الرمز مع أحد.",
     "saveQr": "حفظ QR",
-    "nodeQuota": "حصة نقل بيانات العقدة"
+    "nodeQuota": "حصة نقل بيانات العقدة",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "الثيم",
@@ -544,6 +546,7 @@
         "rewritePort": "إعادة كتابة المنفذ",
         "allowedNetwork": "الشبكة المسموح بها",
         "followRedirect": "اتبع إعادة التوجيه",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "الحسابات",
         "allowTransparent": "السماح بالشفاف",
         "encryptionMethod": "طريقة التشفير",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Fail2ban غير متوفّر على نظام Windows، لذا لا يمكن تطبيق حد عناوين IP.",
       "limitIpDisabled": "ميزة حد عناوين IP معطّلة على هذا الخادم.",
       "password": "كلمة المرور",
-      "passwordDesc": "يستخدمها عملاء Trojan و Shadowsocks و TUIC و MASQUE؛ ويتم تجاهلها لـ VLESS و VMess و Hysteria و WireGuard.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "يستخدمها عملاء Trojan و Shadowsocks و TUIC و MASQUE / mixed؛ ويتم تجاهلها لـ VLESS و VMess و Hysteria و WireGuard.",
       "subId": "معرّف الاشتراك",
       "subIdDesc": "يُستخدم أيضًا كرمز دعوة لهذا العميل في بوت تيليجرام: من يرسله إلى البوت يُربط بهذا العميل. اجعله طويلًا وعشوائيًا — فالمعرّف القصير أو السهل التخمين قد يستولي عليه شخص آخر.",
       "online": "متصل",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "مزامنة مع العقد الفرعية",
-        "syncHelp": "عند الحفظ تُرسل القواعد المحددة إلى العقد الفرعية المفعلة قبل قواعدها المحلية. إيقاف المزامنة أو حذف القاعدة يزيل النسخ. النسخ للقراءة فقط ويجب توفر الوسوم في كل عقدة مستهدفة.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "تديرها العقدة الرئيسية",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "اسحب لإعادة الترتيب"
       },
       "geoBrowser": {

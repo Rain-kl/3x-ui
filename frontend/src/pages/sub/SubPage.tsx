@@ -19,6 +19,8 @@ import SubHeader from './SubHeader';
 import SubHero from './SubHero';
 import SubLimitedNodes from './SubLimitedNodes';
 import SubLinksTab from './SubLinksTab';
+// FORK(mixed-clients): Mixed is available for manual copying without automatic imports.
+import SubMixedNodes from './SubMixedNodes';
 import { buildSubApps, daysUntil, detectPlatform, resolveSubStatus } from './subPageModel';
 import './SubPage.css';
 
@@ -125,6 +127,14 @@ export default function SubPage() {
           </>
         ),
         children: <SubConfigsTab links={links} onCopy={copy} />,
+      });
+    }
+    // FORK(mixed-clients): Keep these addresses out of the normal configs and copy-all actions.
+    if (subData.mixedNodes?.length) {
+      items.push({
+        key: 'mixed',
+        label: t('subscription.mixedManual'),
+        children: <SubMixedNodes nodes={subData.mixedNodes} />,
       });
     }
     return items;

@@ -620,6 +620,13 @@ func (p *process) Start() (err error) {
 		}
 	}()
 
+	// FORK(mixed-clients): Old cores must never ignore managed users and expose an anonymous HTTP proxy.
+	if HasManagedMixed(p.config) {
+		p.refreshVersion()
+		if err := ValidateMixedClientVersion(p.config, p.GetXrayVersion()); err != nil {
+			return err
+		}
+	}
 	// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 	if HasNativeRateLimits(p.config) {
 		p.refreshVersion()

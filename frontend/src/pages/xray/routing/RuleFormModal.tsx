@@ -15,6 +15,8 @@ export interface RoutingRule {
   enabled?: boolean;
   // FORK(routing-rule-sync): The panel owns synchronization state, not Xray.
   sync?: boolean;
+  // FORK(routing-local-pre): Node-local access controls precede shared destination rules.
+  localPre?: boolean;
   panelSyncSource?: string;
   comment?: string;
   type?: string;
@@ -49,6 +51,7 @@ interface RuleFormModalProps {
 const initialForm = (): RuleFormValues => ({
   enabled: true,
   sync: false,
+  localPre: false,
   comment: '',
   domain: '',
   ip: '',
@@ -119,6 +122,7 @@ export default function RuleFormModal({
       methods.reset({
         enabled: rule.enabled !== false,
         sync: allowSync && rule.sync === true,
+        localPre: rule.localPre === true,
         comment: rule.comment || '',
         domain: Array.isArray(rule.domain) ? rule.domain.join(',') : rule.domain || '',
         ip: Array.isArray(rule.ip) ? rule.ip.join(',') : rule.ip || '',
@@ -139,6 +143,8 @@ export default function RuleFormModal({
     }
   }, [open, rule, methods, allowSync]);
 
+  const localPre = useWatch({ control: methods.control, name: 'localPre' });
+  const sync = useWatch({ control: methods.control, name: 'sync' });
   const attrs = useWatch({ control: methods.control, name: 'attrs' }) ?? [];
 
   function submit() {
@@ -149,6 +155,7 @@ export default function RuleFormModal({
       type: 'field',
       enabled: v.enabled,
       sync: allowSync && v.sync,
+      localPre: v.localPre,
       comment: v.comment,
       domain: csv(v.domain),
       ip: csv(v.ip),
@@ -211,9 +218,19 @@ export default function RuleFormModal({
               valueProp="checked"
               tooltip={t('pages.xray.routing.syncHelp')}
             >
-              <Switch disabled={isApiRule(rule ?? {})} />
+              <Switch disabled={isApiRule(rule ?? {}) || localPre} />
             </FormField>
           )}
+
+          {/* FORK(routing-local-pre): Node-specific source restrictions run ahead of synchronized routing. */}
+          <FormField
+            name="localPre"
+            label={t('pages.xray.routing.localPre')}
+            tooltip={t('pages.xray.routing.localPreHelp')}
+            valueProp="checked"
+          >
+            <Switch disabled={isApiRule(rule ?? {}) || sync || !!rule?.panelSyncSource} />
+          </FormField>
 
           <FormField name="comment" label={t('comment')}>
             <Input maxLength={200} showCount placeholder={t('comment')} />

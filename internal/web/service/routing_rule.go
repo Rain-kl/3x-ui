@@ -45,6 +45,8 @@ func ReplaceRoutingRulesInTemplate(templateJSON string, rules []map[string]any) 
 
 	oldRules, _ := routing["rules"].([]any)
 	oldBytes, _ := json.Marshal(oldRules)
+	// FORK(routing-local-pre): Source restrictions must run before shared destination allow rules.
+	rules = orderPanelRoutingRules(rules)
 	newBytes, _ := json.Marshal(rules)
 	changed := !bytes.Equal(oldBytes, newBytes)
 

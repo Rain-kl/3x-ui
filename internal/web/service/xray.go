@@ -296,6 +296,10 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 				if c.Security != "" {
 					entry["security"] = c.Security
 				}
+			// FORK(mixed-clients): Send credentials and billing identity as separate core user fields.
+			case model.Mixed:
+				entry["user"] = mixedUsername(c)
+				entry["pass"] = c.Password
 			case model.Trojan:
 				if c.Password != "" {
 					entry["password"] = c.Password
@@ -1247,8 +1251,8 @@ func stripDisabledRules(routerCfg json_util.RawMessage) json_util.RawMessage {
 			delete(rule, "comment")
 			changed = true
 		}
-		// FORK(routing-rule-sync): Synchronization state belongs to the panel, never the Xray rule schema.
-		for _, key := range []string{"sync", routingSyncSourceKey} {
+		// FORK(routing-local-pre): Priority and synchronization attributes belong to the panel, never Xray.
+		for _, key := range []string{"sync", "localPre", routingSyncSourceKey} {
 			if _, exists := rule[key]; exists {
 				delete(rule, key)
 				changed = true
@@ -1433,6 +1437,10 @@ func (s *XrayService) RestartXray(isForce bool) error {
 
 	process := currentXrayProcess()
 	if process != nil && process.IsRunning() {
+		// FORK(mixed-clients): Feature validation precedes all protobuf hot-apply paths.
+		if err := xray.ValidateMixedClientVersion(xrayConfig, process.GetXrayVersion()); err != nil {
+			return err
+		}
 		configUnchanged := process.GetConfig().Equals(xrayConfig)
 		if !isForce && configUnchanged && !isNeedXrayRestart.Load() {
 			logger.Debug("It does not need to restart Xray")

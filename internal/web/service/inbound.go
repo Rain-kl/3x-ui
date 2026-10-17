@@ -1303,6 +1303,10 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 	}
 	inbound.Tag = tag
 
+	// FORK(mixed-clients): Import legacy accounts into the same normalized client associations.
+	if err := normalizeMixedSettings(inbound, ""); err != nil {
+		return inbound, false, err
+	}
 	normalizeLegacyClientSettings(inbound)
 	clients, err := s.GetClients(inbound)
 	if err != nil {
@@ -1366,7 +1370,7 @@ func (s *InboundService) AddInbound(inbound *model.Inbound) (*model.Inbound, boo
 	// Secure client ID
 	for _, client := range clients {
 		switch inbound.Protocol {
-		case "trojan", "masque":
+		case "trojan", "masque", "mixed":
 			if client.Password == "" {
 				return inbound, false, common.NewError("empty client ID")
 			}
@@ -1888,6 +1892,11 @@ func (s *InboundService) validateUpdatedInboundClients(inbound *model.Inbound) e
 	}
 	for _, client := range clients {
 		switch inbound.Protocol {
+		// FORK(mixed-clients): Mixed credentials use username/password instead of a UUID.
+		case model.Mixed:
+			if err := validateMixedClient(client); err != nil {
+				return err
+			}
 		case model.Hysteria:
 			if client.Auth == "" {
 				return common.NewError("empty client ID")
@@ -1999,6 +2008,10 @@ func (s *InboundService) UpdateInbound(inbound *model.Inbound) (*model.Inbound, 
 		if !s.FromNodeSync {
 			inbound.Settings = keepStoredClients(inbound.Settings, stored.Settings)
 			inbound.Enable = stored.Enable
+		}
+		// FORK(mixed-clients): Convert legacy account-only settings before validating the effective membership.
+		if err := normalizeMixedSettings(inbound, stored.Settings); err != nil {
+			return err
 		}
 		// On the clients actually saved: a protocol switch keeps the stored ones.
 		if err := s.validateUpdatedInboundClients(inbound); err != nil {

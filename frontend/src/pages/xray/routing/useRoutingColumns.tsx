@@ -168,12 +168,14 @@ export function useRoutingColumns({
       },
       // FORK(routing-rule-sync): Parent-managed copies must be recognizable without opening the editor.
       {
-        title: t('pages.xray.routing.sync'),
+        title: t('pages.xray.routing.ruleType'),
         key: 'sync',
         width: 130,
         render: (_v, record) =>
           record.panelSyncSource ? (
             <Tag color="blue">{t('pages.xray.routing.syncedFromParent')}</Tag>
+          ) : record.localPre ? (
+            <Tag color="orange">{t('pages.xray.routing.localPre')}</Tag>
           ) : record.sync ? (
             <Tag color="green">{t('pages.xray.routing.sync')}</Tag>
           ) : (

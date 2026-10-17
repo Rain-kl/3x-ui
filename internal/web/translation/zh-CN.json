@@ -106,7 +106,9 @@
     "qrTitle": "扫码。导入。连接。",
     "qrHint": "使用客户端应用扫描。请勿泄露此二维码。",
     "saveQr": "保存二维码",
-    "nodeQuota": "节点流量配额"
+    "nodeQuota": "节点流量配额",
+    "mixedManual": "mixed 手动配置",
+    "mixedManualHelp": "mixed 不随订阅自动下发，请复制连接地址或凭据手动配置。"
   },
   "menu": {
     "theme": "主题",
@@ -564,6 +566,7 @@
         "rewritePort": "重写端口",
         "allowedNetwork": "允许的网络",
         "followRedirect": "跟随重定向",
+        "mixedManagedHelp": "账号统一在客户端页面管理。启用密码鉴权后，可附加现有客户端；用户名为空时使用客户端标识，零客户端时禁止访问。",
         "accounts": "账户",
         "allowTransparent": "允许透明",
         "encryptionMethod": "加密方法",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Windows 上不支持 Fail2ban，无法实施 IP 限制。",
       "limitIpDisabled": "此服务器已禁用 IP 限制功能。",
       "password": "密码",
-      "passwordDesc": "用于 Trojan、Shadowsocks、TUIC 和 MASQUE 客户端；对 VLESS、VMess、Hysteria 和 WireGuard 忽略。",
+      "mixedUsernameHelp": "用于 mixed 的 HTTP/SOCKS5 登录，留空使用客户端标识；与计费身份独立。",
+      "passwordDesc": "用于 Trojan、Shadowsocks、TUIC、MASQUE 和 mixed 客户端；对 VLESS、VMess、Hysteria 和 WireGuard 忽略。",
       "subId": "订阅 ID",
       "subIdDesc": "同时用作该客户端的 Telegram 机器人邀请码：任何人将其发送给机器人即会绑定到此客户端。请保持足够长且随机——过短或易猜的 ID 可能被他人抢先绑定。",
       "online": "在线",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "开启同步",
-        "syncHelp": "保存后将本机开启同步的规则下发到启用的子节点，优先于子节点本地规则。关闭同步或删除源规则会撤回副本；主节点管理的副本只读，引用的标签必须在目标节点存在。",
+        "syncHelp": "优先级：API → 本地前置 → 主节点同步 → 普通本地。主节点保存后广播同步规则，子节点保留本地规则；关闭同步或删除源规则会撤回副本。引用标签必须在子节点存在。",
         "syncedFromParent": "主节点管理",
+        "ruleType": "规则类型",
+        "localPre": "本地前置",
+        "localPreHelp": "在主节点同步规则之前执行，适合来源 IP 等访问限制；不广播到其他节点。",
         "dragToReorder": "拖动以重新排序"
       },
       "geoBrowser": {

@@ -33,6 +33,7 @@ import (
 	"github.com/xtls/xray-core/proxy/masque"
 	"github.com/xtls/xray-core/proxy/shadowsocks"
 	"github.com/xtls/xray-core/proxy/shadowsocks_2022"
+	"github.com/xtls/xray-core/proxy/socks"
 	"github.com/xtls/xray-core/proxy/trojan"
 	"github.com/xtls/xray-core/proxy/vless"
 	"github.com/xtls/xray-core/proxy/vmess"
@@ -600,6 +601,20 @@ func isShadowsocks2022Cipher(cipher string) bool {
 // that would panic the core and kill every connection on the server.
 func buildUserAccount(protocolName string, user map[string]any) (*serial.TypedMessage, error) {
 	switch protocolName {
+	// FORK(mixed-clients): The core manages mixed users through the existing SOCKS account protobuf.
+	case "mixed":
+		name, err := getOptionalUserString(user, "user")
+		if err == nil && name == "" {
+			name, err = getRequiredUserString(user, "username")
+		}
+		if err != nil {
+			return nil, err
+		}
+		pass, err := masqueUserPassword(user)
+		if err != nil {
+			return nil, err
+		}
+		return serial.ToTypedMessage(&socks.Account{Username: name, Password: pass}), nil
 	case "vmess":
 		userID, err := getRequiredUserString(user, "id")
 		if err != nil {
@@ -757,8 +772,13 @@ func masqueUserPassword(user map[string]any) (string, error) {
 // does not reject a duplicate email, and a later removal would then drop just
 // one of the two registrations, leaving a disabled client able to connect.
 func (x *XrayAPI) AddUser(Protocol string, inboundTag string, user map[string]any) error {
+	// FORK(mixed-clients): Fallback login names must be derived before the email is scoped.
+	rawEmail, _ := user["email"].(string)
 	if Protocol != "masque" {
 		user = copyScopedUser(inboundTag, user)
+	}
+	if Protocol == "mixed" && (user["username"] == nil || user["username"] == "") {
+		user["username"] = rawEmail
 	}
 	userEmail, err := getRequiredUserString(user, "email")
 	if err != nil {

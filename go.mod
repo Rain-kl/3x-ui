@@ -121,4 +121,5 @@ require (
 	lukechampine.com/blake3 v1.4.1 // indirect
 )
 
-replace github.com/xtls/xray-core => github.com/Rain-kl/Xray-core v0.0.0-20261013114648-787151f40119
+// FORK(mixed-clients): In-process AddInbound builders must preserve managed mixed user identities.
+replace github.com/xtls/xray-core => github.com/Rain-kl/Xray-core v0.0.0-20261017081649-c662a740ba39

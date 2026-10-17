@@ -257,8 +257,23 @@ describe('getInboundClients with schema-shaped inbound', () => {
     expect(getInboundClients(inbound)).toHaveLength(1);
   });
 
-  it('returns null for non-client protocols (http/mixed/tun/tunnel)', () => {
-    for (const protocol of ['http', 'mixed', 'tun', 'tunnel']) {
+  it('retains managed mixed credentials through database parsing for client editing', () => {
+    const inbound = inboundFromDb({
+      ...BASE_DB_FIELDS,
+      protocol: 'mixed',
+      settings: JSON.stringify({
+        auth: 'password',
+        clients: [{ email: 'identity', username: 'login', password: 'secret', enable: true }],
+      }),
+      streamSettings: '',
+    });
+    expect(getInboundClients(inbound)).toEqual([
+      expect.objectContaining({ email: 'identity', username: 'login', password: 'secret' }),
+    ]);
+  });
+
+  it('returns null for non-client protocols (http/tun/tunnel)', () => {
+    for (const protocol of ['http', 'tun', 'tunnel']) {
       const inbound = inboundFromDb({
         ...BASE_DB_FIELDS,
         protocol,

@@ -31,6 +31,8 @@ import { ClientBulkAddFormSchema, type ClientBulkAddFormValues } from '@/schemas
 const FLOW_OPTIONS = Object.values(TLS_FLOW_CONTROL);
 
 const MULTI_CLIENT_PROTOCOLS = new Set([
+  // FORK(mixed-clients): Managed mixed inbounds must be selectable for normal client attachment.
+  'mixed',
   'shadowsocks',
   'vless',
   'vmess',

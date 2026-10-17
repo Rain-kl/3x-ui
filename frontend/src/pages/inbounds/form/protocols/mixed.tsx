@@ -1,14 +1,19 @@
 import { useTranslation } from 'react-i18next';
-import { Input, Select, Switch } from 'antd';
+import { Alert, Input, Select, Switch } from 'antd';
 
 import { FormField } from '@/components/form/rhf';
-import AccountsList from './accounts-list';
 
 export default function MixedFields({ mixedUdpOn }: { mixedUdpOn: boolean }) {
   const { t } = useTranslation();
   return (
     <>
-      <AccountsList />
+      {/* FORK(mixed-clients): Centralized clients replace the private static account editor. */}
+      <Alert
+        type="info"
+        showIcon
+        title={t('pages.inbounds.form.mixedManagedHelp')}
+        style={{ marginBottom: 16 }}
+      />
       <FormField name={['settings', 'auth']} label={t('pages.inbounds.info.auth')}>
         <Select
           options={[

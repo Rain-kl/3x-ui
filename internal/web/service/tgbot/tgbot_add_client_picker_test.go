@@ -38,7 +38,7 @@ func pickerLabels(keyboard *telego.InlineKeyboardMarkup) []string {
 }
 
 // WireGuard and AmneziaWG clients get a generated keypair and address on Create,
-// so the wizard offers them; Mixed authenticates per inbound and has no clients.
+// so the wizard offers them; legacy mixed must first opt into managed clients.
 func TestAddClientPickerOffersWireGuardAndAmneziaWG(t *testing.T) {
 	seedPickerInbounds(t, model.VLESS, model.WireGuard, model.AmneziaWG, model.Mixed)
 
@@ -60,5 +60,16 @@ func TestAddClientPickerFailsWhenNoInboundTakesClients(t *testing.T) {
 	keyboard, err := (&Tgbot{}).getInboundsAddClient()
 	if err == nil || err.Error() != "Failed to get inbounds." {
 		t.Fatalf("getInboundsAddClient = (%v, %v), want the getInboundsFailed error", keyboard, err)
+	}
+}
+
+func TestAddClientPickerOffersManagedMixed(t *testing.T) {
+	seedPickerInbounds(t, model.Mixed)
+	if err := database.GetDB().Model(&model.Inbound{}).Where("protocol = ?", model.Mixed).Update("settings", `{"auth":"password","clients":[]}`).Error; err != nil {
+		t.Fatal(err)
+	}
+	keyboard, err := (&Tgbot{}).getInboundsAddClient()
+	if err != nil || !slices.Equal(pickerLabels(keyboard), []string{"mixed - ✅"}) {
+		t.Fatalf("managed mixed picker: %v %v", keyboard, err)
 	}
 }

@@ -63,7 +63,8 @@ func (s *SubClashService) getClash(subId string, host string, legacy bool) (stri
 		if len(clients) == 0 {
 			continue
 		}
-		if inbound.ExcludeFromSub {
+		// FORK(mixed-clients): Mixed credentials are copied from the info page, never imported automatically.
+		if inbound.ExcludeFromSub || inbound.Protocol == model.Mixed {
 			if countHiddenClients(clients, seenEmails) {
 				hasEnabledClient = true
 			}

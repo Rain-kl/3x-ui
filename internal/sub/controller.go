@@ -441,6 +441,12 @@ func (a *SUBController) buildSubPageData(c *gin.Context) (PageData, bool) {
 	metadata := a.metadataForSubRequest(func() *SubService { return subReq }, subId, "")
 	page := subReq.BuildPageData(subId, hostHeader, traffic, lastOnline, subs, emails, subURL, subJsonURL, subClashURL, basePathStr, metadata.Title, metadata.SupportURL)
 	page.SubAnnounce = metadata.Announce
+	// FORK(mixed-clients): Keep credential lookup behind the subscriber's existing info-page access gates.
+	page.MixedNodes, err = subReq.manualMixedNodes(subId)
+	if err != nil {
+		writeSubError(c, err)
+		return PageData{}, false
+	}
 	return page, true
 }
 
@@ -696,6 +702,8 @@ func (a *SUBController) subPageContext(page PageData) map[string]any {
 		"datepicker":    datepicker,
 		"announce":      page.SubAnnounce,
 		"limitedNodes":  page.LimitedNodes,
+		// FORK(mixed-clients): Expose mixed only as a separate manual configuration section.
+		"mixedNodes": page.MixedNodes,
 	}
 }
 

@@ -8,7 +8,8 @@ import (
 
 func NativeRateLimitSupported(protocol string) bool {
 	switch protocol {
-	case "vless", "vmess", "trojan", "shadowsocks", "hysteria", "masque":
+	// FORK(mixed-clients): Managed mixed carries the same authenticated limits as other user protocols.
+	case "mixed", "vless", "vmess", "trojan", "shadowsocks", "hysteria", "masque":
 		return true
 	}
 	return false

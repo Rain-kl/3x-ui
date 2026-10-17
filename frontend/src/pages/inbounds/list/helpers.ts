@@ -83,6 +83,8 @@ export function readSettings(settings: unknown): {
 
 export function isInboundMultiUser(record: { protocol: string }): boolean {
   switch (record.protocol) {
+    // FORK(mixed-clients): Account membership belongs to the normal client manager.
+    case 'mixed':
     case 'vmess':
     case 'vless':
     case 'trojan':

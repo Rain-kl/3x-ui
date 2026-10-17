@@ -106,7 +106,9 @@
     "qrTitle": "スキャン。インポート。接続。",
     "qrHint": "クライアントアプリでスキャンしてください。このコードは他人に見せないでください。",
     "saveQr": "QR を保存",
-    "nodeQuota": "ノードトラフィッククォータ"
+    "nodeQuota": "ノードトラフィッククォータ",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "テーマ",
@@ -565,6 +567,7 @@
         "rewritePort": "ポート書き換え",
         "allowedNetwork": "許可されたネットワーク",
         "followRedirect": "リダイレクトに従う",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "アカウント",
         "allowTransparent": "透過を許可",
         "encryptionMethod": "暗号化方式",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Windows では Fail2ban を利用できないため、IP 制限を適用できません。",
       "limitIpDisabled": "このサーバーでは IP 制限機能が無効になっています。",
       "password": "パスワード",
-      "passwordDesc": "Trojan、Shadowsocks、TUIC、MASQUE のクライアントが使用します。VLESS、VMess、Hysteria、WireGuard では無視されます。",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "Trojan、Shadowsocks、TUIC、MASQUE / mixed のクライアントが使用します。VLESS、VMess、Hysteria、WireGuard では無視されます。",
       "subId": "サブスクリプション ID",
       "subIdDesc": "このクライアントの Telegram ボット招待コードとしても使われます。ボットに送信した人がこのクライアントに紐付けられます。長くランダムな値にしてください。短い、または推測しやすい ID は他人に取得されるおそれがあります。",
       "online": "オンライン",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "子ノードへ同期",
-        "syncHelp": "保存時に同期対象のルールを有効な子ノードへ配信し、ローカルルールより優先します。同期を無効にするか元のルールを削除するとコピーも削除されます。コピーは読み取り専用で、参照タグは各ノードに必要です。",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "親ノードが管理",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "ドラッグして並べ替え"
       },
       "geoBrowser": {

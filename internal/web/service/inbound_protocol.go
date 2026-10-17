@@ -7,6 +7,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/version"
+	"github.com/mhsanaei/3x-ui/v3/internal/xray"
 
 	"gorm.io/gorm"
 )
@@ -57,6 +58,8 @@ var nodeEligibleProtocols = map[model.Protocol]bool{
 	model.AmneziaWG:   true,
 	model.TUIC:        true,
 	model.MASQUE:      true,
+	// FORK(mixed-clients): Managed mixed inbounds use the normal child deployment pipeline.
+	model.Mixed: true,
 }
 
 // nodeProtocolFirstRelease is the panel release that introduced each protocol
@@ -73,6 +76,16 @@ var nodeProtocolFirstRelease = map[model.Protocol]string{
 func checkNodeCanHostProtocol(db *gorm.DB, nodeID int, protocol model.Protocol) error {
 	if !nodeEligibleProtocols[protocol] {
 		return common.NewErrorf("%s inbounds cannot be assigned to a node", protocol)
+	}
+	// FORK(mixed-clients): Reject deployment before an old child can ignore the new authentication fields.
+	if protocol == model.Mixed {
+		var target model.Node
+		if err := db.Select("id", "name", "xray_version").First(&target, nodeID).Error; err != nil {
+			return err
+		}
+		if !xray.SupportsMixedClientVersion(target.XrayVersion) {
+			return common.NewErrorf("node %q needs Rain-kl/Xray-core %s or newer for mixed clients (reported: %s)", target.Name, xray.MixedClientsMinimumVersion, target.XrayVersion)
+		}
 	}
 	firstRelease, ok := nodeProtocolFirstRelease[protocol]
 	if !ok {

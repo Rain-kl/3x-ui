@@ -115,6 +115,8 @@ export const RuleFormSchema = z.object({
   enabled: z.boolean(),
   // FORK(routing-rule-sync): Existing rules remain local unless synchronization is enabled.
   sync: z.boolean().default(false),
+  // FORK(routing-local-pre): Access restrictions have explicit precedence over destination routing.
+  localPre: z.boolean().default(false),
   comment: z.string(),
   domain: z.string(),
   ip: z.string(),

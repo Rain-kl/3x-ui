@@ -554,6 +554,13 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	// The closures bridge into XrayService (which owns the running xray
 	// process state) without forcing the runtime package to import service.
 	runtime.SetManager(runtime.NewManager(runtime.LocalDeps{
+		// FORK(mixed-clients): Node user RPCs require a core that understands managed mixed authentication.
+		XrayVersion: func() string {
+			if process := service.XrayProcess(); process != nil {
+				return process.GetXrayVersion()
+			}
+			return "Unknown"
+		},
 		APIPort:        func() int { return s.xrayService.GetXrayAPIPort() },
 		SetNeedRestart: func() { s.xrayService.SetToNeedRestart() },
 	}))

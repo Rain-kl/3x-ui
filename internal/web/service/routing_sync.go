@@ -89,6 +89,9 @@ func validateSyncRuleSet(rules []map[string]any) error {
 		return fmt.Errorf("routing synchronization exceeds 10000 rules")
 	}
 	for i, rule := range rules {
+		if rule["localPre"] == true {
+			return fmt.Errorf("routing sync rule %d: local pre-routing rules cannot be synchronized", i+1)
+		}
 		if rule == nil {
 			return fmt.Errorf("routing sync rule %d is null", i+1)
 		}
@@ -286,7 +289,7 @@ func (RoutingSyncService) Apply(state routingsync.Control) error {
 	for _, rule := range state.Rules {
 		copyRule := make(map[string]any, len(rule)+1)
 		for key, value := range rule {
-			if key != "sync" && key != routingSyncSourceKey {
+			if key != "sync" && key != "localPre" && key != routingSyncSourceKey {
 				copyRule[key] = value
 			}
 		}

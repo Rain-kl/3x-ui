@@ -2092,6 +2092,10 @@
             "description": "Last update timestamp",
             "format": "int64",
             "type": "integer"
+          },
+          "username": {
+            "description": "FORK(mixed-clients): External proxy usernames must not double as scoped billing identities.",
+            "type": "string"
           }
         },
         "required": [
@@ -2354,6 +2358,10 @@
             "format": "int64",
             "type": "integer"
           },
+          "username": {
+            "description": "FORK(mixed-clients): Preserve login names independently of client email and accounting.",
+            "type": "string"
+          },
           "uuid": {
             "type": "string"
           }
@@ -2392,6 +2400,7 @@
           "trafficReset",
           "trafficResetDay",
           "updatedAt",
+          "username",
           "uuid"
         ],
         "type": "object"

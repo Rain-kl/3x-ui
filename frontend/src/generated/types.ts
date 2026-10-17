@@ -496,6 +496,7 @@ export interface Client {
   trafficReset?: string;
   trafficResetDay?: number;
   updated_at?: number;
+  username?: string;
 }
 
 export interface ClientInbound {
@@ -563,6 +564,7 @@ export interface ClientRecord {
   trafficReset: string;
   trafficResetDay: number;
   updatedAt: number;
+  username: string;
   uuid: string;
 }
 

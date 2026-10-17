@@ -106,7 +106,9 @@
     "qrTitle": "اسکن. افزودن. اتصال.",
     "qrHint": "با اپلیکیشن کلاینت اسکن کنید. این کد را به کسی ندهید.",
     "saveQr": "ذخیره QR",
-    "nodeQuota": "سهمیه ترافیک گره"
+    "nodeQuota": "سهمیه ترافیک گره",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "تم",
@@ -544,6 +546,7 @@
         "rewritePort": "بازنویسی پورت",
         "allowedNetwork": "شبکه مجاز",
         "followRedirect": "دنبال‌کردن Redirect",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "حساب‌ها",
         "allowTransparent": "اجازه شفاف",
         "encryptionMethod": "روش رمزنگاری",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Fail2ban روی ویندوز در دسترس نیست، بنابراین محدودیت IP قابل اعمال نیست.",
       "limitIpDisabled": "قابلیت محدودیت IP روی این سرور غیرفعال است.",
       "password": "رمز عبور",
-      "passwordDesc": "توسط کلاینت‌های Trojan، Shadowsocks، TUIC و MASQUE استفاده می‌شود؛ برای VLESS، VMess، Hysteria و WireGuard نادیده گرفته می‌شود.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "توسط کلاینت‌های Trojan، Shadowsocks، TUIC و MASQUE / mixed استفاده می‌شود؛ برای VLESS، VMess، Hysteria و WireGuard نادیده گرفته می‌شود.",
       "subId": "شناسه اشتراک",
       "subIdDesc": "این شناسه، کد دعوت این کاربر در ربات تلگرام هم هست: هر کسی آن را به ربات بفرستد به این کاربر متصل می‌شود. آن را طولانی و تصادفی نگه دارید؛ شناسهٔ کوتاه یا قابل حدس ممکن است توسط شخص دیگری تصاحب شود.",
       "online": "آنلاین",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "همگام‌سازی با گره‌های فرزند",
-        "syncHelp": "هنگام ذخیره، قوانین انتخاب‌شده پیش از قوانین محلی به گره‌های فرزند فعال ارسال می‌شوند. خاموش کردن همگام‌سازی یا حذف قانون، نسخه‌های آن را حذف می‌کند. نسخه‌ها فقط خواندنی‌اند و برچسب‌ها باید در مقصد موجود باشند.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "مدیریت توسط گره والد",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "برای تغییر ترتیب بکشید"
       },
       "geoBrowser": {

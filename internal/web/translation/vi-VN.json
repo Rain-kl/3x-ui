@@ -106,7 +106,9 @@
     "qrTitle": "Quét. Nhập. Kết nối.",
     "qrHint": "Quét bằng ứng dụng khách. Không chia sẻ mã này cho người khác.",
     "saveQr": "Lưu QR",
-    "nodeQuota": "Hạn mức lưu lượng nút"
+    "nodeQuota": "Hạn mức lưu lượng nút",
+    "mixedManual": "mixed manual setup",
+    "mixedManualHelp": "mixed is excluded from automatic subscriptions. Copy an address or credentials to configure it manually."
   },
   "menu": {
     "theme": "Chủ đề",
@@ -565,6 +567,7 @@
         "rewritePort": "Viết lại cổng",
         "allowedNetwork": "Mạng cho phép",
         "followRedirect": "Theo redirect",
+        "mixedManagedHelp": "Manage accounts on the Clients page. Password mode supports existing client attachments; the username defaults to the client email. Zero clients denies access.",
         "accounts": "Tài khoản",
         "allowTransparent": "Cho phép trong suốt",
         "encryptionMethod": "Phương thức mã hóa",
@@ -893,7 +896,8 @@
       "limitIpFail2banWindows": "Fail2ban không khả dụng trên Windows nên không thể áp dụng giới hạn IP.",
       "limitIpDisabled": "Tính năng giới hạn IP đã bị tắt trên máy chủ này.",
       "password": "Mật khẩu",
-      "passwordDesc": "Được dùng bởi các client Trojan, Shadowsocks, TUIC và MASQUE; bị bỏ qua đối với VLESS, VMess, Hysteria và WireGuard.",
+      "mixedUsernameHelp": "HTTP/SOCKS5 login for mixed inbounds. Leave empty to use the client email; independent of the billing identity.",
+      "passwordDesc": "Được dùng bởi các client Trojan, Shadowsocks, TUIC và MASQUE / mixed; bị bỏ qua đối với VLESS, VMess, Hysteria và WireGuard.",
       "subId": "ID đăng ký",
       "subIdDesc": "Cũng được dùng làm mã mời bot Telegram của client này: ai gửi mã này cho bot sẽ được liên kết với client. Hãy để mã dài và ngẫu nhiên — ID ngắn hoặc dễ đoán có thể bị người khác chiếm.",
       "online": "Trực tuyến",
@@ -1970,8 +1974,11 @@
       },
       "routing": {
         "sync": "Đồng bộ tới nút con",
-        "syncHelp": "Khi lưu, quy tắc đã chọn được đồng bộ tới các nút con đang bật trước quy tắc cục bộ. Tắt đồng bộ hoặc xóa quy tắc nguồn sẽ thu hồi bản sao. Bản sao chỉ đọc; các thẻ phải tồn tại trên từng nút đích.",
+        "syncHelp": "Order: API → local pre-routing → parent-managed → ordinary local rules. Master saves broadcast shared rules; disabling sync or deleting a source rule withdraws its copies. Referenced tags must exist on each child.",
         "syncedFromParent": "Nút chính quản lý",
+        "ruleType": "Rule type",
+        "localPre": "Local pre-routing",
+        "localPreHelp": "Run before parent-managed rules, for source IP access restrictions. This rule stays local to this node.",
         "dragToReorder": "Kéo để sắp xếp lại"
       },
       "geoBrowser": {

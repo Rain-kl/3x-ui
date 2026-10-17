@@ -1,13 +1,10 @@
 import { Protocols } from '@/schemas/primitives';
 
-/*
- * Protocols whose inbounds can live on a sub-node (the "Deploy To" set).
- * Everything else (http, mixed, tunnel, tun) is panel-local only. The sidecar
- * protocols run on the node's own panel; the backend refuses a node too old.
- * Shared by the inbound form's Deploy To selector and the clone dialog's
- * target picker so the two surfaces can never drift apart.
- */
+// FORK(mixed-clients): Deployment and cloning share one allowlist, including managed mixed on compatible nodes.
+// Sidecar protocols run on the child panel; HTTP, tunnel and tun stay local.
 export const NODE_ELIGIBLE_PROTOCOLS: Readonly<Record<string, true>> = {
+  // FORK(mixed-clients): Mixed uses the same deploy, edit and clone pipeline as other managed inbounds.
+  [Protocols.MIXED]: true,
   [Protocols.VLESS]: true,
   [Protocols.VMESS]: true,
   [Protocols.TROJAN]: true,

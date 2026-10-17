@@ -34,6 +34,16 @@ interface SubPageData {
   uploadByte?: string | number;
   usedByte?: string | number;
   limitedNodes?: SubNodeLimit[];
+  // FORK(mixed-clients): Manual credentials stay separate from automatic subscription links.
+  mixedNodes?: {
+    name: string;
+    address: string;
+    port: number;
+    username: string;
+    password: string;
+    http: string;
+    socks5: string;
+  }[];
 }
 
 interface Window {

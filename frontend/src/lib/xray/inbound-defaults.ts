@@ -226,7 +226,8 @@ export function createDefaultHttpInboundSettings(): HttpInboundSettings {
 export function createDefaultMixedInboundSettings(): MixedInboundSettings {
   return {
     auth: 'password',
-    accounts: [{ user: RandomUtil.randomLowerAndNum(8), pass: RandomUtil.randomLowerAndNum(12) }],
+    // FORK(mixed-clients): New mixed users are created and attached in the common client manager.
+    clients: [],
     udp: false,
     ip: '127.0.0.1',
   };

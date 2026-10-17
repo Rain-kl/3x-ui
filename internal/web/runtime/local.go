@@ -17,6 +17,8 @@ import (
 )
 
 type LocalDeps struct {
+	// FORK(mixed-clients): Runtime changes need a capability gate before sending new user protobuf fields.
+	XrayVersion    func() string
 	APIPort        func() int
 	SetNeedRestart func()
 }
@@ -94,6 +96,10 @@ func (l *Local) AddInbound(_ context.Context, ib *model.Inbound) error {
 		if l.deps.SetNeedRestart != nil {
 			l.deps.SetNeedRestart()
 		}
+		return err
+	}
+	// FORK(mixed-clients): Refuse an old running core before it can drop authentication fields.
+	if err := l.checkMixedCore(ib); err != nil {
 		return err
 	}
 	body, err := json.MarshalIndent(ib.GenXrayInboundConfig(), "", "  ")
@@ -273,6 +279,10 @@ func (l *Local) updateTuicInbound(ctx context.Context, oldIb, newIb *model.Inbou
 }
 
 func (l *Local) AddUser(_ context.Context, ib *model.Inbound, userMap map[string]any) error {
+	// FORK(mixed-clients): Refuse user RPCs if the receiver cannot enforce managed authentication.
+	if err := l.checkMixedCore(ib); err != nil {
+		return err
+	}
 	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC {
 		return nil
 	}
@@ -290,6 +300,10 @@ func (l *Local) AddUser(_ context.Context, ib *model.Inbound, userMap map[string
 }
 
 func (l *Local) RemoveUser(_ context.Context, ib *model.Inbound, email string) error {
+	// FORK(mixed-clients): Permission revocation must not be silently ignored by an old core.
+	if err := l.checkMixedCore(ib); err != nil {
+		return err
+	}
 	if ib.Protocol == model.MTProto || ib.Protocol == model.AmneziaWG || ib.Protocol == model.TUIC {
 		return nil
 	}
@@ -304,6 +318,8 @@ func (l *Local) AddClient(ctx context.Context, ib *model.Inbound, client model.C
 	}
 	user := map[string]any{
 		"email": client.Email,
+		// FORK(mixed-clients): RPC accounts require the external login name.
+		"username": client.Username,
 		// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 		"downLimit":    client.DownLimit,
 		"id":           client.ID,
@@ -347,6 +363,8 @@ func (l *Local) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail stri
 	}
 	user := map[string]any{
 		"email": payload.Email,
+		// FORK(mixed-clients): Credential edits must preserve the external login name.
+		"username": payload.Username,
 		// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 		"downLimit":    payload.DownLimit,
 		"id":           payload.ID,

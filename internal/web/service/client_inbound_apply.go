@@ -443,7 +443,8 @@ func (s *ClientService) AddInboundClient(inboundSvc *InboundService, data *model
 			return false, common.NewError("client email is required")
 		}
 		switch oldInbound.Protocol {
-		case "trojan", "masque":
+		// FORK(mixed-clients): Managed mixed credentials use the normal password client flow.
+		case "trojan", "masque", "mixed":
 			if client.Password == "" {
 				return false, common.NewError("empty client ID")
 			}
@@ -610,6 +611,8 @@ func (s *ClientService) AddInboundClient(inboundSvc *InboundService, data *model
 				}
 				err1 := rt.AddUser(context.Background(), oldInbound, map[string]any{
 					"email": client.Email,
+					// FORK(mixed-clients): Live credential updates must retain the external login name.
+					"username": client.Username,
 					// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 					"downLimit":    client.DownLimit,
 					"id":           client.ID,
@@ -697,7 +700,8 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 	switch oldInbound.Protocol {
 	case "trojan", "masque":
 		newClientId = clients[0].Password
-	case "shadowsocks":
+	// FORK(mixed-clients): Mixed clients are identified by email, independent of login credentials.
+	case "shadowsocks", "mixed":
 		newClientId = clients[0].Email
 	case "hysteria":
 		newClientId = clients[0].Auth
@@ -1061,6 +1065,8 @@ func (s *ClientService) UpdateInboundClient(inboundSvc *InboundService, data *mo
 					}
 					err1 := rt.AddUser(context.Background(), oldInbound, map[string]any{
 						"email": clients[0].Email,
+						// FORK(mixed-clients): Login names must not fall back to email when changing passwords.
+						"username": clients[0].Username,
 						// FORK(native-rate-limits): Deliver authenticated core limits instead of IP-based shaping; see FEATURES.md.
 						"downLimit":    clients[0].DownLimit,
 						"id":           clients[0].ID,
