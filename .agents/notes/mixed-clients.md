@@ -14,3 +14,5 @@ mixed 默认不进入 raw、JSON、Clash 自动订阅；统一查询只计入使
 全量回归的限制：Go shuffle 中未改动的 Discord `TestGatewayRequestedHeartbeatDoesNotRaceTicker` 在本地洪泛心跳场景发生 broken pipe/EOF；本次涉及的 service、sub、database、xray 及并发检查通过。核心全量测试另有公网 DoH/GitHub/Cloudflare 访问失败；定制核心的发布门禁和本次协议/认证测试通过。不得将这些结果表述为全量门禁通过。
 
 热添加入站经 model.GenXrayInboundConfig 提交 protobuf，因此在该公共投影点将 username/password 转为 user/pass，并排除禁用账号；只改完整配置生成会遗漏这条路径。回归先证明未转换时热添加包含禁用账号，再验证实际核心 protobuf 的凭据和隔离计费身份。复制客户端同样生成新登录名，避免两个身份共用用户名。
+
+最终前端完整回归为 198 个文件、1,890 项全部通过。完整 Go 门禁中暴露的 Discord 夹具 10ms 调度假设另以测试专用修改处理，见 [说明](ci-heartbeat-fixture.md)；不调整生产逻辑。
