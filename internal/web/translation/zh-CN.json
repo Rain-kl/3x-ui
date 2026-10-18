@@ -2588,7 +2588,6 @@
       "tokenConfigured": "已保存 Token，留空保持不变。",
       "tokenMissing": "尚未配置 Token。",
       "tokenPlaceholder": "填写独立用户 Bot 的 Token",
-      "clearToken": "清除已保存 Token（需先关闭 Bot）",
       "publicURL": "公开订阅地址前缀",
       "publicURLHelp": "填写完整订阅路径，例如 https://example.com/sub/。用户使用此前缀下的订阅链接进行绑定。",
       "forwardAdmins": "将用户消息转发给管理员",
@@ -2621,7 +2620,8 @@
         "notification": "通知",
         "command": "指令响应",
         "relay": "消息转发",
-        "chat": "对话"
+        "chat": "对话",
+        "restricted": "未绑定，未转发"
       },
       "delivery": {
         "received": "已接收",
@@ -2630,7 +2630,9 @@
         "sent": "已发送",
         "failed": "发送失败",
         "cancelled": "已取消"
-      }
+      },
+      "allowAnonymousChat": "开启匿名聊天",
+      "anonymousChatHelp": "默认关闭。关闭后，仅已绑定客户端的用户可转发消息；未绑定用户仅响应指令，普通文字和附件不转发给管理员。"
     }
   },
   "tgbot": {

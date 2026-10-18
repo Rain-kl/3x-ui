@@ -112,7 +112,7 @@ export const TelegramSettingsFormSchema = UserTelegramSettingsSchema.extend({
       path: ['publicSubUrl'],
       message: 'pages.telegram.required',
     });
-  if (value.enabled && !value.token && (!value.hasToken || value.clearToken))
+  if (value.enabled && !value.token && !value.hasToken)
     context.addIssue({ code: 'custom', path: ['token'], message: 'pages.telegram.required' });
 });
 

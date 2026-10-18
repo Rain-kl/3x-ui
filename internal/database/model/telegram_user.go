@@ -1,16 +1,17 @@
 package model
 
 type TelegramUserConfig struct {
-	Id            int    `json:"id" gorm:"primaryKey"`
-	Enabled       bool   `json:"enabled"`
-	Token         string `json:"-"`
-	TokenHash     string `json:"-"`
-	PublicSubURL  string `json:"publicSubUrl"`
-	ForwardAdmins bool   `json:"forwardAdmins"`
-	LogDays       int    `json:"logDays"`
-	MessageDays   int    `json:"messageDays"`
-	PollOffset    int64  `json:"-"`
-	BotUsername   string `json:"botUsername"`
+	Id                 int    `json:"id" gorm:"primaryKey"`
+	Enabled            bool   `json:"enabled"`
+	Token              string `json:"-"`
+	TokenHash          string `json:"-"`
+	PublicSubURL       string `json:"publicSubUrl"`
+	ForwardAdmins      bool   `json:"forwardAdmins"`
+	AllowAnonymousChat bool   `json:"allowAnonymousChat"`
+	LogDays            int    `json:"logDays"`
+	MessageDays        int    `json:"messageDays"`
+	PollOffset         int64  `json:"-"`
+	BotUsername        string `json:"botUsername"`
 }
 
 type TelegramBinding struct {

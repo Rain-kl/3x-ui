@@ -2588,7 +2588,6 @@
       "tokenConfigured": "A token is saved. Leave blank to keep it.",
       "tokenMissing": "No token configured.",
       "tokenPlaceholder": "Paste the separate user Bot token",
-      "clearToken": "Clear saved token (disable the Bot first)",
       "publicURL": "Public subscription URL prefix",
       "publicURLHelp": "Include the complete subscription path, e.g. https://example.com/sub/. Users send links under this prefix to bind.",
       "forwardAdmins": "Forward user messages to administrators",
@@ -2621,7 +2620,8 @@
         "notification": "Notification",
         "command": "Command response",
         "relay": "Relay",
-        "chat": "Chat"
+        "chat": "Chat",
+        "restricted": "Unbound, not relayed"
       },
       "delivery": {
         "received": "Received",
@@ -2630,7 +2630,9 @@
         "sent": "Sent",
         "failed": "Failed",
         "cancelled": "Cancelled"
-      }
+      },
+      "allowAnonymousChat": "Allow anonymous chat",
+      "anonymousChatHelp": "Off by default. Only users with a valid client binding can relay chat. Unbound users can use commands, but their text and attachments are not forwarded to administrators."
     }
   },
   "tgbot": {

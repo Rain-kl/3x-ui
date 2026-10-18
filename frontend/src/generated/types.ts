@@ -1266,8 +1266,8 @@ export interface User {
 }
 
 export interface UserTelegramSettings {
+  allowAnonymousChat: boolean;
   botUsername: string;
-  clearToken: boolean;
   enabled: boolean;
   forwardAdmins: boolean;
   hasToken: boolean;

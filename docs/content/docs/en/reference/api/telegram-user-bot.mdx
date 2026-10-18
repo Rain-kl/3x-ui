@@ -88,12 +88,14 @@ _openapi:
           pending messages.
         id: permanently-clean-old-logs-or-message-history-preserving-bindings-and-pending-messages
     contents:
-      - content: A blank token preserves the existing secret. clearToken removes it;
+      - content: 'A blank token preserves the existing secret. A new token replaces it;
           enabled requires a token and the complete public subscription URL
           prefix. Bot tokens must differ. hasToken and botUsername are
-          read-only. Retention is 1–3650 days. Proxy/API settings and
-          administrator recipients are inherited from existing Telegram
-          configuration.
+          read-only. allowAnonymousChat defaults to false: unbound accounts
+          receive command responses but their chat is not relayed. Disabling it
+          also cancels queued unbound relays. Retention is 1–3650 days.
+          Proxy/API settings and administrator recipients are inherited from
+          existing Telegram configuration.'
         heading: save-user-bot-settings-and-reload-its-receiver
       - content: Maximum file size 20 MiB. Content is uploaded to Telegram, not retained
           as a panel binary. Photos, audio and video use the matching Telegram

@@ -5475,11 +5475,11 @@ export const SCHEMAS: Record<string, unknown> = {
   },
   "UserTelegramSettings": {
     "properties": {
+      "allowAnonymousChat": {
+        "type": "boolean"
+      },
       "botUsername": {
         "type": "string"
-      },
-      "clearToken": {
-        "type": "boolean"
       },
       "enabled": {
         "type": "boolean"
@@ -5504,8 +5504,8 @@ export const SCHEMAS: Record<string, unknown> = {
       }
     },
     "required": [
+      "allowAnonymousChat",
       "botUsername",
-      "clearToken",
       "enabled",
       "forwardAdmins",
       "hasToken",

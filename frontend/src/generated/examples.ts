@@ -1426,8 +1426,8 @@ export const EXAMPLES: Record<string, unknown> = {
     "username": ""
   },
   "UserTelegramSettings": {
+    "allowAnonymousChat": false,
     "botUsername": "",
-    "clearToken": false,
     "enabled": false,
     "forwardAdmins": false,
     "hasToken": false,

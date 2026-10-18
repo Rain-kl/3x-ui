@@ -215,7 +215,7 @@ export const sections: readonly Section[] = [
         path: '/panel/api/telegram/settings',
         summary: 'Save user Bot settings and reload its receiver.',
         description:
-          'A blank token preserves the existing secret. clearToken removes it; enabled requires a token and the complete public subscription URL prefix. Bot tokens must differ. hasToken and botUsername are read-only. Retention is 1–3650 days. Proxy/API settings and administrator recipients are inherited from existing Telegram configuration.',
+          'A blank token preserves the existing secret. A new token replaces it; enabled requires a token and the complete public subscription URL prefix. Bot tokens must differ. hasToken and botUsername are read-only. allowAnonymousChat defaults to false: unbound accounts receive command responses but their chat is not relayed. Disabling it also cancels queued unbound relays. Retention is 1–3650 days. Proxy/API settings and administrator recipients are inherited from existing Telegram configuration.',
         requestSchema: { $ref: '#/components/schemas/UserTelegramSettings' },
         responseSchema: 'UserTelegramSettings',
       },

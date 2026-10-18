@@ -5501,11 +5501,11 @@
       },
       "UserTelegramSettings": {
         "properties": {
+          "allowAnonymousChat": {
+            "type": "boolean"
+          },
           "botUsername": {
             "type": "string"
-          },
-          "clearToken": {
-            "type": "boolean"
           },
           "enabled": {
             "type": "boolean"
@@ -5530,8 +5530,8 @@
           }
         },
         "required": [
+          "allowAnonymousChat",
           "botUsername",
-          "clearToken",
           "enabled",
           "forwardAdmins",
           "hasToken",
@@ -5698,8 +5698,8 @@
                 "example": {
                   "success": true,
                   "obj": {
+                    "allowAnonymousChat": false,
                     "botUsername": "",
-                    "clearToken": false,
                     "enabled": false,
                     "forwardAdmins": false,
                     "hasToken": false,
@@ -5720,7 +5720,7 @@
         ],
         "summary": "Save user Bot settings and reload its receiver.",
         "operationId": "post_panel_api_telegram_settings",
-        "description": "A blank token preserves the existing secret. clearToken removes it; enabled requires a token and the complete public subscription URL prefix. Bot tokens must differ. hasToken and botUsername are read-only. Retention is 1–3650 days. Proxy/API settings and administrator recipients are inherited from existing Telegram configuration.",
+        "description": "A blank token preserves the existing secret. A new token replaces it; enabled requires a token and the complete public subscription URL prefix. Bot tokens must differ. hasToken and botUsername are read-only. allowAnonymousChat defaults to false: unbound accounts receive command responses but their chat is not relayed. Disabling it also cancels queued unbound relays. Retention is 1–3650 days. Proxy/API settings and administrator recipients are inherited from existing Telegram configuration.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5753,8 +5753,8 @@
                 "example": {
                   "success": true,
                   "obj": {
+                    "allowAnonymousChat": false,
                     "botUsername": "",
-                    "clearToken": false,
                     "enabled": false,
                     "forwardAdmins": false,
                     "hasToken": false,

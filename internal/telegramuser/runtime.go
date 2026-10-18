@@ -285,13 +285,13 @@ func (r *receiver) receive(incoming *telego.Message, updateID int, edited bool) 
 		delete(r.await, tgID)
 		waiting = false
 	}
-	_, boundErr := BoundClient(tgID)
+	client, boundErr := BoundClient(tgID)
 	isCommand := !edited && strings.HasPrefix(text, "/")
 	isProof := !edited && !isCommand && ((waiting && state.action == "bind") || strings.HasPrefix(text, "bind_") || (r.cfg.PublicSubURL != "" && strings.HasPrefix(text, r.cfg.PublicSubURL)) || (boundErr != nil && (strings.HasPrefix(text, "http://") || strings.HasPrefix(text, "https://"))))
 	row := messageFromTelegram(incoming)
 	row.TgID, row.TargetChatID, row.SourceBot, row.DeliveryBot, row.Direction, row.Status = tgID, tgID, "user", "user", "incoming", "received"
 	row.Role = "chat"
-	if client, err := BoundClient(tgID); err == nil {
+	if boundErr == nil {
 		row.ClientID = client.Id
 	}
 	key := fmt.Sprintf("user:%s:%d", codeHash(r.cfg.Token)[:12], updateID)
@@ -304,6 +304,10 @@ func (r *receiver) receive(incoming *telego.Message, updateID int, edited bool) 
 	}
 	if edited && (strings.HasPrefix(text, "bind_") || strings.HasPrefix(text, "/bind ") || strings.HasPrefix(text, "/start ") || (r.cfg.PublicSubURL != "" && strings.HasPrefix(text, r.cfg.PublicSubURL))) {
 		row.Text, row.Role = "[编辑的绑定凭据已隐藏]", "command"
+	}
+	chatAllowed := r.cfg.AllowAnonymousChat || boundErr == nil
+	if !isCommand && !isProof && !chatAllowed {
+		row.Role = "restricted"
 	}
 	if edited {
 		row.Text = "[编辑] " + row.Text
@@ -319,6 +323,10 @@ func (r *receiver) receive(incoming *telego.Message, updateID int, edited bool) 
 	}
 	if isCommand {
 		r.command(tgID, text)
+		return nil
+	}
+	if !chatAllowed {
+		r.log(tgID, row.Id, "message.chat.restricted", "anonymous chat disabled; valid client binding required")
 		return nil
 	}
 	if r.cfg.ForwardAdmins {
@@ -346,7 +354,7 @@ func (r *receiver) command(tgID int64, text string) {
 			r.bind(tgID, parts[1])
 			return
 		}
-		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码进行绑定；绑定后可查询订阅和剩余用量。非指令消息会发送给管理员。", false, nil)
+		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码进行绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", false, nil)
 	case "/bind":
 		if len(parts) > 1 {
 			r.bind(tgID, parts[1])
@@ -392,7 +400,7 @@ func (r *receiver) command(tgID int64, text string) {
 			r.reply(tgID, label+"？", false, map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": action}, {"text": "取消", "callback_data": "cancel"}}}})
 		}
 	default:
-		r.reply(tgID, "支持 /subscription、/reset、/usage、/bind、/unbind。直接发送文字或附件可联系管理员。", false, nil)
+		r.reply(tgID, "支持 /subscription、/reset、/usage、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", false, nil)
 	}
 }
 

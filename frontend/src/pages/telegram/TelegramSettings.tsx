@@ -53,15 +53,6 @@ function SettingsEditor({ value }: { value: Settings }) {
                 placeholder={t('pages.telegram.tokenPlaceholder')}
               />
             </FormField>
-            {value.hasToken && (
-              <FormField
-                name="clearToken"
-                valueProp="checked"
-                label={t('pages.telegram.clearToken')}
-              >
-                <Switch />
-              </FormField>
-            )}
             <FormField
               name="publicSubUrl"
               label={t('pages.telegram.publicURL')}
@@ -76,6 +67,14 @@ function SettingsEditor({ value }: { value: Settings }) {
               label={t('pages.telegram.forwardAdmins')}
               valueProp="checked"
               extra={t('pages.telegram.adminHelp')}
+            >
+              <Switch />
+            </FormField>
+            <FormField
+              name="allowAnonymousChat"
+              label={t('pages.telegram.allowAnonymousChat')}
+              valueProp="checked"
+              extra={t('pages.telegram.anonymousChatHelp')}
             >
               <Switch />
             </FormField>

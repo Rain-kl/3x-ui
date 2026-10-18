@@ -1356,8 +1356,8 @@ export const UserSchema = z.object({
 export type User = z.infer<typeof UserSchema>;
 
 export const UserTelegramSettingsSchema = z.object({
+  allowAnonymousChat: z.boolean(),
   botUsername: z.string(),
-  clearToken: z.boolean(),
   enabled: z.boolean(),
   forwardAdmins: z.boolean(),
   hasToken: z.boolean(),

@@ -15,15 +15,15 @@ import (
 )
 
 type UserTelegramSettings struct {
-	Enabled       bool   `json:"enabled"`
-	Token         string `json:"token,omitempty"`
-	HasToken      bool   `json:"hasToken"`
-	ClearToken    bool   `json:"clearToken"`
-	PublicSubURL  string `json:"publicSubUrl"`
-	ForwardAdmins bool   `json:"forwardAdmins"`
-	LogDays       int    `json:"logDays"`
-	MessageDays   int    `json:"messageDays"`
-	BotUsername   string `json:"botUsername"`
+	Enabled            bool   `json:"enabled"`
+	Token              string `json:"token,omitempty"`
+	HasToken           bool   `json:"hasToken"`
+	PublicSubURL       string `json:"publicSubUrl"`
+	ForwardAdmins      bool   `json:"forwardAdmins"`
+	AllowAnonymousChat bool   `json:"allowAnonymousChat"`
+	LogDays            int    `json:"logDays"`
+	MessageDays        int    `json:"messageDays"`
+	BotUsername        string `json:"botUsername"`
 }
 
 func Config() (model.TelegramUserConfig, error) {
@@ -37,7 +37,7 @@ func Config() (model.TelegramUserConfig, error) {
 
 func ReadSettings() (UserTelegramSettings, error) {
 	c, err := Config()
-	return UserTelegramSettings{Enabled: c.Enabled, HasToken: c.Token != "", PublicSubURL: c.PublicSubURL, ForwardAdmins: c.ForwardAdmins, LogDays: c.LogDays, MessageDays: c.MessageDays, BotUsername: c.BotUsername}, err
+	return UserTelegramSettings{Enabled: c.Enabled, HasToken: c.Token != "", PublicSubURL: c.PublicSubURL, ForwardAdmins: c.ForwardAdmins, AllowAnonymousChat: c.AllowAnonymousChat, LogDays: c.LogDays, MessageDays: c.MessageDays, BotUsername: c.BotUsername}, err
 }
 
 func SaveSettings(value UserTelegramSettings) error {
@@ -46,9 +46,6 @@ func SaveSettings(value UserTelegramSettings) error {
 		return fmt.Errorf("load user Telegram settings: %w", err)
 	}
 	token := strings.TrimSpace(value.Token)
-	if value.ClearToken {
-		c.Token = ""
-	}
 	if token != "" {
 		if !regexp.MustCompile(`^[0-9]+:[A-Za-z0-9_-]+$`).MatchString(token) {
 			return fmt.Errorf("invalid user Bot token format")
@@ -86,12 +83,13 @@ func SaveSettings(value UserTelegramSettings) error {
 		}
 	}
 	c.Enabled, c.PublicSubURL, c.ForwardAdmins = value.Enabled, base, value.ForwardAdmins
+	c.AllowAnonymousChat = value.AllowAnonymousChat
 	c.LogDays, c.MessageDays = value.LogDays, value.MessageDays
 	c.TokenHash = codeHash(c.Token)
 	if err := database.GetDB().Session(&gorm.Session{Logger: gormlogger.Discard}).Save(&c).Error; err != nil {
 		return fmt.Errorf("save user Telegram settings: %w", err)
 	}
-	if err := RecordLog(0, 0, "settings.updated", fmt.Sprintf("enabled=%t forwardAdmins=%t logDays=%d messageDays=%d", c.Enabled, c.ForwardAdmins, c.LogDays, c.MessageDays)); err != nil {
+	if err := RecordLog(0, 0, "settings.updated", fmt.Sprintf("enabled=%t forwardAdmins=%t allowAnonymousChat=%t logDays=%d messageDays=%d", c.Enabled, c.ForwardAdmins, c.AllowAnonymousChat, c.LogDays, c.MessageDays)); err != nil {
 		return fmt.Errorf("record user Bot settings update: %w", err)
 	}
 	return Default.Reload()

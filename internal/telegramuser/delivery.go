@@ -115,6 +115,21 @@ func (r *receiver) deliver() {
 				continue
 			}
 		}
+		if row.Role == "relay" {
+			allowed, err := r.canRelay(row.TgID)
+			if err != nil {
+				r.failure("message.relay.check.failed", err)
+				pause(r.ctx, time.Second)
+				continue
+			}
+			if !allowed {
+				if err := database.GetDB().Model(&row).Update("status", "cancelled").Error; err != nil {
+					r.failure("queue.cancel.failed", err)
+				}
+				r.log(row.TgID, row.Id, "message.relay.cancelled", "forwarding disabled or anonymous chat requires a valid binding")
+				continue
+			}
+		}
 		r.log(row.TgID, row.Id, "message.send.attempt", fmt.Sprintf("attempt=%d bot=%s", row.Attempts+1, row.DeliveryBot))
 		sent, err := r.send(&row)
 		r.complete(&row, sent, err, true)
@@ -279,4 +294,19 @@ func (m *Manager) Download(ctx context.Context, id int64) ([]byte, string, strin
 		r.log(row.TgID, row.Id, "attachment.download.failed", err.Error())
 	}
 	return data, contentType, row.FileName, err
+}
+
+func (r *receiver) canRelay(tgID int64) (bool, error) {
+	if !r.cfg.ForwardAdmins {
+		return false, nil
+	}
+	if r.cfg.AllowAnonymousChat {
+		return true, nil
+	}
+	var count int64
+	err := database.GetDB().Table("telegram_bindings AS b").Joins("JOIN clients c ON c.id = b.client_id").Where("b.tg_id = ?", tgID).Count(&count).Error
+	if err != nil {
+		return false, fmt.Errorf("check Telegram relay client binding: %w", err)
+	}
+	return count > 0, nil
 }
