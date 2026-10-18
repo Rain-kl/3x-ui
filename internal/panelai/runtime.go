@@ -13,6 +13,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/web/network"
 )
 
 type Manager struct {
@@ -54,11 +55,8 @@ func (m *Manager) Start(parent context.Context, hooks Hooks) error {
 	}
 	m.mcpURL = "http://" + listener.Addr().String() + "/mcp"
 	m.server = &http.Server{Handler: http.HandlerFunc(m.serveMCP), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 35 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16 << 10}
-	go func() {
-		if err := m.server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			logger.Errorf("panel audit MCP: %v", err)
-		}
-	}()
+	go network.ServeHTTP(m.server, listener, "panel audit MCP")
+
 	now := time.Now().UTC()
 	if err = database.GetDB().Model(&model.AIRun{}).Where("state = ?", "running").Updates(map[string]any{"state": "interrupted", "error": "Panel restarted before this run completed; retry explicitly.", "finished_at": now}).Error; err != nil {
 		m.Stop()
