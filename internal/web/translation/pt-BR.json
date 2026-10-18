@@ -129,7 +129,8 @@
     "openMenu": "Abrir menu",
     "pinSidebar": "Fixar barra lateral",
     "unpinSidebar": "Desafixar barra lateral",
-    "subFormats": "Sub Formats"
+    "subFormats": "Sub Formats",
+    "notifications": "Notifications"
   },
   "pages": {
     "audit": {
@@ -2522,6 +2523,36 @@
         "badTag": "Tag inválida",
         "badVlessRoute": "Insira um único número entre 0 e 65535"
       }
+    },
+    "notifications": {
+      "create": "New notification",
+      "edit": "Edit notification",
+      "title": "Title",
+      "body": "Notification text",
+      "order": "Order",
+      "audience": "Audience",
+      "selectClients": "Select clients",
+      "selectGroups": "Select user groups",
+      "chooseAudience": "Select at least one recipient.",
+      "toNodes": "Publish as nodes",
+      "nodeHelp": "Also show non-proxy notification entries before real nodes in imported subscriptions.",
+      "help": "Publish to selected clients or current group members. Notices appear on their subscription page; optional notification nodes appear after the client refreshes its subscription.",
+      "saveDraft": "Save draft",
+      "draft": "Draft",
+      "draftSaved": "Draft saved",
+      "publish": "Publish",
+      "published": "Published",
+      "withdraw": "Withdraw",
+      "status": "Status",
+      "actions": "Actions",
+      "deleteConfirm": "Delete this notification? It will disappear on the next subscription refresh.",
+      "clientCount": "{count} clients",
+      "loadMore": "Load more clients",
+      "required": "This field is required.",
+      "titleLimit": "Use at most 120 characters.",
+      "bodyLimit": "Use at most 4000 characters.",
+      "orderLimit": "Use a whole number between 0 and 1000000.",
+      "audienceLimit": "Select at most 2000 recipients."
     }
   },
   "tgbot": {

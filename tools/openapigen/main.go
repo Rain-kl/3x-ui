@@ -41,6 +41,7 @@ func run(root, outDir string) error {
 				"InboundFallback",
 				"Host",
 				"SubBalancer",
+				"SubscriptionNotification",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{
@@ -96,6 +97,8 @@ func run(root, outDir string) error {
 			Path: resolveRel(root, "internal/web/service"),
 			StructAllow: setOf(
 				"InboundOption",
+				"NotificationPage",
+				"NotificationClient",
 				"AuditAggregate",
 				"AuditSitesPage",
 				"AuditRetention",

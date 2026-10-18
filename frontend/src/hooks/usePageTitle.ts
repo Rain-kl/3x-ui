@@ -7,6 +7,8 @@ const TITLE_KEYS: Record<string, string> = {
   '/inbounds': 'menu.inbounds',
   '/clients': 'menu.clients',
   '/groups': 'menu.groups',
+  // FORK(subscription-notifications): Match the page title to its sidebar entry.
+  '/notifications': 'menu.notifications',
   '/nodes': 'menu.nodes',
   '/audit': 'menu.audit',
   '/hosts': 'menu.hosts',

@@ -1106,6 +1106,34 @@ export const EXAMPLES: Record<string, unknown> = {
     "xrayState": "running",
     "xrayVersion": "25.10.31"
   },
+  "NotificationClient": {
+    "email": "",
+    "group": "",
+    "id": 0
+  },
+  "NotificationPage": {
+    "items": [
+      {
+        "body": "Scheduled maintenance at 02:00.",
+        "clientIds": [
+          0
+        ],
+        "createdAt": 0,
+        "groups": [
+          ""
+        ],
+        "id": 0,
+        "publishToNodes": false,
+        "published": false,
+        "publishedAt": 0,
+        "sortIndex": 0,
+        "targetType": "clients",
+        "title": "Maintenance",
+        "updatedAt": 0
+      }
+    ],
+    "total": 0
+  },
   "OutboundTraffics": {
     "down": 0,
     "id": 0,
@@ -1225,6 +1253,24 @@ export const EXAMPLES: Record<string, unknown> = {
     "sortOrder": 1,
     "strategy": "random",
     "updatedAt": 1710000000000
+  },
+  "SubscriptionNotification": {
+    "body": "Scheduled maintenance at 02:00.",
+    "clientIds": [
+      0
+    ],
+    "createdAt": 0,
+    "groups": [
+      ""
+    ],
+    "id": 0,
+    "publishToNodes": false,
+    "published": false,
+    "publishedAt": 0,
+    "sortIndex": 0,
+    "targetType": "clients",
+    "title": "Maintenance",
+    "updatedAt": 0
   },
   "Traffic": {
     "Down": 2097152,

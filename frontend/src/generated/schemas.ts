@@ -4411,6 +4411,44 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "NotificationClient": {
+    "properties": {
+      "email": {
+        "type": "string"
+      },
+      "group": {
+        "type": "string"
+      },
+      "id": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "email",
+      "group",
+      "id"
+    ],
+    "type": "object"
+  },
+  "NotificationPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/SubscriptionNotification"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total"
+    ],
+    "type": "object"
+  },
   "OutboundTraffics": {
     "description": "OutboundTraffics tracks traffic statistics for Xray outbound connections.",
     "properties": {
@@ -4937,6 +4975,73 @@ export const SCHEMAS: Record<string, unknown> = {
       "remark",
       "sortOrder",
       "strategy",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "SubscriptionNotification": {
+    "properties": {
+      "body": {
+        "example": "Scheduled maintenance at 02:00.",
+        "type": "string"
+      },
+      "clientIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "groups": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "publishToNodes": {
+        "type": "boolean"
+      },
+      "published": {
+        "type": "boolean"
+      },
+      "publishedAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "sortIndex": {
+        "type": "integer"
+      },
+      "targetType": {
+        "example": "clients",
+        "type": "string"
+      },
+      "title": {
+        "example": "Maintenance",
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "body",
+      "clientIds",
+      "createdAt",
+      "groups",
+      "id",
+      "publishToNodes",
+      "published",
+      "publishedAt",
+      "sortIndex",
+      "targetType",
+      "title",
       "updatedAt"
     ],
     "type": "object"

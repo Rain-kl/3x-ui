@@ -10,6 +10,8 @@ interface SubNodeLimit {
 }
 
 interface SubPageData {
+  // FORK(subscription-notifications): Share the public notification payload with the subscription model.
+  notifications?: import('./pages/sub/subPageModel').SubPageData['notifications'];
   sId?: string;
   enabled?: boolean;
   download?: string;

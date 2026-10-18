@@ -104,12 +104,25 @@ func (s *SubClashService) getClash(subId string, host string, legacy bool) (stri
 		}
 	}
 
-	if len(proxies) == 0 && !hasInactiveExternal {
+	// FORK-BEGIN(subscription-notifications)
+	notices, err := subscriptionNotices(subId)
+	if err != nil {
+		return "", "", err
+	}
+	var noticeProxies []map[string]any
+	for _, notice := range notices {
+		if notice.PublishToNodes {
+			noticeProxies = append(noticeProxies, map[string]any{"name": noticeNodeName(notice), "type": "socks5", "server": "notification.invalid", "port": 1})
+		}
+	}
+	if len(proxies) == 0 && !hasInactiveExternal && len(noticeProxies) == 0 {
 		return "", "", nil
 	}
+	// FORK-END(subscription-notifications)
 	if legacy {
 		proxies = legacyClashProxies(proxies)
-		if len(proxies) == 0 {
+		// FORK(subscription-notifications): A notice-only subscription remains representable in legacy Clash.
+		if len(proxies) == 0 && len(noticeProxies) == 0 {
 			return "", "", errNoLegacyClashProxies
 		}
 	}
@@ -137,6 +150,8 @@ func (s *SubClashService) getClash(subId string, host string, legacy bool) (stri
 		}
 	}
 
+	// FORK(subscription-notifications): Prepend non-proxy notices after compatibility and account status filtering.
+	proxies = append(noticeProxies, proxies...)
 	if len(proxies) == 0 {
 		return "", header, nil
 	}
@@ -145,6 +160,10 @@ func (s *SubClashService) getClash(subId string, host string, legacy bool) (stri
 
 	proxyNames := make([]string, 0, len(proxies)+1)
 	for _, proxy := range proxies {
+		// FORK(subscription-notifications): Notification placeholders must never become the selected proxy.
+		if isNotificationProxy(proxy) {
+			continue
+		}
 		if isDummyProxy(proxy) && len(proxies) > 1 {
 			continue
 		}

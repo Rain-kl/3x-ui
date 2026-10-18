@@ -8,6 +8,8 @@ const IndexPage = lazy(() => import('@/pages/index/IndexPage'));
 const InboundsPage = lazy(() => import('@/pages/inbounds/InboundsPage'));
 const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
 const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
+// FORK(subscription-notifications): Operators manage targeted subscription announcements from the panel.
+const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
 const AuditPage = lazy(() => import('@/pages/audit/AuditPage'));
 const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
@@ -45,6 +47,8 @@ const routes: RouteObject[] = [
       { path: 'inbounds', element: withSuspense(<InboundsPage />) },
       { path: 'clients', element: withSuspense(<ClientsPage />) },
       { path: 'groups', element: withSuspense(<GroupsPage />) },
+      // FORK(subscription-notifications): Keep the editor inside the authenticated panel layout.
+      { path: 'notifications', element: withSuspense(<NotificationsPage />) },
       { path: 'nodes', element: withSuspense(<NodesPage />) },
       { path: 'audit', element: withSuspense(<AuditPage />) },
       { path: 'hosts', element: withSuspense(<HostsPage />) },

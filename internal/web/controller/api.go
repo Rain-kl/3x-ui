@@ -199,6 +199,8 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	clients := api.Group("/clients")
 	NewClientController(clients)
 	NewGroupController(clients)
+	// FORK(subscription-notifications): Notices share administrator authentication and CSRF protection.
+	newNotificationController(api.Group("/notifications"))
 
 	// Server API
 	server := api.Group("/server")

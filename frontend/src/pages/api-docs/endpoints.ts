@@ -197,6 +197,60 @@ const hwidStatusErrorResponses = {
 };
 
 export const sections: readonly Section[] = [
+  // FORK-BEGIN(subscription-notifications)
+  {
+    id: 'notifications',
+    title: 'Subscription notifications',
+    description:
+      'Administrator-managed notices targeted to clients or current group members. Published notices appear on the subscription page and optionally as non-proxy nodes in raw, JSON and Clash subscriptions.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/notifications',
+        summary: 'List notification events in display order.',
+        params: [
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 20 },
+        ],
+        responseSchema: 'NotificationPage',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/notifications/clients',
+        summary: 'Search client recipients without exposing credentials.',
+        params: [
+          { name: 'search', in: 'query', type: 'string', optional: true },
+          {
+            name: 'ids',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'Comma-separated client IDs for batch selection hydration (up to 2000).',
+          },
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 20 },
+        ],
+        responseSchema: 'NotificationClient',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/notifications/save',
+        summary: 'Create, edit, publish or withdraw a notification.',
+        description:
+          'Use id=0 to create. published=false saves a draft or withdraws an existing event. A published event requires at least one client ID or group. Titles are limited to 120 characters, bodies to 4000, audiences to 2000 entries, and sortIndex to 0–1000000.',
+        requestSchema: { $ref: '#/components/schemas/SubscriptionNotification' },
+        responseSchema: 'SubscriptionNotification',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/notifications/:id/delete',
+        summary: 'Permanently remove a notification.',
+        params: [{ name: 'id', in: 'path', type: 'integer' }],
+      },
+    ],
+  },
+  // FORK-END(subscription-notifications)
   {
     id: 'authentication',
     title: 'Authentication',

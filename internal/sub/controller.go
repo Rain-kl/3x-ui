@@ -441,6 +441,13 @@ func (a *SUBController) buildSubPageData(c *gin.Context) (PageData, bool) {
 	metadata := a.metadataForSubRequest(func() *SubService { return subReq }, subId, "")
 	page := subReq.BuildPageData(subId, hostHeader, traffic, lastOnline, subs, emails, subURL, subJsonURL, subClashURL, basePathStr, metadata.Title, metadata.SupportURL)
 	page.SubAnnounce = metadata.Announce
+	// FORK-BEGIN(subscription-notifications)
+	page.Notifications, err = subscriptionNotices(subId)
+	if err != nil {
+		writeSubError(c, err)
+		return PageData{}, false
+	}
+	// FORK-END(subscription-notifications)
 	// FORK(mixed-clients): Keep credential lookup behind the subscriber's existing info-page access gates.
 	page.MixedNodes, err = subReq.manualMixedNodes(subId)
 	if err != nil {
@@ -704,6 +711,8 @@ func (a *SUBController) subPageContext(page PageData) map[string]any {
 		"limitedNodes":  page.LimitedNodes,
 		// FORK(mixed-clients): Expose mixed only as a separate manual configuration section.
 		"mixedNodes": page.MixedNodes,
+		// FORK(subscription-notifications): Audience metadata remains administrator-only.
+		"notifications": page.Notifications,
 	}
 }
 

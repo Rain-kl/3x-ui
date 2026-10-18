@@ -217,9 +217,21 @@ func (s *SubJsonService) GetJson(subId string, host string, alwaysReturnArray bo
 		}
 	}
 
-	if len(configArray) == 0 && !hasInactiveExternal {
+	// FORK-BEGIN(subscription-notifications)
+	notices, err := subscriptionNotices(subId)
+	if err != nil {
+		return "", "", err
+	}
+	var noticeConfigs []json_util.RawMessage
+	for _, notice := range notices {
+		if notice.PublishToNodes {
+			noticeConfigs = append(noticeConfigs, s.noticeConfig(notice))
+		}
+	}
+	if len(configArray) == 0 && !hasInactiveExternal && len(noticeConfigs) == 0 {
 		return "", "", nil
 	}
+	// FORK-END(subscription-notifications)
 
 	emails := make([]string, 0, len(seenEmails))
 	for e := range seenEmails {
@@ -239,6 +251,8 @@ func (s *SubJsonService) GetJson(subId string, host string, alwaysReturnArray bo
 		}
 	}
 
+	// FORK(subscription-notifications): Notice order precedes ordinary configs and account status nodes.
+	configArray = append(noticeConfigs, configArray...)
 	if len(configArray) == 0 {
 		return "", header, nil
 	}

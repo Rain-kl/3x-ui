@@ -545,11 +545,25 @@ func (s *SubService) getSubs(subId string) ([]string, []string, int64, xray.Clie
 
 	if mode, remark := s.resolveInfoNodeRemark(subId, uniqueEmails, traffic, len(result) > 0); mode != infoNodeNone {
 		dummyLink := fmt.Sprintf("socks://127.0.0.1:1080#%s", strings.ReplaceAll(url.QueryEscape(remark), "+", "%20"))
+		// FORK-BEGIN(subscription-notifications)
 		if mode == infoNodeExpired || mode == infoNodeDepleted {
-			return []string{dummyLink}, emails, lastOnline, traffic, nil
+			result = []string{dummyLink}
+		} else {
+			result = append([]string{dummyLink}, result...)
 		}
-		result = append([]string{dummyLink}, result...)
+		// FORK-END(subscription-notifications)
 	}
+	// FORK-BEGIN(subscription-notifications)
+	if s.subscriptionBody {
+		notices, err := subscriptionNotices(subId)
+		if err != nil {
+			return nil, nil, 0, traffic, err
+		}
+		if links := noticeLinks(notices); len(links) > 0 {
+			result = append(links, result...)
+		}
+	}
+	// FORK-END(subscription-notifications)
 
 	return result, emails, lastOnline, traffic, nil
 }
@@ -3079,6 +3093,8 @@ type SubNodeLimit struct {
 
 // PageData is a view model for subpage.html and subscription metadata.
 type PageData struct {
+	// FORK(subscription-notifications): Only public content for this subscription enters the view model.
+	Notifications []SubscriptionNotice
 	// FORK(mixed-clients): Manual credentials never enter the automatic subscription result.
 	MixedNodes    []SubMixedNode
 	Host          string

@@ -1004,6 +1004,17 @@ export interface NodeView {
   xrayVersion: string;
 }
 
+export interface NotificationClient {
+  email: string;
+  group: string;
+  id: number;
+}
+
+export interface NotificationPage {
+  items: SubscriptionNotification[];
+  total: number;
+}
+
 export interface OutboundTraffics {
   down: number;
   id: number;
@@ -1124,6 +1135,21 @@ export interface SubBalancer {
   remark: string;
   sortOrder: number;
   strategy: string;
+  updatedAt: number;
+}
+
+export interface SubscriptionNotification {
+  body: string;
+  clientIds: number[];
+  createdAt: number;
+  groups: string[];
+  id: number;
+  publishToNodes: boolean;
+  published: boolean;
+  publishedAt: number;
+  sortIndex: number;
+  targetType: string;
+  title: string;
   updatedAt: number;
 }
 

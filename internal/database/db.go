@@ -79,6 +79,8 @@ func allModels() []any {
 		&model.ClientHwid{},
 		&model.ClientExternalLink{},
 		&model.ClientGroup{},
+		// FORK(subscription-notifications): Persist targeted notices independently of proxy configuration.
+		&model.SubscriptionNotification{},
 		&model.InboundFallback{},
 		&model.Host{},
 		&model.NodeClientTraffic{},

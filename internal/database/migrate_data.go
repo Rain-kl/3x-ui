@@ -51,6 +51,8 @@ func migrationModels() []any {
 		&model.ClientHwid{},
 		&model.ClientExternalLink{},
 		&model.ClientGroup{},
+		// FORK(subscription-notifications): Preserve notices when moving between database engines.
+		&model.SubscriptionNotification{},
 		&model.InboundFallback{},
 		&model.Host{},
 		&model.NodeClientTraffic{},

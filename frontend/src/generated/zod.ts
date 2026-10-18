@@ -1070,6 +1070,19 @@ export const NodeViewSchema = z.object({
 });
 export type NodeView = z.infer<typeof NodeViewSchema>;
 
+export const NotificationClientSchema = z.object({
+  email: z.string(),
+  group: z.string(),
+  id: z.number().int(),
+});
+export type NotificationClient = z.infer<typeof NotificationClientSchema>;
+
+export const NotificationPageSchema = z.object({
+  items: z.array(z.lazy(() => SubscriptionNotificationSchema)),
+  total: z.number().int(),
+});
+export type NotificationPage = z.infer<typeof NotificationPageSchema>;
+
 export const OutboundTrafficsSchema = z.object({
   down: z.number().int(),
   id: z.number().int(),
@@ -1200,6 +1213,22 @@ export const SubBalancerSchema = z.object({
   updatedAt: z.number().int(),
 });
 export type SubBalancer = z.infer<typeof SubBalancerSchema>;
+
+export const SubscriptionNotificationSchema = z.object({
+  body: z.string(),
+  clientIds: z.array(z.number().int()),
+  createdAt: z.number().int(),
+  groups: z.array(z.string()),
+  id: z.number().int(),
+  publishToNodes: z.boolean(),
+  published: z.boolean(),
+  publishedAt: z.number().int(),
+  sortIndex: z.number().int(),
+  targetType: z.string(),
+  title: z.string(),
+  updatedAt: z.number().int(),
+});
+export type SubscriptionNotification = z.infer<typeof SubscriptionNotificationSchema>;
 
 export const TrafficSchema = z.object({
   Down: z.number().int(),

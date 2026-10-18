@@ -64,6 +64,8 @@ type IconName =
   | 'inbound'
   | 'team'
   | 'groups'
+  // FORK(subscription-notifications): Notices need a first-class sidebar entry.
+  | 'notifications'
   | 'setting'
   | 'tool'
   | 'cluster'
@@ -79,6 +81,8 @@ const iconByName: Record<IconName, ComponentType> = {
   inbound: ImportOutlined,
   team: TeamOutlined,
   groups: TagsOutlined,
+  // FORK(subscription-notifications): Reuse the existing message icon for notices.
+  notifications: MessageOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
@@ -228,6 +232,8 @@ export default function AppSidebar() {
       { key: '/inbounds', icon: 'inbound', title: t('menu.inbounds') },
       { key: '/clients', icon: 'team', title: t('menu.clients') },
       { key: '/groups', icon: 'groups', title: t('menu.groups') },
+      // FORK(subscription-notifications): Expose the announcement publishing workflow to administrators.
+      { key: '/notifications', icon: 'notifications', title: t('menu.notifications') },
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
       { key: '/audit', icon: 'audit', title: t('menu.audit') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
