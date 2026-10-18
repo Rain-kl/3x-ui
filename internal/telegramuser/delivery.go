@@ -27,7 +27,7 @@ func (r *receiver) forward(original *model.TelegramMessage) error {
 		copy.Id, copy.DedupKey, copy.CreatedAt, copy.UpdatedAt, copy.ExternalID = 0, nil, 0, 0, 0
 		copy.Direction, copy.Role, copy.DeliveryBot, copy.Status = "outgoing", "relay", "admin", "pending"
 		copy.TargetChatID, copy.ReplyID = chatID, original.Id
-		copy.Text = fmt.Sprintf("[%s]（回复此消息可联系用户）\n%s", name, original.Text)
+		copy.Text = fmt.Sprintf("[%s]\n%s", name, original.Text)
 		if err := database.GetDB().Create(&copy).Error; err != nil {
 			return fmt.Errorf("queue administrator relay: %w", err)
 		}
