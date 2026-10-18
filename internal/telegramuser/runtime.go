@@ -329,10 +329,6 @@ func (r *receiver) receive(incoming *telego.Message, updateID int, edited bool) 
 	return nil
 }
 
-func menu() map[string]any {
-	return map[string]any{"keyboard": [][]string{{"/subscription", "/usage"}, {"/reset", "/bind", "/unbind"}}, "resize_keyboard": true}
-}
-
 func (r *receiver) command(tgID int64, text string) {
 	delete(r.await, tgID)
 	parts := strings.Fields(text)
@@ -350,7 +346,7 @@ func (r *receiver) command(tgID int64, text string) {
 			r.bind(tgID, parts[1])
 			return
 		}
-		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码进行绑定；绑定后可查询订阅和剩余用量。非指令消息会发送给管理员。", false, menu())
+		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码进行绑定；绑定后可查询订阅和剩余用量。非指令消息会发送给管理员。", false, nil)
 	case "/bind":
 		if len(parts) > 1 {
 			r.bind(tgID, parts[1])
@@ -396,7 +392,7 @@ func (r *receiver) command(tgID int64, text string) {
 			r.reply(tgID, label+"？", false, map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": action}, {"text": "取消", "callback_data": "cancel"}}}})
 		}
 	default:
-		r.reply(tgID, "支持 /subscription、/reset、/usage、/bind、/unbind。直接发送文字或附件可联系管理员。", false, menu())
+		r.reply(tgID, "支持 /subscription、/reset、/usage、/bind、/unbind。直接发送文字或附件可联系管理员。", false, nil)
 	}
 }
 
@@ -408,7 +404,7 @@ func (r *receiver) bind(tgID int64, proof string) {
 		return
 	}
 	r.log(tgID, 0, "binding.created", fmt.Sprintf("client=%d", binding.ClientID))
-	r.reply(tgID, "绑定成功。可使用下方菜单查询订阅和用量。", false, menu())
+	r.reply(tgID, "绑定成功。输入 / 选择指令，查询订阅和用量。", false, nil)
 }
 
 func (r *receiver) confirm(tgID int64, action string) {
@@ -459,7 +455,7 @@ func (r *receiver) reply(tgID int64, text string, secret bool, keyboard map[stri
 		r.failure("message.persist.failed", err)
 		return
 	}
-	params := map[string]any{"chat_id": tgID, "text": text}
+	params := map[string]any{"chat_id": tgID, "text": text, "reply_markup": map[string]any{"remove_keyboard": true}}
 	if keyboard != nil {
 		params["reply_markup"] = keyboard
 	}
