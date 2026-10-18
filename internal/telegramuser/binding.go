@@ -131,7 +131,8 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 		if err := tx.Create(&binding).Error; err != nil {
 			return fmt.Errorf("claim Telegram binding: %w", err)
 		}
-		return enqueueBindingNotifications(tx, binding, client)
+		_, err := enqueueClientNotifications(tx, binding, client)
+		return err
 	})
 	return binding, err
 }

@@ -219,7 +219,7 @@ func (r *receiver) poll() {
 			r.failure("bot.state.failed", err)
 		}
 	}
-	commands := []map[string]string{{"command": "subscription", "description": "获取订阅链接"}, {"command": "reset", "description": "重置订阅链接"}, {"command": "usage", "description": "查询剩余流量和天数"}, {"command": "bind", "description": "绑定客户端"}, {"command": "unbind", "description": "解绑客户端"}}
+	commands := []map[string]string{{"command": "notifications", "description": "获取全部通知"}, {"command": "subscription", "description": "获取订阅链接"}, {"command": "reset", "description": "重置订阅链接"}, {"command": "usage", "description": "查询剩余流量和天数"}, {"command": "bind", "description": "绑定客户端"}, {"command": "unbind", "description": "解绑客户端"}}
 	if err := r.user.call(r.ctx, "setMyCommands", map[string]any{"commands": commands}, nil); err != nil {
 		r.failure("bot.commands.failed", err)
 	}
@@ -370,6 +370,20 @@ func (r *receiver) command(tgID int64, text string) {
 		}
 		r.await[tgID] = awaiting{action: "unbind", clientID: binding.ClientID, until: time.Now().Add(3 * time.Minute)}
 		r.reply(tgID, "确认解除绑定？", false, map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": "unbind"}, {"text": "取消", "callback_data": "cancel"}}}})
+	case "/notifications":
+		if _, err := BoundClient(tgID); err != nil {
+			r.reply(tgID, err.Error(), false, nil)
+			return
+		}
+		count, err := QueueNotifications(tgID)
+		if err != nil {
+			r.reply(tgID, "获取通知失败，请稍后重试或联系管理员。", false, nil)
+			r.log(tgID, 0, "notification.request.failed", err.Error())
+		} else if count == 0 {
+			r.reply(tgID, "当前没有可接收的已发布通知。", false, nil)
+		} else {
+			r.reply(tgID, fmt.Sprintf("已将 %d 条通知加入发送队列，请稍候。", count), false, nil)
+		}
 	case "/subscription", "/usage", "/reset":
 		client, err := BoundClient(tgID)
 		if err != nil {
@@ -400,7 +414,7 @@ func (r *receiver) command(tgID int64, text string) {
 			r.reply(tgID, label+"？", false, map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": action}, {"text": "取消", "callback_data": "cancel"}}}})
 		}
 	default:
-		r.reply(tgID, "支持 /subscription、/reset、/usage、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", false, nil)
+		r.reply(tgID, "支持 /subscription、/reset、/usage、/notifications、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", false, nil)
 	}
 }
 

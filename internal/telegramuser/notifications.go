@@ -83,10 +83,10 @@ func notificationMessages(notice model.SubscriptionNotification, recipients []mo
 	return queue
 }
 
-func enqueueBindingNotifications(tx *gorm.DB, binding model.TelegramBinding, client model.ClientRecord) error {
+func enqueueClientNotifications(tx *gorm.DB, binding model.TelegramBinding, client model.ClientRecord) (int, error) {
 	var notices []model.SubscriptionNotification
 	if err := tx.Where("published = ?", true).Order("sort_index, id").Find(&notices).Error; err != nil {
-		return fmt.Errorf("load published notifications for new Telegram binding: %w", err)
+		return 0, fmt.Errorf("load published notifications for Telegram client: %w", err)
 	}
 	var queue []model.TelegramMessage
 	matched := 0
@@ -98,10 +98,31 @@ func enqueueBindingNotifications(tx *gorm.DB, binding model.TelegramBinding, cli
 		}
 	}
 	if len(queue) == 0 {
-		return nil
+		return 0, nil
 	}
 	if err := tx.CreateInBatches(&queue, 100).Error; err != nil {
-		return fmt.Errorf("queue historical notifications for new Telegram binding: %w", err)
+		return 0, fmt.Errorf("queue published notifications for Telegram client: %w", err)
 	}
-	return tx.Create(&model.TelegramLog{TgID: binding.TgID, Event: "notification.binding.queued", Detail: fmt.Sprintf("client=%d notices=%d messages=%d", client.Id, matched, len(queue))}).Error
+	err := tx.Create(&model.TelegramLog{TgID: binding.TgID, Event: "notification.history.queued", Detail: fmt.Sprintf("client=%d notices=%d messages=%d", client.Id, matched, len(queue))}).Error
+	return matched, err
+}
+
+func QueueNotifications(tgID int64) (int, error) {
+	count := 0
+	err := database.GetDB().Transaction(func(tx *gorm.DB) error {
+		var binding model.TelegramBinding
+		if err := tx.Where("tg_id = ?", tgID).First(&binding).Error; errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("请先使用 /bind 绑定客户端")
+		} else if err != nil {
+			return fmt.Errorf("load binding for requested Telegram notifications: %w", err)
+		}
+		var client model.ClientRecord
+		if err := tx.Select("id", "group_name").First(&client, binding.ClientID).Error; err != nil {
+			return fmt.Errorf("load client for requested Telegram notifications: %w", err)
+		}
+		var err error
+		count, err = enqueueClientNotifications(tx, binding, client)
+		return err
+	})
+	return count, err
 }
