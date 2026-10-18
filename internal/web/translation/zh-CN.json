@@ -2553,7 +2553,11 @@
       "titleLimit": "最多 120 个字符。",
       "bodyLimit": "最多 4000 个字符。",
       "orderLimit": "请输入 0 到 1000000 的整数。",
-      "audienceLimit": "最多选择 2000 个接收对象。"
+      "audienceLimit": "最多选择 2000 个接收对象。",
+      "selectAllClients": "全选客户端",
+      "selectAllGroups": "全选用户组",
+      "clearSelection": "清空选择",
+      "audienceHelp": "客户端和用户组可同时选择，命中任一项即可接收，同一用户只发送一次。全选客户端包含所有页面，不受搜索词影响。"
     },
     "telegram": {
       "messages": "消息",

@@ -67,9 +67,14 @@ export default function NotificationsPage() {
     {
       title: t('pages.notifications.audience'),
       render: (_, row) =>
-        row.targetType === 'groups'
-          ? row.groups.join(', ')
-          : t('pages.notifications.clientCount', { count: row.clientIds.length }),
+        [
+          row.targetType !== 'groups' && row.clientIds.length > 0
+            ? t('pages.notifications.clientCount', { count: row.clientIds.length })
+            : '',
+          row.targetType !== 'clients' ? row.groups.join(', ') : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
     },
     {
       title: t('pages.notifications.status'),

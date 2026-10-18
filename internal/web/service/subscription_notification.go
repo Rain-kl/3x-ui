@@ -101,8 +101,12 @@ func (NotificationService) Save(input model.SubscriptionNotification) (model.Sub
 		if input.Published && len(input.Groups) == 0 {
 			return input, fmt.Errorf("select at least one notification group")
 		}
+	case "both":
+		if input.Published && len(input.ClientIDs) == 0 && len(input.Groups) == 0 {
+			return input, fmt.Errorf("select at least one notification client or group")
+		}
 	default:
-		return input, fmt.Errorf("notification targetType must be clients or groups")
+		return input, fmt.Errorf("notification targetType must be clients, groups or both")
 	}
 	err := database.GetDB().Transaction(func(tx *gorm.DB) error {
 		if input.Published && len(input.ClientIDs) > 0 {

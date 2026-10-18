@@ -1,5 +1,7 @@
 package model
 
+import "slices"
+
 type SubscriptionNotification struct {
 	Id             int      `json:"id" gorm:"primaryKey;autoIncrement"`
 	Title          string   `json:"title" example:"Maintenance"`
@@ -13,4 +15,9 @@ type SubscriptionNotification struct {
 	PublishedAt    int64    `json:"publishedAt"`
 	CreatedAt      int64    `json:"createdAt" gorm:"autoCreateTime:milli"`
 	UpdatedAt      int64    `json:"updatedAt" gorm:"autoUpdateTime:milli"`
+}
+
+func (n SubscriptionNotification) TargetsClient(clientID int, group string) bool {
+	return ((n.TargetType == "clients" || n.TargetType == "both") && slices.Contains(n.ClientIDs, clientID)) ||
+		((n.TargetType == "groups" || n.TargetType == "both") && group != "" && slices.Contains(n.Groups, group))
 }

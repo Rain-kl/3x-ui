@@ -371,7 +371,7 @@ export const sections: readonly Section[] = [
     id: 'notifications',
     title: 'Subscription notifications',
     description:
-      'Administrator-managed notices targeted to clients or current group members. Published notices appear on the subscription page and optionally as non-proxy nodes in raw, JSON and Clash subscriptions.',
+      'Administrator-managed notices targeted to the union of selected clients and current group members. targetType=both accepts both lists; legacy clients/groups retain their original behavior. Published notices appear on the subscription page and optionally as non-proxy nodes in raw, JSON and Clash subscriptions.',
     endpoints: [
       {
         method: 'GET',

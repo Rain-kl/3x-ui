@@ -2553,7 +2553,11 @@
       "titleLimit": "Use at most 120 characters.",
       "bodyLimit": "Use at most 4000 characters.",
       "orderLimit": "Use a whole number between 0 and 1000000.",
-      "audienceLimit": "Select at most 2000 recipients."
+      "audienceLimit": "Select at most 2000 recipients.",
+      "selectAllClients": "Select all clients",
+      "selectAllGroups": "Select all groups",
+      "clearSelection": "Clear selection",
+      "audienceHelp": "Select clients and groups together. Matching either receives the notice once. Select all clients includes every page, regardless of search."
     },
     "telegram": {
       "messages": "Messages",

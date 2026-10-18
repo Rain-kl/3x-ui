@@ -10,7 +10,6 @@ import {
   Input,
   InputNumber,
   Modal,
-  Radio,
   Row,
   Select,
   Space,
@@ -31,10 +30,17 @@ interface Props {
 export default function NotificationEditor({ value, saving, onClose, onSave }: Props) {
   const { t } = useTranslation();
   const methods = useZodForm(NotificationFormSchema, {
-    defaultValues: { ...value, targetType: value.targetType === 'groups' ? 'groups' : 'clients' },
+    defaultValues: {
+      ...value,
+      targetType: 'both',
+      clientIds: value.targetType === 'groups' ? [] : value.clientIds,
+      groups: value.targetType === 'clients' ? [] : value.groups,
+    },
   });
-  const targetType = useWatch({ control: methods.control, name: 'targetType' });
   const ids = useWatch({ control: methods.control, name: 'clientIds' });
+  const [selectingAll, setSelectingAll] = useState(false);
+  const [bulkError, setBulkError] = useState<Error | null>(null);
+  const [allClients, setAllClients] = useState<Awaited<ReturnType<typeof notificationClients>>>([]);
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   useEffect(() => {
@@ -46,12 +52,11 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
     initialPageParam: 1,
     queryFn: ({ pageParam }) => notificationClients(debounced, pageParam),
     getNextPageParam: (last, pages) => (last.length === 50 ? pages.length + 1 : undefined),
-    enabled: targetType === 'clients',
   });
   const selected = useQuery({
     queryKey: ['notification-selected-clients', ids],
     queryFn: () => notificationClients('', 1, ids),
-    enabled: ids.length > 0 && targetType === 'clients',
+    enabled: ids.length > 0,
   });
   const groups = useQuery({
     queryKey: ['notification-groups'],
@@ -60,47 +65,76 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
       if (!msg.success) throw new Error(msg.msg);
       return GroupSummaryListSchema.parse(msg.obj);
     },
-    enabled: targetType === 'groups',
   });
   const clientOptions = useMemo(() => {
     const rows = new Map((selected.data ?? []).map((row) => [row.id, row]));
+    for (const row of allClients) rows.set(row.id, row);
     for (const row of clients.data?.pages.flat() ?? []) rows.set(row.id, row);
     return [...rows.values()].map((row) => ({ value: row.id, label: row.email }));
-  }, [selected.data, clients.data]);
+  }, [selected.data, clients.data, allClients]);
 
+  const selectAllClients = async () => {
+    setSelectingAll(true);
+    setBulkError(null);
+    try {
+      const rows = new Map<number, Awaited<ReturnType<typeof notificationClients>>[number]>();
+      for (let page = 1; ; page++) {
+        const batch = await notificationClients('', page);
+        for (const row of batch) rows.set(row.id, row);
+        if (rows.size > 2000) throw new Error(t('pages.notifications.audienceLimit'));
+        if (batch.length < 50) break;
+      }
+      setAllClients([...rows.values()]);
+      methods.setValue('clientIds', [...rows.keys()], { shouldDirty: true, shouldValidate: true });
+    } catch (error) {
+      setBulkError(error instanceof Error ? error : new Error(t('somethingWentWrong')));
+    } finally {
+      setSelectingAll(false);
+    }
+  };
+  const selectAllGroups = () => {
+    const names = (groups.data ?? []).map((group) => group.name).filter(Boolean);
+    if (names.length > 2000) {
+      setBulkError(new Error(t('pages.notifications.audienceLimit')));
+      return;
+    }
+    setBulkError(null);
+    methods.setValue('groups', names, { shouldDirty: true, shouldValidate: true });
+  };
   const submit = (published: boolean) => {
     methods.setValue('published', published);
     void methods.handleSubmit(async (data) => {
-      if (
-        published &&
-        (data.targetType === 'clients' ? data.clientIds.length === 0 : data.groups.length === 0)
-      ) {
-        methods.setError(data.targetType === 'clients' ? 'clientIds' : 'groups', {
-          message: 'pages.notifications.chooseAudience',
-        });
+      if (published && data.clientIds.length === 0 && data.groups.length === 0) {
+        methods.setError('clientIds', { message: 'pages.notifications.chooseAudience' });
         return;
       }
       await onSave(data);
     })();
   };
-  const error = clients.error || selected.error || groups.error;
+  const error = bulkError || clients.error || selected.error || groups.error;
   return (
     <Modal
       open
       title={t(value.id ? 'pages.notifications.edit' : 'pages.notifications.create')}
       onCancel={onClose}
       width={840}
-      maskClosable={!saving}
-      closable={!saving}
+      maskClosable={!saving && !selectingAll}
+      closable={!saving && !selectingAll}
+      keyboard={!saving && !selectingAll}
       footer={
         <Space wrap>
-          <Button disabled={saving} onClick={onClose}>
+          <Button disabled={saving || selectingAll} onClick={onClose}>
             {t('cancel')}
           </Button>
-          <Button loading={saving} onClick={() => submit(false)}>
+          <Button loading={saving} disabled={selectingAll} onClick={() => submit(false)}>
             {t('pages.notifications.saveDraft')}
           </Button>
-          <Button type="primary" loading={saving} onClick={() => submit(true)}>
+          <Button
+            type="primary"
+            loading={saving}
+            disabled={selectingAll}
+            onClick={() => submit(true)}
+          >
             {t('pages.notifications.publish')}
           </Button>
         </Space>
@@ -126,52 +160,99 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
           </FormField>
           <Row gutter={16}>
             <Col xs={24} md={16}>
-              <FormField name="targetType" label={t('pages.notifications.audience')}>
-                <Radio.Group
-                  options={[
-                    { value: 'clients', label: t('menu.clients') },
-                    { value: 'groups', label: t('menu.groups') },
-                  ]}
+              <Alert
+                type="info"
+                title={t('pages.notifications.audienceHelp')}
+                style={{ marginBottom: 12 }}
+              />
+              <FormField
+                name="clientIds"
+                label={t('pages.notifications.selectClients')}
+                extra={
+                  <Space>
+                    <Button
+                      size="small"
+                      loading={selectingAll}
+                      disabled={saving}
+                      onClick={() => void selectAllClients()}
+                    >
+                      {t('pages.notifications.selectAllClients')}
+                    </Button>
+                    <Button
+                      size="small"
+                      disabled={saving || selectingAll}
+                      onClick={() =>
+                        methods.setValue('clientIds', [], {
+                          shouldDirty: true,
+                          shouldValidate: true,
+                        })
+                      }
+                    >
+                      {t('pages.notifications.clearSelection')}
+                    </Button>
+                  </Space>
+                }
+              >
+                <Select
+                  mode="multiple"
+                  maxTagCount="responsive"
+                  disabled={saving || selectingAll}
+                  showSearch={{ filterOption: false, onSearch: setSearch }}
+                  options={clientOptions}
+                  loading={clients.isFetching || selected.isFetching}
+                  popupRender={(menu) => (
+                    <>
+                      {menu}
+                      {clients.hasNextPage && (
+                        <Button
+                          block
+                          type="text"
+                          loading={clients.isFetchingNextPage}
+                          onClick={() => void clients.fetchNextPage()}
+                        >
+                          {t('pages.notifications.loadMore')}
+                        </Button>
+                      )}
+                    </>
+                  )}
                 />
               </FormField>
-              {targetType === 'clients' ? (
-                <FormField name="clientIds" label={t('pages.notifications.selectClients')}>
-                  <Select
-                    mode="multiple"
-                    maxTagCount="responsive"
-                    showSearch={{ filterOption: false, onSearch: setSearch }}
-                    options={clientOptions}
-                    loading={clients.isFetching || selected.isFetching}
-                    popupRender={(menu) => (
-                      <>
-                        {menu}
-                        {clients.hasNextPage && (
-                          <Button
-                            block
-                            type="text"
-                            loading={clients.isFetchingNextPage}
-                            onClick={() => void clients.fetchNextPage()}
-                          >
-                            {t('pages.notifications.loadMore')}
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  />
-                </FormField>
-              ) : (
-                <FormField name="groups" label={t('pages.notifications.selectGroups')}>
-                  <Select
-                    mode="multiple"
-                    maxTagCount="responsive"
-                    options={(groups.data ?? []).map((group) => ({
-                      value: group.name,
-                      label: group.name,
-                    }))}
-                    loading={groups.isFetching}
-                  />
-                </FormField>
-              )}
+              <FormField
+                name="groups"
+                label={t('pages.notifications.selectGroups')}
+                extra={
+                  <Space>
+                    <Button
+                      size="small"
+                      disabled={saving || groups.isFetching || !!groups.error}
+                      onClick={selectAllGroups}
+                    >
+                      {t('pages.notifications.selectAllGroups')}
+                    </Button>
+                    <Button
+                      size="small"
+                      disabled={saving}
+                      onClick={() =>
+                        methods.setValue('groups', [], { shouldDirty: true, shouldValidate: true })
+                      }
+                    >
+                      {t('pages.notifications.clearSelection')}
+                    </Button>
+                  </Space>
+                }
+              >
+                <Select
+                  mode="multiple"
+                  maxTagCount="responsive"
+                  disabled={saving}
+                  showSearch={{ optionFilterProp: 'label' }}
+                  options={(groups.data ?? []).map((group) => ({
+                    value: group.name,
+                    label: group.name,
+                  }))}
+                  loading={groups.isFetching}
+                />
+              </FormField>
             </Col>
             <Col xs={24} md={8}>
               <FormField

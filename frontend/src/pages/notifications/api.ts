@@ -55,7 +55,7 @@ export const NotificationFormSchema = SubscriptionNotificationSchema.extend({
     .trim()
     .min(1, 'pages.notifications.required')
     .max(4000, 'pages.notifications.bodyLimit'),
-  targetType: z.enum(['clients', 'groups']),
+  targetType: z.enum(['clients', 'groups', 'both']),
   sortIndex: z
     .number()
     .int()
@@ -69,7 +69,7 @@ export const emptyNotification = {
   id: 0,
   title: '',
   body: '',
-  targetType: 'clients',
+  targetType: 'both',
   clientIds: [],
   groups: [],
   publishToNodes: false,

@@ -50,14 +50,15 @@ func subscriptionNotices(subID string) ([]SubscriptionNotice, error) {
 	}
 	for _, notice := range notices {
 		matched := false
-		if notice.TargetType == "clients" {
+		if notice.TargetType == "clients" || notice.TargetType == "both" {
 			for _, id := range notice.ClientIDs {
 				if clientIDs[id] {
 					matched = true
 					break
 				}
 			}
-		} else if notice.TargetType == "groups" {
+		}
+		if !matched && (notice.TargetType == "groups" || notice.TargetType == "both") {
 			for _, group := range notice.Groups {
 				if groups[group] {
 					matched = true

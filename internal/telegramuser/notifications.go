@@ -3,7 +3,6 @@ package telegramuser
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"gorm.io/gorm"
@@ -27,10 +26,15 @@ func EnqueueNotification(tx *gorm.DB, notice model.SubscriptionNotification) err
 	}
 	var recipients []model.TelegramBinding
 	query := tx.Table("telegram_bindings AS b").Select("b.*").Joins("JOIN clients c ON c.id = b.client_id")
-	if notice.TargetType == "clients" {
+	switch notice.TargetType {
+	case "clients":
 		query = query.Where("b.client_id IN ?", notice.ClientIDs)
-	} else {
+	case "groups":
 		query = query.Where("c.group_name IN ?", notice.Groups)
+	case "both":
+		query = query.Where("b.client_id IN ? OR c.group_name IN ?", notice.ClientIDs, notice.Groups)
+	default:
+		return fmt.Errorf("unsupported notification target type %q", notice.TargetType)
 	}
 	if err := query.Find(&recipients).Error; err != nil {
 		return fmt.Errorf("resolve bound notification audience: %w", err)
@@ -66,10 +70,7 @@ func validNoticeDelivery(message *model.TelegramMessage) (bool, error) {
 	} else if err != nil {
 		return false, err
 	}
-	if notice.TargetType == "clients" {
-		return slices.Contains(notice.ClientIDs, client.Id), nil
-	}
-	return slices.Contains(notice.Groups, client.Group), nil
+	return notice.TargetsClient(client.Id, client.Group), nil
 }
 
 func notificationMessages(notice model.SubscriptionNotification, recipients []model.TelegramBinding) []model.TelegramMessage {
@@ -91,8 +92,7 @@ func enqueueClientNotifications(tx *gorm.DB, binding model.TelegramBinding, clie
 	var queue []model.TelegramMessage
 	matched := 0
 	for _, notice := range notices {
-		visible := notice.TargetType == "clients" && slices.Contains(notice.ClientIDs, client.Id) || notice.TargetType == "groups" && client.Group != "" && slices.Contains(notice.Groups, client.Group)
-		if visible {
+		if notice.TargetsClient(client.Id, client.Group) {
 			matched++
 			queue = append(queue, notificationMessages(notice, []model.TelegramBinding{binding})...)
 		}
