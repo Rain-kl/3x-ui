@@ -424,6 +424,8 @@ export function useClients(options: UseClientsOptions = {}) {
       flow?: string;
       limitHwid?: number | null;
       adTag?: string;
+      // FORK(client-rate-and-traffic-ratio): Omission means no change; zero clears the client-wide cap.
+      downLimit?: number | null;
     }): Promise<Msg<BulkAdjustResult>> => {
       const raw = await HttpUtil.post('/panel/api/clients/bulkAdjust', payload, JSON_HEADERS);
       return parseMsg(raw, BulkAdjustResultSchema, 'clients/bulkAdjust');
@@ -592,6 +594,7 @@ export function useClients(options: UseClientsOptions = {}) {
     [bulkCreateMut],
   );
   const bulkAdjust = useCallback(
+    // FORK(client-rate-and-traffic-ratio): Pass the optional global Mbps limit to the bulk-adjust API.
     (
       emails: string[],
       addDays: number,
@@ -599,9 +602,18 @@ export function useClients(options: UseClientsOptions = {}) {
       flow = '',
       limitHwid?: number | null,
       adTag?: string,
+      downLimit?: number | null,
     ) => {
       if (!Array.isArray(emails) || emails.length === 0) return Promise.resolve(null);
-      return bulkAdjustMut.mutateAsync({ emails, addDays, addBytes, flow, limitHwid, adTag });
+      return bulkAdjustMut.mutateAsync({
+        emails,
+        addDays,
+        addBytes,
+        flow,
+        limitHwid,
+        adTag,
+        downLimit,
+      });
     },
     [bulkAdjustMut],
   );

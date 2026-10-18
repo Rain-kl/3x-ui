@@ -1100,7 +1100,7 @@
       "tabRateLimit": "Hız Sınırı",
       "nativeRateLimitHint": "Xray core v26.10.10-feat.2 veya daha yenisi gerekir. Limitleri değiştirmek etkin bağlantıları yeniden başlatır.",
       "downLimit": "İndirme Sınırı (Mbps)",
-      "downLimitDesc": "İstemci varsayılan indirme bant genişliği sınırı, 0 sınırsız demektir",
+      "downLimitDesc": "İstemcinin genel indirme sınırı; 0 bu sınırı kaldırır. Giriş başına sınırlar veya varsayılanlar yine uygulanabilir.",
       "inboundRateLimitOverrides": "Bağlı Düğüm Hız Sınırı Geçersiz Kılmaları",
       "inheritGlobalLimit": "Varsayılan sınırı devral ({limit} Mbps)",
       "tabTraffic": "Trafik",

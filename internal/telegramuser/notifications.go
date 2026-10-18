@@ -74,7 +74,11 @@ func validNoticeDelivery(message *model.TelegramMessage) (bool, error) {
 }
 
 func notificationMessages(notice model.SubscriptionNotification, recipients []model.TelegramBinding) []model.TelegramMessage {
-	parts := splitText(notice.Title+"\n\n"+notice.Body, 3500)
+	text := notice.Body
+	if notice.Title != "" {
+		text = notice.Title + "\n\n" + notice.Body
+	}
+	parts := splitText(text, 3500)
 	queue := make([]model.TelegramMessage, 0, len(recipients)*len(parts))
 	for _, recipient := range recipients {
 		for _, text := range parts {

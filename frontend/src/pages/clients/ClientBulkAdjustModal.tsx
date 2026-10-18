@@ -16,6 +16,7 @@ const EMPTY: ClientBulkAdjustFormValues = {
   addGB: 0,
   flow: '',
   limitHwid: null,
+  downLimit: null,
   adTag: '',
 };
 
@@ -29,6 +30,7 @@ interface ClientBulkAdjustModalProps {
     flow: string,
     limitHwid?: number | null,
     adTag?: string,
+    downLimit?: number | null,
   ) => Promise<{ adjusted: number; skipped?: { email: string; reason: string }[] } | null>;
 }
 
@@ -59,17 +61,30 @@ export default function ClientBulkAdjustModal({
         (values.limitHwid as unknown) !== ''
           ? Math.trunc(Number(values.limitHwid))
           : null,
+      downLimit:
+        values.downLimit !== null &&
+        values.downLimit !== undefined &&
+        (values.downLimit as unknown) !== ''
+          ? Math.trunc(Number(values.downLimit))
+          : null,
       adTag: values.adTag?.trim() ?? '',
     });
     if (!validated.success) {
       messageApi.warning(t(validated.error.issues[0]?.message ?? 'somethingWentWrong'));
       return;
     }
-    const { addDays: days, addGB: gb, flow: flowValue, limitHwid, adTag } = validated.data;
+    const {
+      addDays: days,
+      addGB: gb,
+      flow: flowValue,
+      limitHwid,
+      adTag,
+      downLimit,
+    } = validated.data;
     setSubmitting(true);
     try {
       const bytes = Math.trunc(gb * GB);
-      const result = await onSubmit(days, bytes, flowValue, limitHwid, adTag);
+      const result = await onSubmit(days, bytes, flowValue, limitHwid, adTag, downLimit);
       if (!result) return;
       const ok = result.adjusted ?? 0;
       const skipped = result.skipped?.length ?? 0;
@@ -130,6 +145,20 @@ export default function ClientBulkAdjustModal({
               name="limitHwid"
               label={t('pages.clients.limitHwid')}
               tooltip={t('pages.clients.limitHwidDesc')}
+            >
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                step={1}
+                precision={0}
+                placeholder={t('pages.clients.bulkFlowNoChange')}
+              />
+            </FormField>
+            {/* FORK(client-rate-and-traffic-ratio): Reuse the native Mbps cap control for batch client edits. */}
+            <FormField
+              name="downLimit"
+              label={t('pages.clients.downLimit')}
+              tooltip={t('pages.clients.downLimitDesc')}
             >
               <InputNumber
                 style={{ width: '100%' }}

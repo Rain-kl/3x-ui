@@ -107,7 +107,7 @@ func TestBulkAdjustHwidRollsBackFailedTrim(t *testing.T) {
 	failHwidDeletes(t, db)
 
 	limit := 1
-	res, _, err := (&ClientService{}).BulkAdjust(&InboundService{}, []string{rec.Email}, 0, 0, "", &limit, "")
+	res, _, err := (&ClientService{}).BulkAdjust(&InboundService{}, []string{rec.Email}, 0, 0, "", &limit, "", nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust: %v", err)
 	}

@@ -1953,10 +1953,11 @@ export const sections: readonly Section[] = [
       },
       {
         method: 'POST',
+        // FORK(client-rate-and-traffic-ratio): Document the optional global client Mbps limit in bulk adjustments.
         path: '/panel/api/clients/bulkAdjust',
         summary:
-          'Shift expiry and/or traffic quota for many clients in one call. addDays/addBytes may be negative. Clients with unlimited expiry (expiryTime=0) or unlimited traffic (totalGB=0) are skipped for the corresponding field — bulk extend never converts unlimited to limited. A client that was auto-disabled solely because it was depleted (expired or over quota) is automatically re-enabled — locally and on its node — when the adjustment lifts it out of depletion; a manually-disabled or still-depleted client is left disabled. The optional flow directive sets the XTLS flow on every client: "none" clears it, "xtls-rprx-vision"/"xtls-rprx-vision-udp443" set it where the inbound supports it (omit or "" to leave it unchanged). The optional limitHwid sets maximum registered devices (0 = unlimited). The optional adTag sets MTProto Telegram sponsor channel ("none" clears). Returns the adjusted count and per-email skip reasons.',
-        body: '{\n  "emails": ["alice", "bob"],\n  "addDays": 30,\n  "addBytes": 53687091200,\n  "flow": "xtls-rprx-vision",\n  "limitHwid": 2,\n  "adTag": "0123456789abcdef0123456789abcdef"\n}',
+          'Shift expiry/quota and optionally set the global Mbps downlink cap for many clients in one call. addDays/addBytes may be negative. Clients with unlimited expiry (expiryTime=0) or unlimited traffic (totalGB=0) are skipped for the corresponding field. downLimit is omitted to leave unchanged; 0 clears the client-wide cap while per-inbound overrides remain in effect. A client that was auto-disabled solely because it was depleted is re-enabled when the adjustment lifts depletion. Optional flow, limitHwid, and adTag behavior is unchanged. An unsupported active protocol or incompatible local core rejects the rate-limit batch before mutation. Returns the adjusted count and per-email skip reasons.',
+        body: '{\n  "emails": ["alice", "bob"],\n  "addDays": 30,\n  "addBytes": 53687091200,\n  "flow": "xtls-rprx-vision",\n  "limitHwid": 2,\n  "adTag": "0123456789abcdef0123456789abcdef",\n  "downLimit": 100\n}',
         response:
           '{\n  "success": true,\n  "obj": {\n    "adjusted": 2,\n    "skipped": [\n      { "email": "carol", "reason": "unlimited expiry" }\n    ]\n  }\n}',
       },

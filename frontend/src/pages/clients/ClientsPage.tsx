@@ -2041,11 +2041,12 @@ export default function ClientsPage() {
           />
         </LazyMount>
         <LazyMount when={bulkAdjustOpen}>
+          {/* FORK(client-rate-and-traffic-ratio): Forward the optional global rate cap through bulk edits. */}
           <ClientBulkAdjustModal
             open={bulkAdjustOpen}
             count={selectedRowKeys.length}
             onOpenChange={setBulkAdjustOpen}
-            onSubmit={async (addDays, addBytes, flow, limitHwid, adTag) => {
+            onSubmit={async (addDays, addBytes, flow, limitHwid, adTag, downLimit) => {
               const msg = await bulkAdjust(
                 [...selectedRowKeys],
                 addDays,
@@ -2053,6 +2054,7 @@ export default function ClientsPage() {
                 flow,
                 limitHwid,
                 adTag,
+                downLimit,
               );
               if (msg?.success) {
                 setSelectedRowKeys([]);

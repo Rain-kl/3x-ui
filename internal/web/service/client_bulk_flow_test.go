@@ -65,7 +65,7 @@ func TestBulkAdjust_FlowSetAndClear(t *testing.T) {
 	emails := emailsOf(clients)
 
 	// Set vision flow.
-	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "xtls-rprx-vision-udp443", nil, "")
+	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "xtls-rprx-vision-udp443", nil, "", nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust set: %v", err)
 	}
@@ -82,14 +82,14 @@ func TestBulkAdjust_FlowSetAndClear(t *testing.T) {
 	}
 
 	// Setting the same flow again is a no-op: honored (counted) but no restart.
-	if _, restart2, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "xtls-rprx-vision-udp443", nil, ""); err != nil {
+	if _, restart2, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "xtls-rprx-vision-udp443", nil, "", nil); err != nil {
 		t.Fatalf("BulkAdjust idempotent: %v", err)
 	} else if restart2 {
 		t.Fatalf("re-setting identical flow should not request a restart")
 	}
 
 	// Clear flow.
-	cres, crestart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "none", nil, "")
+	cres, crestart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "none", nil, "", nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust clear: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestBulkAdjust_FlowIneligibleSkipped(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	res, restart, err := svc.BulkAdjust(inboundSvc, []string{"ws1@x"}, 0, 0, "xtls-rprx-vision", nil, "")
+	res, restart, err := svc.BulkAdjust(inboundSvc, []string{"ws1@x"}, 0, 0, "xtls-rprx-vision", nil, "", nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust: %v", err)
 	}
@@ -147,11 +147,11 @@ func TestBulkAdjust_NoDirectiveErrors(t *testing.T) {
 	svc := &ClientService{}
 	inboundSvc := &InboundService{}
 
-	if _, _, err := svc.BulkAdjust(inboundSvc, []string{"any@x"}, 0, 0, "", nil, ""); err == nil {
+	if _, _, err := svc.BulkAdjust(inboundSvc, []string{"any@x"}, 0, 0, "", nil, "", nil); err == nil {
 		t.Fatalf("expected error when no adjustment is specified")
 	}
 	// An unknown flow directive is ignored (treated as ""), so it also errors.
-	if _, _, err := svc.BulkAdjust(inboundSvc, []string{"any@x"}, 0, 0, "bogus-flow", nil, ""); err == nil {
+	if _, _, err := svc.BulkAdjust(inboundSvc, []string{"any@x"}, 0, 0, "bogus-flow", nil, "", nil); err == nil {
 		t.Fatalf("unknown flow should be ignored and error like an empty directive")
 	}
 }
@@ -183,7 +183,7 @@ func TestBulkAdjust_DaysApplyDespiteIneligibleFlow(t *testing.T) {
 		t.Fatalf("seed traffic: %v", err)
 	}
 
-	res, _, err := svc.BulkAdjust(inboundSvc, []string{"mix@x"}, 7, gb, "xtls-rprx-vision", nil, "")
+	res, _, err := svc.BulkAdjust(inboundSvc, []string{"mix@x"}, 7, gb, "xtls-rprx-vision", nil, "", nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust: %v", err)
 	}
@@ -236,7 +236,7 @@ func TestBulkAdjust_HwidLimit(t *testing.T) {
 	emails := emailsOf(clients)
 
 	limit2 := 2
-	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", &limit2, "")
+	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", &limit2, "", nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust hwid: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestBulkAdjust_HwidLimit(t *testing.T) {
 
 	// Reset to 0 (unlimited)
 	limit0 := 0
-	res0, _, err0 := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", &limit0, "")
+	res0, _, err0 := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", &limit0, "", nil)
 	if err0 != nil || res0.Adjusted != 2 {
 		t.Fatalf("BulkAdjust hwid 0: err=%v, res=%+v", err0, res0)
 	}
@@ -294,7 +294,7 @@ func TestBulkAdjust_MtprotoAdTagSetAndClear(t *testing.T) {
 	emails := emailsOf(clients)
 
 	// Set ad-tag
-	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, tag1)
+	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, tag1, nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust adTag: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestBulkAdjust_MtprotoAdTagSetAndClear(t *testing.T) {
 	}
 
 	// Clear ad-tag with "none"
-	cres, _, cerr := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, "none")
+	cres, _, cerr := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, "none", nil)
 	if cerr != nil || cres.Adjusted != 2 {
 		t.Fatalf("BulkAdjust clear adTag: err=%v, res=%+v", cerr, cres)
 	}
@@ -324,7 +324,7 @@ func TestBulkAdjust_MtprotoAdTagSetAndClear(t *testing.T) {
 	}
 
 	// Invalid ad-tag errors
-	if _, _, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, "invalid-hex"); err == nil {
+	if _, _, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, "invalid-hex", nil); err == nil {
 		t.Fatalf("expected error for invalid hex ad tag")
 	}
 }
@@ -345,7 +345,7 @@ func TestBulkAdjust_AdTagIneligibleSkipped(t *testing.T) {
 	}
 
 	const tag1 = "0123456789abcdef0123456789abcdef"
-	res, restart, err := svc.BulkAdjust(inboundSvc, []string{"vless-notg@x"}, 0, 0, "", nil, tag1)
+	res, restart, err := svc.BulkAdjust(inboundSvc, []string{"vless-notg@x"}, 0, 0, "", nil, tag1, nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust: %v", err)
 	}
@@ -390,7 +390,7 @@ func TestBulkAdjust_DaysApplyDespiteIneligibleAdTag(t *testing.T) {
 	}
 
 	const tag1 = "0123456789abcdef0123456789abcdef"
-	res, _, err := svc.BulkAdjust(inboundSvc, []string{"vless-days@x"}, 7, 0, "", nil, tag1)
+	res, _, err := svc.BulkAdjust(inboundSvc, []string{"vless-days@x"}, 7, 0, "", nil, tag1, nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust: %v", err)
 	}
@@ -447,7 +447,7 @@ func TestBulkAdjust_MixedMtprotoAndVless_AdTag(t *testing.T) {
 	}
 
 	emails := []string{"tg-mix@x", "vless-mix@x"}
-	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, tag1)
+	res, restart, err := svc.BulkAdjust(inboundSvc, emails, 0, 0, "", nil, tag1, nil)
 	if err != nil {
 		t.Fatalf("BulkAdjust: %v", err)
 	}
@@ -499,7 +499,7 @@ func TestBulkAdjust_UnchangedClientKeepsUpdatedAt(t *testing.T) {
 
 	// The flow directive is what keeps keep@x in the plan; the ws inbound cannot
 	// carry it, so the directive is not itself a change for either client.
-	if _, _, err := svc.BulkAdjust(inboundSvc, emailsOf(clients), 7, 0, "xtls-rprx-vision", nil, ""); err != nil {
+	if _, _, err := svc.BulkAdjust(inboundSvc, emailsOf(clients), 7, 0, "xtls-rprx-vision", nil, "", nil); err != nil {
 		t.Fatalf("BulkAdjust: %v", err)
 	}
 

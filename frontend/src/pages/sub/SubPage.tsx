@@ -165,7 +165,7 @@ export default function SubPage() {
                 key={notice.id}
                 type="info"
                 showIcon
-                title={notice.title}
+                title={notice.title || undefined}
                 description={
                   <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                     {notice.body}

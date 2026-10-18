@@ -74,7 +74,11 @@ func subscriptionNotices(subID string) ([]SubscriptionNotice, error) {
 }
 
 func noticeNodeName(notice SubscriptionNotice) string {
-	text := []rune(strings.Join(strings.Fields(notice.Title+" · "+notice.Body), " "))
+	label := notice.Body
+	if notice.Title != "" {
+		label = notice.Title + " · " + notice.Body
+	}
+	text := []rune(strings.Join(strings.Fields(label), " "))
 	if len(text) > 180 {
 		text = append(text[:180], '…')
 	}

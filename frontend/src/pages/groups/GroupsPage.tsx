@@ -650,12 +650,21 @@ export default function GroupsPage() {
         </LazyMount>
 
         <LazyMount when={adjustOpen}>
+          {/* FORK(client-rate-and-traffic-ratio): Group bulk edits share the client global rate-limit action. */}
           <ClientBulkAdjustModal
             open={adjustOpen}
             count={groupEmails.length}
             onOpenChange={setAdjustOpen}
-            onSubmit={async (addDays, addBytes, flow, limitHwid, adTag) => {
-              const msg = await bulkAdjust(groupEmails, addDays, addBytes, flow, limitHwid, adTag);
+            onSubmit={async (addDays, addBytes, flow, limitHwid, adTag, downLimit) => {
+              const msg = await bulkAdjust(
+                groupEmails,
+                addDays,
+                addBytes,
+                flow,
+                limitHwid,
+                adTag,
+                downLimit,
+              );
               if (msg?.success) {
                 const obj = msg.obj ?? { adjusted: 0 };
                 messageApi.success(
