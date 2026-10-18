@@ -55,3 +55,7 @@ Telegram 不允许跨 Bot 复用 file_id，桥接先从源下载再向目标上�
 ## 2026-10-18：获取全部通知指令
 
 新增 /notifications 并注册 Telegram 原生命令提示。绑定后补发及主动获取共用 enqueueClientNotifications；主动获取每次重新匹配当前客户端和分组，只包含已发布通知，按 sort_index、id 排序，不因过去已接收而跳过。查询绑定、读取客户端分组和入队在一个事务完成，发送前仍沿用版本/受众校验及限速。响应明确通知数量、无通知或失败；队列事件统一为 notification.history.queued，入站命令记录可区分主动触发。不新增或单独运行测试，执行编译和静态检查后按用户要求推送。
+
+## 2026-10-18：消息与日志保留绑定凭据原文
+
+按用户要求移除消息/日志中的凭据占位替换：用户发送的订阅链接、绑定码（含编辑版本）按原文入库并保留 command 角色分类；/subscription 与 /reset 返回的订阅链接同样按原文入库，reply 移除 secret 参数并同步全部调用点。api.go 对接口错误中 Bot Token 与代理凭据的 redactText 脱敏保留，避免 Token 泄露进日志。不新增、不运行测试；编译、vet、gofmt 通过。本地 golangci-lint 二进制与 go1.27.2 工具链导出数据版本不匹配，对未改动包同样报 typecheck，属环境问题。

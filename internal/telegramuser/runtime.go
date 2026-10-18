@@ -298,12 +298,9 @@ func (r *receiver) receive(incoming *telego.Message, updateID int, edited bool) 
 	row.DedupKey = &key
 	if isCommand || isProof {
 		row.Role = "command"
-		if isProof || strings.HasPrefix(text, "/bind ") || strings.HasPrefix(text, "/start ") {
-			row.Text = "[绑定凭据已隐藏]"
-		}
 	}
 	if edited && (strings.HasPrefix(text, "bind_") || strings.HasPrefix(text, "/bind ") || strings.HasPrefix(text, "/start ") || (r.cfg.PublicSubURL != "" && strings.HasPrefix(text, r.cfg.PublicSubURL))) {
-		row.Text, row.Role = "[编辑的绑定凭据已隐藏]", "command"
+		row.Role = "command"
 	}
 	chatAllowed := r.cfg.AllowAnonymousChat || boundErr == nil
 	if !isCommand && !isProof && !chatAllowed {
@@ -354,125 +351,122 @@ func (r *receiver) command(tgID int64, text string) {
 			r.bind(tgID, parts[1])
 			return
 		}
-		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码进行绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", false, nil)
+		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码进行绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", nil)
 	case "/bind":
 		if len(parts) > 1 {
 			r.bind(tgID, parts[1])
 		} else {
 			r.await[tgID] = awaiting{action: "bind", until: time.Now().Add(5 * time.Minute)}
-			r.reply(tgID, "请发送管理员提供的完整订阅链接或一次性绑定码。", false, nil)
+			r.reply(tgID, "请发送管理员提供的完整订阅链接或一次性绑定码。", nil)
 		}
 	case "/unbind":
 		var binding model.TelegramBinding
 		if err := database.GetDB().Where("tg_id = ?", tgID).First(&binding).Error; err != nil {
-			r.reply(tgID, "当前没有可解除的绑定。", false, nil)
+			r.reply(tgID, "当前没有可解除的绑定。", nil)
 			return
 		}
 		r.await[tgID] = awaiting{action: "unbind", clientID: binding.ClientID, until: time.Now().Add(3 * time.Minute)}
-		r.reply(tgID, "确认解除绑定？", false, map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": "unbind"}, {"text": "取消", "callback_data": "cancel"}}}})
+		r.reply(tgID, "确认解除绑定？", map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": "unbind"}, {"text": "取消", "callback_data": "cancel"}}}})
 	case "/notifications":
 		if _, err := BoundClient(tgID); err != nil {
-			r.reply(tgID, err.Error(), false, nil)
+			r.reply(tgID, err.Error(), nil)
 			return
 		}
 		count, err := QueueNotifications(tgID)
 		if err != nil {
-			r.reply(tgID, "获取通知失败，请稍后重试或联系管理员。", false, nil)
+			r.reply(tgID, "获取通知失败，请稍后重试或联系管理员。", nil)
 			r.log(tgID, 0, "notification.request.failed", err.Error())
 		} else if count == 0 {
-			r.reply(tgID, "当前没有可接收的已发布通知。", false, nil)
+			r.reply(tgID, "当前没有可接收的已发布通知。", nil)
 		} else {
-			r.reply(tgID, fmt.Sprintf("已将 %d 条通知加入发送队列，请稍候。", count), false, nil)
+			r.reply(tgID, fmt.Sprintf("已将 %d 条通知加入发送队列，请稍候。", count), nil)
 		}
 	case "/subscription", "/usage", "/reset":
 		client, err := BoundClient(tgID)
 		if err != nil {
-			r.reply(tgID, err.Error(), false, nil)
+			r.reply(tgID, err.Error(), nil)
 			return
 		}
 		switch command {
 		case "/subscription":
 			link, err := r.hooks.Subscription(client.Id, false)
 			if err != nil {
-				r.reply(tgID, "获取订阅失败，请联系管理员。", false, nil)
+				r.reply(tgID, "获取订阅失败，请联系管理员。", nil)
 				r.log(tgID, 0, "subscription.failed", err.Error())
 			} else {
-				r.reply(tgID, link, true, nil)
+				r.reply(tgID, link, nil)
 			}
 		case "/usage":
 			usage, err := r.hooks.Usage(client.Id)
 			if err != nil {
-				r.reply(tgID, "查询用量失败，请联系管理员。", false, nil)
+				r.reply(tgID, "查询用量失败，请联系管理员。", nil)
 				r.log(tgID, 0, "usage.failed", err.Error())
 			} else {
-				r.reply(tgID, usage, false, nil)
+				r.reply(tgID, usage, nil)
 			}
 		default:
 			action := strings.TrimPrefix(command, "/")
 			r.await[tgID] = awaiting{action: action, clientID: client.Id, until: time.Now().Add(3 * time.Minute)}
 			label := "确认重置订阅链接（旧链接将失效）"
-			r.reply(tgID, label+"？", false, map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": action}, {"text": "取消", "callback_data": "cancel"}}}})
+			r.reply(tgID, label+"？", map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": action}, {"text": "取消", "callback_data": "cancel"}}}})
 		}
 	default:
-		r.reply(tgID, "支持 /subscription、/reset、/usage、/notifications、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", false, nil)
+		r.reply(tgID, "支持 /subscription、/reset、/usage、/notifications、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", nil)
 	}
 }
 
 func (r *receiver) bind(tgID int64, proof string) {
 	binding, err := Bind(tgID, proof)
 	if err != nil {
-		r.reply(tgID, "绑定失败："+err.Error(), false, nil)
+		r.reply(tgID, "绑定失败："+err.Error(), nil)
 		r.log(tgID, 0, "binding.failed", err.Error())
 		return
 	}
 	r.log(tgID, 0, "binding.created", fmt.Sprintf("client=%d", binding.ClientID))
-	r.reply(tgID, "绑定成功。输入 / 选择指令，查询订阅和用量。", false, nil)
+	r.reply(tgID, "绑定成功。输入 / 选择指令，查询订阅和用量。", nil)
 }
 
 func (r *receiver) confirm(tgID int64, action string) {
 	state, ok := r.await[tgID]
 	delete(r.await, tgID)
 	if action == "cancel" {
-		r.reply(tgID, "已取消。", false, nil)
+		r.reply(tgID, "已取消。", nil)
 		return
 	}
 	if ok && action == "unbind" && state.action == action && time.Now().Before(state.until) {
 		var binding model.TelegramBinding
 		if err := database.GetDB().Where("tg_id = ? AND client_id = ?", tgID, state.clientID).First(&binding).Error; err != nil {
-			r.reply(tgID, "绑定已改变，请重新发送 /unbind。", false, nil)
+			r.reply(tgID, "绑定已改变，请重新发送 /unbind。", nil)
 			return
 		}
 		if err := Unbind(tgID); err != nil {
-			r.reply(tgID, "解绑失败，请联系管理员。", false, nil)
+			r.reply(tgID, "解绑失败，请联系管理员。", nil)
 			r.log(tgID, 0, "binding.remove.failed", err.Error())
 			return
 		}
 		r.log(tgID, 0, "binding.removed", fmt.Sprintf("client=%d", state.clientID))
-		r.reply(tgID, "已解绑。", false, nil)
+		r.reply(tgID, "已解绑。", nil)
 		return
 	}
 	client, err := BoundClient(tgID)
 	if !ok || time.Now().After(state.until) || state.action != action || err != nil || client.Id != state.clientID {
-		r.reply(tgID, "确认已过期或绑定已改变，请重新发送指令。", false, nil)
+		r.reply(tgID, "确认已过期或绑定已改变，请重新发送指令。", nil)
 		return
 	}
 	if action == "reset" {
 		link, err := r.hooks.Subscription(client.Id, true)
 		if err != nil {
-			r.reply(tgID, "重置失败，请联系管理员。", false, nil)
+			r.reply(tgID, "重置失败，请联系管理员。", nil)
 			r.log(tgID, 0, "subscription.reset.failed", err.Error())
 			return
 		}
 		r.log(tgID, 0, "subscription.reset", fmt.Sprintf("client=%d", client.Id))
-		r.reply(tgID, "新订阅链接：\n"+link, true, nil)
+		r.reply(tgID, "新订阅链接：\n"+link, nil)
 	}
 }
 
-func (r *receiver) reply(tgID int64, text string, secret bool, keyboard map[string]any) {
+func (r *receiver) reply(tgID int64, text string, keyboard map[string]any) {
 	row := model.TelegramMessage{TgID: tgID, TargetChatID: tgID, Direction: "outgoing", Kind: "text", Text: text, Role: "command", Status: "sending", SourceBot: "user", DeliveryBot: "user"}
-	if secret {
-		row.Text = "[订阅链接已发送，日志已隐藏凭据]"
-	}
 	if _, err := recordMessage(&row, "", ""); err != nil {
 		r.failure("message.persist.failed", err)
 		return
