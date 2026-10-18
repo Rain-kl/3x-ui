@@ -103,21 +103,17 @@ _openapi:
         success=false after the clients were created.'
       url: '#import-clients-from-a-json-body--data-json--where-data-is-a-string-encoded-array-produced-by-export-client-inboundids-traffic-items-with-inboundids-are-created-and-attached-to-those-inbounds-items-with-an-empty-inboundids-list-are-restored-as-unattached-client-records-an-optional-traffic-object-restores-the-usage-counters-only-for-clients-this-import-creates-existing-emails-are-never-overwritten--they-are-returned-in-skipped-and-their-live-counters-are-left-untouched-triggers-a-single-xray-restart-at-the-end-if-any-target-inbound-was-running-a-failure-while-restoring-counters-still-reports-successfalse-after-the-clients-were-created'
     - depth: 2
-      title: 'Shift expiry and/or traffic quota for many clients in one call.
-        addDays/addBytes may be negative. Clients with unlimited expiry
-        (expiryTime=0) or unlimited traffic (totalGB=0) are skipped for the
-        corresponding field — bulk extend never converts unlimited to limited. A
-        client that was auto-disabled solely because it was depleted (expired or
-        over quota) is automatically re-enabled — locally and on its node — when
-        the adjustment lifts it out of depletion; a manually-disabled or
-        still-depleted client is left disabled. The optional flow directive sets
-        the XTLS flow on every client: "none" clears it,
-        "xtls-rprx-vision"/"xtls-rprx-vision-udp443" set it where the inbound
-        supports it (omit or "" to leave it unchanged). The optional limitHwid
-        sets maximum registered devices (0 = unlimited). The optional adTag sets
-        MTProto Telegram sponsor channel ("none" clears). Returns the adjusted
-        count and per-email skip reasons.'
-      url: '#shift-expiry-andor-traffic-quota-for-many-clients-in-one-call-adddaysaddbytes-may-be-negative-clients-with-unlimited-expiry-expirytime0-or-unlimited-traffic-totalgb0-are-skipped-for-the-corresponding-field--bulk-extend-never-converts-unlimited-to-limited-a-client-that-was-auto-disabled-solely-because-it-was-depleted-expired-or-over-quota-is-automatically-re-enabled--locally-and-on-its-node--when-the-adjustment-lifts-it-out-of-depletion-a-manually-disabled-or-still-depleted-client-is-left-disabled-the-optional-flow-directive-sets-the-xtls-flow-on-every-client-none-clears-it-xtls-rprx-visionxtls-rprx-vision-udp443-set-it-where-the-inbound-supports-it-omit-or--to-leave-it-unchanged-the-optional-limithwid-sets-maximum-registered-devices-0--unlimited-the-optional-adtag-sets-mtproto-telegram-sponsor-channel-none-clears-returns-the-adjusted-count-and-per-email-skip-reasons'
+      title: Shift expiry/quota and optionally set the global Mbps downlink cap for
+        many clients in one call. addDays/addBytes may be negative. Clients with
+        unlimited expiry (expiryTime=0) or unlimited traffic (totalGB=0) are
+        skipped for the corresponding field. downLimit is omitted to leave
+        unchanged; 0 clears the client-wide cap while per-inbound overrides
+        remain in effect. A client that was auto-disabled solely because it was
+        depleted is re-enabled when the adjustment lifts depletion. Optional
+        flow, limitHwid, and adTag behavior is unchanged. An unsupported active
+        protocol or incompatible local core rejects the rate-limit batch before
+        mutation. Returns the adjusted count and per-email skip reasons.
+      url: '#shift-expiryquota-and-optionally-set-the-global-mbps-downlink-cap-for-many-clients-in-one-call-adddaysaddbytes-may-be-negative-clients-with-unlimited-expiry-expirytime0-or-unlimited-traffic-totalgb0-are-skipped-for-the-corresponding-field-downlimit-is-omitted-to-leave-unchanged-0-clears-the-client-wide-cap-while-per-inbound-overrides-remain-in-effect-a-client-that-was-auto-disabled-solely-because-it-was-depleted-is-re-enabled-when-the-adjustment-lifts-depletion-optional-flow-limithwid-and-adtag-behavior-is-unchanged-an-unsupported-active-protocol-or-incompatible-local-core-rejects-the-rate-limit-batch-before-mutation-returns-the-adjusted-count-and-per-email-skip-reasons'
     - depth: 2
       title: Enable many clients in one call. Emails are grouped by inbound and
         applied with a single read-modify-write per inbound; the running Xray
@@ -382,21 +378,18 @@ _openapi:
           if any target inbound was running; a failure while restoring counters
           still reports success=false after the clients were created.'
         id: import-clients-from-a-json-body--data-json--where-data-is-a-string-encoded-array-produced-by-export-client-inboundids-traffic-items-with-inboundids-are-created-and-attached-to-those-inbounds-items-with-an-empty-inboundids-list-are-restored-as-unattached-client-records-an-optional-traffic-object-restores-the-usage-counters-only-for-clients-this-import-creates-existing-emails-are-never-overwritten--they-are-returned-in-skipped-and-their-live-counters-are-left-untouched-triggers-a-single-xray-restart-at-the-end-if-any-target-inbound-was-running-a-failure-while-restoring-counters-still-reports-successfalse-after-the-clients-were-created
-      - content: 'Shift expiry and/or traffic quota for many clients in one call.
-          addDays/addBytes may be negative. Clients with unlimited expiry
-          (expiryTime=0) or unlimited traffic (totalGB=0) are skipped for the
-          corresponding field — bulk extend never converts unlimited to limited.
-          A client that was auto-disabled solely because it was depleted
-          (expired or over quota) is automatically re-enabled — locally and on
-          its node — when the adjustment lifts it out of depletion; a
-          manually-disabled or still-depleted client is left disabled. The
-          optional flow directive sets the XTLS flow on every client: "none"
-          clears it, "xtls-rprx-vision"/"xtls-rprx-vision-udp443" set it where
-          the inbound supports it (omit or "" to leave it unchanged). The
-          optional limitHwid sets maximum registered devices (0 = unlimited).
-          The optional adTag sets MTProto Telegram sponsor channel ("none"
-          clears). Returns the adjusted count and per-email skip reasons.'
-        id: shift-expiry-andor-traffic-quota-for-many-clients-in-one-call-adddaysaddbytes-may-be-negative-clients-with-unlimited-expiry-expirytime0-or-unlimited-traffic-totalgb0-are-skipped-for-the-corresponding-field--bulk-extend-never-converts-unlimited-to-limited-a-client-that-was-auto-disabled-solely-because-it-was-depleted-expired-or-over-quota-is-automatically-re-enabled--locally-and-on-its-node--when-the-adjustment-lifts-it-out-of-depletion-a-manually-disabled-or-still-depleted-client-is-left-disabled-the-optional-flow-directive-sets-the-xtls-flow-on-every-client-none-clears-it-xtls-rprx-visionxtls-rprx-vision-udp443-set-it-where-the-inbound-supports-it-omit-or--to-leave-it-unchanged-the-optional-limithwid-sets-maximum-registered-devices-0--unlimited-the-optional-adtag-sets-mtproto-telegram-sponsor-channel-none-clears-returns-the-adjusted-count-and-per-email-skip-reasons
+      - content: Shift expiry/quota and optionally set the global Mbps downlink cap for
+          many clients in one call. addDays/addBytes may be negative. Clients
+          with unlimited expiry (expiryTime=0) or unlimited traffic (totalGB=0)
+          are skipped for the corresponding field. downLimit is omitted to leave
+          unchanged; 0 clears the client-wide cap while per-inbound overrides
+          remain in effect. A client that was auto-disabled solely because it
+          was depleted is re-enabled when the adjustment lifts depletion.
+          Optional flow, limitHwid, and adTag behavior is unchanged. An
+          unsupported active protocol or incompatible local core rejects the
+          rate-limit batch before mutation. Returns the adjusted count and
+          per-email skip reasons.
+        id: shift-expiryquota-and-optionally-set-the-global-mbps-downlink-cap-for-many-clients-in-one-call-adddaysaddbytes-may-be-negative-clients-with-unlimited-expiry-expirytime0-or-unlimited-traffic-totalgb0-are-skipped-for-the-corresponding-field-downlimit-is-omitted-to-leave-unchanged-0-clears-the-client-wide-cap-while-per-inbound-overrides-remain-in-effect-a-client-that-was-auto-disabled-solely-because-it-was-depleted-is-re-enabled-when-the-adjustment-lifts-depletion-optional-flow-limithwid-and-adtag-behavior-is-unchanged-an-unsupported-active-protocol-or-incompatible-local-core-rejects-the-rate-limit-batch-before-mutation-returns-the-adjusted-count-and-per-email-skip-reasons
       - content: Enable many clients in one call. Emails are grouped by inbound and
           applied with a single read-modify-write per inbound; the running Xray
           (local or remote node) is updated to add each user. Note that enabling
