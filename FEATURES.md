@@ -139,7 +139,7 @@
 
 - **需求背景**：主控无法向子节点部署 mixed，独立静态账号无法复用客户端的计费、限速、到期和撤销流程。
 - **修改内容**：mixed 接入本机及子节点部署、编辑和克隆；统一使用客户端关联及 username/password 凭据。HTTP/SOCKS5 共用动态身份，支持实时改密及撤销，最后一个账号删除后仍强制认证。旧 accounts 保存/导入时幂等转换；匿名模式保留但不可关联客户端。核心最低版本为 `v26.10.10-feat.4`。
-- **订阅行为**：自动链接、JSON、Clash 排除 mixed；订阅展示页独立提供该用户可用 mixed 节点及 HTTP/SOCKS5 地址、用户名和密码的复制入口，凭据与 IPv6 正确编码。
+- **订阅行为**：自动链接、JSON、Clash 排除 mixed；订阅展示页独立提供该用户可用 mixed 节点及 HTTP/SOCKS5 地址、用户名和密码的复制入口，凭据与 IPv6 正确编码。控制端客户端二维码弹窗同样提供 mixed 手动配置折叠项，复用已有数据和分享地址策略，支持仅关联 mixed 的客户端。
 - **修改文件**：数据库 Client/ClientRecord 与迁移、`internal/web/service/inbound_mixed.go`、客户端及 Runtime 分发、`internal/xray` 配置/API/版本检查、`internal/sub/mixed_manual.go`、前端入站及客户端表单、订阅页、生成接口模型和 13 种语言词条。
 - **上游改动标记**：`FORK(mixed-clients)`；定制核心的对应改动见 Rain-kl/Xray-core 同名条目。
 - **设计文档**：[mixed 客户端规范](docs/specs/mixed-clients.md)；**实现文档**：[Agent Note](.agents/notes/mixed-clients.md)。

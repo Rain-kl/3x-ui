@@ -6,7 +6,8 @@ import { LockOutlined } from '@ant-design/icons';
 import { HttpUtil } from '@/utils';
 import type { HappLinkResult } from '@/generated/types';
 import { HappLinkResultSchema } from '@/generated/zod';
-import { isPostQuantumLink } from '@/lib/xray/inbound-link';
+// FORK(mixed-clients): Manual mixed endpoints must use the same share-address policy as other nodes.
+import { isPostQuantumLink, preferPublicHost, resolveShareHost } from '@/lib/xray/inbound-link';
 import { LinkTags, linkMetaText, parseLinkParts } from '@/lib/xray/link-label';
 import { QrPanel } from '@/pages/inbounds/qr';
 import type { ClientRecord, InboundOption } from '@/hooks/useClients';
@@ -24,6 +25,8 @@ import {
 import { buildTuicClientConfig, findTuicInbound, isTuicClient } from './tuicConfig';
 import { tunnelConfigEndpoints, tunnelEndpointLabel } from './tunnelEndpoints';
 import type { HostRecord } from '@/schemas/api/host';
+// FORK(mixed-clients): Reuse the manual credentials display without adding mixed to automatic links.
+import SubMixedNodes from '@/pages/sub/SubMixedNodes';
 
 interface SubSettings {
   enable: boolean;
@@ -377,12 +380,44 @@ function ClientQrModalContent({
     }));
   }, [client, tuicInbound, subSettings.publicHost, hosts]);
 
+  // FORK-BEGIN(mixed-clients)
+  const mixedNodes = useMemo(() => {
+    if (!client?.password) return [];
+    const password = client.password;
+    const username = client.username || client.email;
+    const credentials = `${encodeURIComponent(username)}:${encodeURIComponent(password)}`;
+    const fallback = preferPublicHost(window.location.hostname, subSettings.publicHost ?? '');
+    return (client.inboundIds ?? []).flatMap((id) => {
+      const inbound = inboundsById[id];
+      if (inbound?.protocol !== 'mixed' || !inbound.port) return [];
+      const address = resolveShareHost(inbound, inbound.nodeAddress ?? '', fallback).replace(
+        /^\[|\]$/g,
+        '',
+      );
+      const endpoint = `${address.includes(':') ? `[${address}]` : address}:${inbound.port}`;
+      return [
+        {
+          name: inbound.remark || inbound.tag || `mixed:${inbound.port}`,
+          address,
+          port: inbound.port,
+          username,
+          password,
+          http: `http://${credentials}@${endpoint}`,
+          socks5: `socks5://${credentials}@${endpoint}`,
+        },
+      ];
+    });
+  }, [client, inboundsById, subSettings.publicHost]);
+  // FORK-END(mixed-clients)
+
   const hasAnything =
     !!subLink ||
     !!subJsonLink ||
     wgConfigs.length > 0 ||
     awgConfigs.length > 0 ||
     tuicConfigs.length > 0 ||
+    // FORK(mixed-clients): Mixed-only clients still have manual connection information.
+    mixedNodes.length > 0 ||
     links.length > 0;
 
   // The reset runs during render so the effect only carries the request.
@@ -449,6 +484,15 @@ function ClientQrModalContent({
         children: <QrPanel value={subJsonLink} remark={`${client?.email || ''} — JSON`} />,
       });
     }
+    // FORK-BEGIN(mixed-clients)
+    if (mixedNodes.length > 0) {
+      out.push({
+        key: 'mixed',
+        label: <Tag color="lime">Mixed · {t('subscription.mixedManual')}</Tag>,
+        children: <SubMixedNodes nodes={mixedNodes} />,
+      });
+    }
+    // FORK-END(mixed-clients)
     links.forEach((link, idx) => {
       const parts = parseLinkParts(link);
       const meta = parts ? linkMetaText(parts) : '';
@@ -543,6 +587,8 @@ function ClientQrModalContent({
     regenerateHappLink,
     openHappSettings,
     tuicConfigs,
+    // FORK(mixed-clients): Recompute the manual list after client or inbound edits.
+    mixedNodes,
     t,
   ]);
 
