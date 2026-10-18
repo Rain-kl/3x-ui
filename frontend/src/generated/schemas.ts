@@ -151,10 +151,23 @@ export const SCHEMAS: Record<string, unknown> = {
   },
   "AISettings": {
     "properties": {
+      "binary": {
+        "description": "FORK(panel-ai): Connection credentials and paths belong to explicit administrator settings.",
+        "type": "string"
+      },
+      "directory": {
+        "type": "string"
+      },
       "enabled": {
         "type": "boolean"
       },
+      "hasPassword": {
+        "type": "boolean"
+      },
       "model": {
+        "type": "string"
+      },
+      "password": {
         "type": "string"
       },
       "retentionDays": {
@@ -162,13 +175,20 @@ export const SCHEMAS: Record<string, unknown> = {
       },
       "url": {
         "type": "string"
+      },
+      "username": {
+        "type": "string"
       }
     },
     "required": [
+      "binary",
+      "directory",
       "enabled",
+      "hasPassword",
       "model",
       "retentionDays",
-      "url"
+      "url",
+      "username"
     ],
     "type": "object"
   },

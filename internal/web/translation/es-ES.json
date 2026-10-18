@@ -202,9 +202,9 @@
       "bandwidthTitle": "Live bandwidth and sustained usage",
       "bandwidthUpload": "Upload rate",
       "bandwidthDownload": "Download rate",
-      "bandwidthLive": "Live (5 second refresh)",
+      "bandwidthLive": "Last hour (refreshes every 5s)",
       "bandwidthDay": "Last 24 hours (minute averages)",
-      "bandwidthHelp": "Uses continuously updated raw traffic counters, including open connections, independently of billing ratios. Follows node/client filters, not website or access date filters. Live history starts when this page opens and holds about one hour; minute history retains 24 hours of newly collected samples.",
+      "bandwidthHelp": "Uses continuously updated raw traffic counters, including active long connections, without billing multipliers. Follows node and client filters, not website/date filters. The live view shows the last hour: saved minute averages before opening, then samples every 5s. Minute history is retained for 24h, starting when collection is enabled.",
       "bandwidthMissing": "Some samples are not ready or have become stale. Missing periods do not mean zero traffic; node synchronization delays also affect observation times."
     },
     "login": {
@@ -2663,7 +2663,7 @@
       "commandDelete": "Delete",
       "commandDeleteConfirm": "Delete this command?",
       "commandsSaved": "Saved. The Telegram command menu updates on the next poll.",
-      "commandsHelp": "Enabled custom commands appear in the native Telegram menu when users type /. Replies update immediately; menu updates usually take about 25 seconds, subject to Telegram client caching. Replies are plain text and available to unbound users. Maximum 94 commands; built-in names are reserved.",
+      "commandsHelp": "Enabled custom commands appear in the native Telegram menu when users type /. Replies update immediately; menu updates usually take about 25 seconds, subject to Telegram client caching. Replies are plain text and available to unbound users. Maximum 93 commands; built-in names are reserved.",
       "commandNameInvalid": "Use 1–32 ASCII letters, digits or underscores, with an optional leading /.",
       "commandDescriptionInvalid": "Menu descriptions must contain 1–256 characters.",
       "commandReplyInvalid": "Replies must contain 1–4096 characters."
@@ -2685,16 +2685,16 @@
       "notifyFailed": "Telegram delivery failed",
       "delete": "Delete",
       "confirmDelete": "Confirm deletion?",
-      "settingsDescription": "Local OpenCode handles conversations and tools. The panel provides read-only audit queries and recurring tasks. Models come from connected OpenCode providers; configure credentials in OpenCode.",
+      "settingsDescription": "Manually connect to a local OpenCode service and use its models and agent capabilities. Set the service URL before enabling AI.",
       "retentionDays": "Run history retention (days)",
       "retentionLimit": "Retention must be 1..3650 days",
-      "url": "OpenCode URL (empty for discovery)",
+      "url": "OpenCode service URL",
       "localURL": "Enter a local HTTP URL, e.g. http://127.0.0.1:4096",
       "model": "Default model",
       "save": "Save",
       "saved": "Saved",
       "refreshModels": "Reconnect and refresh models",
-      "discoveryHint": "Discovery uses XUI_OPENCODE_URL / OPENCODE_SERVER_URL, local opencode.json and port 4096. Set XUI_OPENCODE_BIN for the executable. Authentication uses OPENCODE_SERVER_PASSWORD / OPENCODE_SERVER_USERNAME. Changing connection settings cancels active runs.",
+      "discoveryHint": "Set the service URL, executable path and credentials here. No environment variables or automatic discovery are used. An empty executable path connects to an already running server only; an empty directory uses the panel AI workspace. Changing connection settings cancels active tasks.",
       "newTask": "New task",
       "editTask": "Edit task",
       "taskName": "Task name",
@@ -2718,7 +2718,13 @@
       "completed": "Completed",
       "failed": "Failed",
       "cancelled": "Cancelled",
-      "interrupted": "Interrupted"
+      "interrupted": "Interrupted",
+      "binary": "OpenCode executable path",
+      "directory": "Workspace directory",
+      "directoryHint": "Empty: panel default AI workspace",
+      "username": "Authentication username",
+      "password": "Authentication password",
+      "passwordSaved": "Password saved. Leave blank to keep it or enter a new value to replace it."
     }
   },
   "tgbot": {

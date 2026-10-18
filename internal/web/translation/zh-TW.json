@@ -202,9 +202,9 @@
       "bandwidthTitle": "实时带宽与持续占用趋势",
       "bandwidthUpload": "上传速率",
       "bandwidthDownload": "下载速率",
-      "bandwidthLive": "实时（5秒刷新）",
+      "bandwidthLive": "最近1小时（5秒刷新）",
       "bandwidthDay": "最近24小时（分钟均值）",
-      "bandwidthHelp": "使用持续更新的原始流量计数，长连接无需结束即可计量，不受计费倍率影响。跟随节点与客户端筛选，不按网站或访问日期筛选。实时曲线从打开页面起保留最多约1小时；分钟趋势保留24小时，仅记录功能启用后的采样数据。",
+      "bandwidthHelp": "使用持续更新的原始流量计数，长连接无需结束即可计量，不受计费倍率影响。跟随节点与客户端筛选，不按网站或访问日期筛选。实时窗口默认显示最近1小时：打开前使用已有分钟均值，打开后每5秒采样；分钟趋势保留24小时，仅记录功能启用后的数据。",
       "bandwidthMissing": "部分采样尚未就绪或已中断；缺失时段不代表零流量，节点同步延迟也会影响观察时刻。"
     },
     "login": {
@@ -2663,7 +2663,7 @@
       "commandDelete": "删除",
       "commandDeleteConfirm": "确定删除此指令？",
       "commandsSaved": "已保存，Telegram 指令菜单将在下一次轮询时更新",
-      "commandsHelp": "用户输入 / 即可在 Telegram 原生指令菜单中看到启用的自定义指令。保存后回复立即生效，菜单通常在约25秒内更新；Telegram 客户端可能有缓存。回复为纯文本，未绑定用户也可使用。最多94项，不能覆盖内置指令。",
+      "commandsHelp": "用户输入 / 即可在 Telegram 原生指令菜单中看到启用的自定义指令。保存后回复立即生效，菜单通常在约25秒内更新；Telegram 客户端可能有缓存。回复为纯文本，未绑定用户也可使用。最多93项，不能覆盖内置指令。",
       "commandNameInvalid": "请输入1–32个英文字母、数字或下划线，可带前导 /",
       "commandDescriptionInvalid": "菜单说明须为1–256个字符",
       "commandReplyInvalid": "回复内容须为1–4096个字符"
@@ -2685,16 +2685,16 @@
       "notifyFailed": "Telegram 发送失败",
       "delete": "删除",
       "confirmDelete": "确认删除？",
-      "settingsDescription": "对话与工具调用交给本地 OpenCode；面板提供只读审计查询和定时任务。模型列表读取已连接的 OpenCode 提供商，密钥请在 OpenCode 中配置。",
+      "settingsDescription": "手动连接本机 OpenCode，直接读取其模型和 Agent 能力。启用前请填写服务地址。",
       "retentionDays": "运行记录保留天数",
       "retentionLimit": "保留时间必须为1至3650天",
-      "url": "OpenCode 服务地址（留空自动发现）",
+      "url": "OpenCode 服务地址",
       "localURL": "请输入本机 HTTP 地址，例如 http://127.0.0.1:4096",
       "model": "默认模型",
       "save": "保存",
       "saved": "已保存",
       "refreshModels": "重新连接并读取模型",
-      "discoveryHint": "自动发现：XUI_OPENCODE_URL / OPENCODE_SERVER_URL、本地 opencode.json 与 4096 端口；可通过 XUI_OPENCODE_BIN 指定可执行文件。认证沿用 OPENCODE_SERVER_PASSWORD / OPENCODE_SERVER_USERNAME。修改连接设置会取消正在执行的任务。",
+      "discoveryHint": "在本页填写服务地址、程序路径和认证信息，不读取环境变量或自动扫描。程序路径留空时仅连接已运行的 OpenCode；工作目录留空使用面板默认 AI 工作区。修改连接参数会取消正在执行的任务。",
       "newTask": "新建任务",
       "editTask": "编辑任务",
       "taskName": "任务名称",
@@ -2718,7 +2718,13 @@
       "completed": "已完成",
       "failed": "失败",
       "cancelled": "已取消",
-      "interrupted": "已中断"
+      "interrupted": "已中断",
+      "binary": "OpenCode 可执行文件路径",
+      "directory": "工作目录",
+      "directoryHint": "留空使用面板默认 AI 工作区",
+      "username": "认证用户名",
+      "password": "认证密码",
+      "passwordSaved": "已保存密码；留空保留，填写新值替换。"
     }
   },
   "tgbot": {

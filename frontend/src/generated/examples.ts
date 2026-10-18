@@ -80,10 +80,15 @@ export const EXAMPLES: Record<string, unknown> = {
     "total": 0
   },
   "AISettings": {
+    "binary": "",
+    "directory": "",
     "enabled": false,
+    "hasPassword": false,
     "model": "",
+    "password": "",
     "retentionDays": 0,
-    "url": ""
+    "url": "",
+    "username": ""
   },
   "AIStatus": {
     "binary": "",

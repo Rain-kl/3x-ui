@@ -232,7 +232,7 @@ export const sections: readonly Section[] = [
         summary:
           'Atomically replace custom commands and update the native slash menu on the next poll.',
         description:
-          'Up to 94 commands. Names are normalized to lowercase without a leading slash; 1–32 ASCII letters, digits or underscores. Built-in names and duplicates are rejected. Descriptions are 1–256 characters; plain-text replies are 1–4096 characters. Replies are available to unbound users. Disabled commands are excluded from matching and menus. List order defines menu order.',
+          'Up to 93 commands. Names are normalized to lowercase without a leading slash; 1–32 ASCII letters, digits or underscores. Built-in names and duplicates are rejected. Descriptions are 1–256 characters; plain-text replies are 1–4096 characters. Replies are available to unbound users. Disabled commands are excluded from matching and menus. List order defines menu order.',
         requestSchema: { $ref: '#/components/schemas/CustomCommands' },
         responseSchema: 'CustomCommands',
       },
@@ -683,13 +683,15 @@ export const sections: readonly Section[] = [
         summary:
           'Save panel AI settings. Enabling connects to or starts local OpenCode; no provider credentials are stored in the panel.',
         responseSchema: 'AISettings',
-        body: '{"enabled":true,"url":"","model":"opencode/big-pickle","retentionDays":90}',
+        requestSchema: { $ref: '#/components/schemas/AISettings' },
+        description:
+          'Connection URL, absolute executable path, workspace and authentication are configured explicitly here. No environment or directory discovery. Enabling requires a local HTTP URL. Empty executable connects only to an existing server. Password is never returned; an empty password preserves the stored value. Changing connection settings cancels active runs.',
       },
       {
         method: 'GET',
         path: '/panel/api/ai/status',
         summary:
-          'Discover local OpenCode and report its real health, version, executable and workspace.',
+          'Connect to the configured local OpenCode and report its health, version, executable and workspace.',
         responseSchema: 'AIStatus',
       },
       {
@@ -1004,7 +1006,7 @@ export const sections: readonly Section[] = [
         summary:
           'Real-time machine snapshot: CPU, memory, swap, disk, network IO, load averages, open connections, Xray state. Cached and refreshed every 2 seconds in the background.',
         response:
-          '{\n  "success": true,\n  "obj": {\n    "cpu": 12.5,\n    "mem": { "current": 2147483648, "total": 8589934592 },\n    "swap": { "current": 0, "total": 4294967296 },\n    "disk": { "current": 53687091200, "total": 268435456000 },\n    "netIO": { "up": 1073741824, "down": 2147483648 },\n    "xray": { "state": "running", "version": "v25.10.31" },\n    "tcpCount": 42,\n    "load": { "load1": 0.5, "load5": 0.3, "load15": 0.2 }\n  }\n}',
+          '{\n  "success": true,\n  "obj": {\n    "cpu": 12.5,\n    "mem": { "current": 2147483648, "total": 8589934592 },\n    "swap": { "current": 0, "total": 4293967296 },\n    "disk": { "current": 53687091200, "total": 268435456000 },\n    "netIO": { "up": 1073741824, "down": 2147483648 },\n    "xray": { "state": "running", "version": "v25.10.31" },\n    "tcpCount": 42,\n    "load": { "load1": 0.5, "load5": 0.3, "load15": 0.2 }\n  }\n}',
       },
       {
         method: 'GET',

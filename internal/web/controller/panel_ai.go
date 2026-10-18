@@ -34,7 +34,13 @@ func newPanelAIController(g *gin.RouterGroup) {
 			jsonObj(c, nil, fmt.Errorf("decode AI settings: %w", err))
 			return
 		}
-		jsonObj(c, value, panelai.SaveSettings(value))
+		// FORK(panel-ai): Never echo credentials from the settings request.
+		if err := panelai.SaveSettings(value); err != nil {
+			jsonObj(c, nil, err)
+			return
+		}
+		result, err := panelai.ReadSettings()
+		jsonObj(c, result, err)
 	})
 	g.GET("/status", func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Second)

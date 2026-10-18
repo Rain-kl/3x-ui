@@ -9,7 +9,14 @@ export interface BandwidthPoint {
   upload: number | null;
   download: number | null;
 }
-export default function AuditBandwidthPlot({ points }: { points: BandwidthPoint[] }) {
+// FORK(audit-bandwidth): Keep the live viewport at one hour even when only a few samples exist.
+export default function AuditBandwidthPlot({
+  points,
+  windowSeconds,
+}: {
+  points: BandwidthPoint[];
+  windowSeconds?: number;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const chart = useRef<uPlot | null>(null);
   const { t } = useTranslation();
@@ -21,7 +28,17 @@ export default function AuditBandwidthPlot({ points }: { points: BandwidthPoint[
         width: root.current.clientWidth || 400,
         height: 280,
         scales: {
-          x: { time: true },
+          x: {
+            time: true,
+            ...(windowSeconds
+              ? {
+                  range: (): [number, number] => {
+                    const now = Date.now() / 1000;
+                    return [now - windowSeconds, now];
+                  },
+                }
+              : {}),
+          },
           y: { auto: true, range: (_plot, _min, max) => [0, Math.max(1, max) * 1.1] },
         },
         series: [
@@ -63,13 +80,13 @@ export default function AuditBandwidthPlot({ points }: { points: BandwidthPoint[
       plot.destroy();
       chart.current = null;
     };
-  }, [t]);
+  }, [t, windowSeconds]);
   useEffect(() => {
     chart.current?.setData([
       points.map((point) => point.time),
       points.map((point) => point.upload),
       points.map((point) => point.download),
     ]);
-  }, [points]);
+  }, [points, t, windowSeconds]);
   return <div ref={root} style={{ width: '100%' }} aria-label={t('pages.audit.bandwidthTitle')} />;
 }

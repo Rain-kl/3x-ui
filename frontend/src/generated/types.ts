@@ -51,10 +51,15 @@ export interface AIRunPage {
 }
 
 export interface AISettings {
+  binary: string;
+  directory: string;
   enabled: boolean;
+  hasPassword: boolean;
   model: string;
+  password?: string;
   retentionDays: number;
   url: string;
+  username: string;
 }
 
 export interface AIStatus {

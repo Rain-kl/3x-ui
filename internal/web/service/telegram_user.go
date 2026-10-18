@@ -14,7 +14,7 @@ import (
 )
 
 func UserTelegramHooks() telegramuser.Hooks {
-	return telegramuser.Hooks{Network: userTelegramNetwork, Subscription: userTelegramSubscription, Usage: userTelegramUsage}
+	return telegramuser.Hooks{SubscriptionDetails: userTelegramSubscriptionDetails, Network: userTelegramNetwork, Subscription: userTelegramSubscription, Usage: userTelegramUsage}
 }
 
 func userTelegramNetwork() (telegramuser.Network, error) {
@@ -104,4 +104,30 @@ func userTelegramUsage(clientID int) (string, error) {
 		status = "流量已用尽"
 	}
 	return fmt.Sprintf("客户端：%s\n状态：%s\n剩余流量：%s\n已用流量：%.2f GiB\n剩余时间：%s", record.Email, status, remaining, float64(used)/(1<<30), days), nil
+}
+
+// FORK(telegram-subscription-details): Depend on the registered subscription renderer to preserve protocol-specific behavior.
+func userTelegramSubscriptionDetails(clientID int) (telegramuser.SubscriptionDetails, error) {
+	provider, ok := registeredSubLinkProvider.(interface {
+		BotSubscriptionDetails(string, string) (telegramuser.SubscriptionDetails, error)
+	})
+	if !ok {
+		return telegramuser.SubscriptionDetails{}, fmt.Errorf("subscription details provider is not registered")
+	}
+	record, err := (&ClientService{}).GetByID(clientID)
+	if err != nil {
+		return telegramuser.SubscriptionDetails{}, fmt.Errorf("load subscription details client: %w", err)
+	}
+	if record.SubID == "" {
+		return telegramuser.SubscriptionDetails{}, fmt.Errorf("client has no subscription identifier; request /subscription first")
+	}
+	cfg, err := telegramuser.Config()
+	if err != nil {
+		return telegramuser.SubscriptionDetails{}, fmt.Errorf("load subscription public URL: %w", err)
+	}
+	address, err := url.Parse(cfg.PublicSubURL)
+	if err != nil || address.Hostname() == "" {
+		return telegramuser.SubscriptionDetails{}, fmt.Errorf("public user Bot subscription URL is invalid")
+	}
+	return provider.BotSubscriptionDetails(address.Hostname(), record.SubID)
 }

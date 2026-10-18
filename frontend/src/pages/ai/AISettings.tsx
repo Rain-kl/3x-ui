@@ -27,10 +27,11 @@ export default function AISettings({
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
-  const methods = useZodForm(SettingsFormSchema, { defaultValues: value });
+  const methods = useZodForm(SettingsFormSchema, { defaultValues: { ...value, password: '' } });
   const save = useMutation({
     mutationFn: aiApi.saveSettings,
-    onSuccess: () => {
+    onSuccess: (saved) => {
+      methods.reset({ ...saved, password: '' });
       void cache.invalidateQueries({ queryKey: ['ai'] });
     },
   });
@@ -45,7 +46,7 @@ export default function AISettings({
     <FormProvider {...methods}>
       <Form layout="vertical" onFinish={methods.handleSubmit((data) => save.mutate(data))}>
         <Alert type="info" title={t('pages.ai.settingsDescription')} style={{ marginBottom: 16 }} />
-        {save.error && (
+        {(save.error || reconnect.error) && (
           <Alert
             type="error"
             title={(save.error || reconnect.error)?.message}
@@ -69,6 +70,31 @@ export default function AISettings({
           <Col xs={24} md={12}>
             <FormField name="url" label={t('pages.ai.url')}>
               <Input placeholder="http://127.0.0.1:4096" />
+            </FormField>
+          </Col>
+          {/* FORK(panel-ai): Configure local connections and authentication explicitly in the panel. */}
+          <Col xs={24} md={12}>
+            <FormField name="binary" label={t('pages.ai.binary')}>
+              <Input placeholder="/usr/local/bin/opencode" />
+            </FormField>
+          </Col>
+          <Col xs={24} md={12}>
+            <FormField name="directory" label={t('pages.ai.directory')}>
+              <Input placeholder={t('pages.ai.directoryHint')} />
+            </FormField>
+          </Col>
+          <Col xs={24} md={12}>
+            <FormField name="username" label={t('pages.ai.username')}>
+              <Input autoComplete="off" placeholder="opencode" />
+            </FormField>
+          </Col>
+          <Col xs={24} md={12}>
+            <FormField
+              name="password"
+              label={t('pages.ai.password')}
+              extra={value.hasPassword ? t('pages.ai.passwordSaved') : undefined}
+            >
+              <Input.Password autoComplete="new-password" />
             </FormField>
           </Col>
           <Col xs={24} md={12}>

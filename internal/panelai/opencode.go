@@ -48,13 +48,10 @@ func (b *tailBuffer) Write(p []byte) (int, error) {
 }
 func (b *tailBuffer) String() string { b.mu.Lock(); defer b.mu.Unlock(); return b.text }
 
-func newOpenCode(base, directory, password string) *openCode {
+// FORK(panel-ai): Use only the credentials explicitly saved in the panel.
+func newOpenCode(base, directory, username, password string) *openCode {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.Proxy = nil
-	username := os.Getenv("OPENCODE_SERVER_USERNAME")
-	if username == "" {
-		username = "opencode"
-	}
 	return &openCode{base: base, directory: directory, username: username, password: password, http: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 		return fmt.Errorf("OpenCode redirects are not allowed")
 	}}}
@@ -124,31 +121,32 @@ func (o *openCode) health(ctx context.Context) (string, error) {
 	return status.Version, nil
 }
 
+// FORK(panel-ai): Connection and startup paths must come from saved administrator settings.
 func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 	m.connectionMu.Lock()
 	defer m.connectionMu.Unlock()
 	if m.client != nil {
 		return m.client, nil
 	}
-	cfg, err := ReadSettings()
+	cfg, err := readSettings()
 	if err != nil {
 		return nil, err
 	}
 	if !cfg.Enabled {
 		return nil, fmt.Errorf("AI is disabled; enable it in AI settings")
 	}
-	base, err := discoverURL(cfg)
+	base, err := configuredURL(cfg)
 	if err != nil {
 		return nil, err
 	}
-	directory, err := filepathAbsolute(workspaceDirectory())
+	directory, err := filepathAbsolute(workspaceDirectory(cfg))
 	if err != nil {
 		return nil, err
 	}
 	if err = os.MkdirAll(directory, 0o700); err != nil {
 		return nil, fmt.Errorf("create OpenCode workspace: %w", err)
 	}
-	client := newOpenCode(base, directory, os.Getenv("OPENCODE_SERVER_PASSWORD"))
+	client := newOpenCode(base, directory, cfg.Username, cfg.Password)
 	probe, cancel := context.WithTimeout(ctx, 2*time.Second)
 	_, err = client.health(probe)
 	cancel()
@@ -157,9 +155,9 @@ func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 		if errors.As(err, &httpErr) {
 			return nil, fmt.Errorf("existing OpenCode health check failed: %w", err)
 		}
-		binary := discoverBinary()
+		binary := cfg.Binary
 		if binary == "" {
-			return nil, fmt.Errorf("OpenCode is unavailable at %s and no binary was found; configure XUI_OPENCODE_BIN or start opencode serve: %w", base, err)
+			return nil, fmt.Errorf("OpenCode is unavailable at %s and no executable path is configured; set it in AI settings or start the configured local service: %w", base, err)
 		}
 		parsed, _ := url.Parse(base)
 		port := parsed.Port()
@@ -167,13 +165,16 @@ func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 			port = "80"
 		}
 		processCtx, processCancel := context.WithCancel(m.ctx)
-		password := os.Getenv("OPENCODE_SERVER_PASSWORD")
-		if password == "" {
-			password = randomID()
-		}
+		password := cfg.Password
 		cmd := exec.CommandContext(processCtx, binary, "serve", "--hostname", parsed.Hostname(), "--port", port)
 		cmd.Dir = directory
-		cmd.Env = append(os.Environ(), "OPENCODE_SERVER_PASSWORD="+password, "OPENCODE_DISABLE_AUTOUPDATE=true")
+		// FORK(panel-ai): OpenCode receives the saved credentials, independent of the panel's inherited environment.
+		for _, item := range os.Environ() {
+			if !strings.HasPrefix(item, "OPENCODE_SERVER_PASSWORD=") && !strings.HasPrefix(item, "OPENCODE_SERVER_USERNAME=") {
+				cmd.Env = append(cmd.Env, item)
+			}
+		}
+		cmd.Env = append(cmd.Env, "OPENCODE_SERVER_PASSWORD="+password, "OPENCODE_SERVER_USERNAME="+cfg.Username, "OPENCODE_DISABLE_AUTOUPDATE=true")
 		tail := &tailBuffer{}
 		cmd.Stdout = tail
 		cmd.Stderr = tail
@@ -184,7 +185,7 @@ func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 		m.processCancel = processCancel
 		exited := make(chan error, 1)
 		go func() { exited <- cmd.Wait() }()
-		client = newOpenCode(base, directory, password)
+		client = newOpenCode(base, directory, cfg.Username, password)
 		deadline := time.NewTimer(20 * time.Second)
 		defer deadline.Stop()
 		tick := time.NewTicker(250 * time.Millisecond)
@@ -199,11 +200,11 @@ func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 			case exitErr := <-exited:
 				processCancel()
 				m.processCancel = nil
-				return nil, fmt.Errorf("OpenCode exited during startup (%w): %s", exitErr, strings.ReplaceAll(tail.String(), password, "[REDACTED]"))
+				return nil, fmt.Errorf("OpenCode exited during startup (%w): %s", exitErr, redactOpenCodeOutput(tail.String(), password))
 			case <-deadline.C:
 				processCancel()
 				m.processCancel = nil
-				return nil, fmt.Errorf("OpenCode startup timed out: %s", strings.ReplaceAll(tail.String(), password, "[REDACTED]"))
+				return nil, fmt.Errorf("OpenCode startup timed out: %s", redactOpenCodeOutput(tail.String(), password))
 			case <-tick.C:
 				probe, cancel := context.WithTimeout(ctx, time.Second)
 				_, err = client.health(probe)
@@ -225,20 +226,26 @@ func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 	return client, nil
 }
 
+// FORK(panel-ai): Report configured paths without scanning the host environment.
 func (m *Manager) ConnectionStatus(ctx context.Context) AIStatus {
-	directory, _ := filepathAbsolute(workspaceDirectory())
-	status := AIStatus{Binary: discoverBinary(), Directory: directory}
 	cfg, err := ReadSettings()
+	status := AIStatus{}
 	if err != nil {
 		status.Error = err.Error()
 		return status
 	}
-	status.URL, err = discoverURL(cfg)
-	if err != nil {
-		status.Error = err.Error()
+	directory, dirErr := filepathAbsolute(workspaceDirectory(cfg))
+	status.Binary, status.Directory, status.URL = cfg.Binary, directory, cfg.URL
+	if dirErr != nil {
+		status.Error = dirErr.Error()
 		return status
 	}
 	if !cfg.Enabled {
+		return status
+	}
+	status.URL, err = configuredURL(cfg)
+	if err != nil {
+		status.Error = err.Error()
 		return status
 	}
 	client, err := m.connect(ctx)
@@ -283,4 +290,11 @@ func (m *Manager) Models(ctx context.Context) ([]AIModelOption, error) {
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result, nil
+}
+
+func redactOpenCodeOutput(value, password string) string {
+	if password == "" {
+		return value
+	}
+	return strings.ReplaceAll(value, password, "[REDACTED]")
 }

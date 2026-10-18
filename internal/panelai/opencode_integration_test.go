@@ -18,12 +18,12 @@ func TestLocalOpenCodeAuditTools(t *testing.T) {
 	if endpoint == "" {
 		t.Skip("set XUI_TEST_OPENCODE_URL to verify against a real local OpenCode server")
 	}
-	t.Setenv("XUI_OPENCODE_DIRECTORY", filepath.Join(t.TempDir(), "opencode"))
+	workspace := filepath.Join(t.TempDir(), "opencode")
 	if err := database.InitDB(filepath.Join(t.TempDir(), "panel.db")); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
-	if err := SaveSettings(AISettings{Enabled: true, URL: endpoint, Model: os.Getenv("XUI_TEST_OPENCODE_MODEL"), RetentionDays: 7}); err != nil {
+	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, URL: endpoint, Model: os.Getenv("XUI_TEST_OPENCODE_MODEL"), RetentionDays: 7}); err != nil {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32

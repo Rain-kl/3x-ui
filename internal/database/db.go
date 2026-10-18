@@ -84,7 +84,9 @@ func allModels() []any {
 		// FORK-BEGIN(telegram-user-bot)
 		&model.TelegramUserConfig{},
 		// FORK(telegram-custom-commands): Preserve administrator-defined replies across migrations.
-		&model.TelegramCustomCommand{}, &model.TelegramBinding{}, &model.TelegramBindCode{},
+		&model.TelegramCustomCommand{},
+		// FORK(telegram-subscription-details): Deletion deadlines must survive panel restarts.
+		&model.TelegramMessageDeletion{}, &model.TelegramBinding{}, &model.TelegramBindCode{},
 		&model.TelegramConversation{}, &model.TelegramMessage{}, &model.TelegramLog{}, &model.TelegramAdminRelay{}, &model.TelegramBlockedUser{},
 		// FORK-END(telegram-user-bot)
 		&model.InboundFallback{},

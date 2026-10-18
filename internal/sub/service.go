@@ -35,6 +35,9 @@ var salamanderWarningSeen sync.Map
 
 // SubService provides business logic for generating subscription links and managing subscription data.
 type SubService struct {
+	// FORK(telegram-subscription-details): Capture real display names only for explicit Bot queries.
+	botNodeNames *[]string
+
 	address        string
 	remarkTemplate string
 	datepicker     string
@@ -510,6 +513,10 @@ func (s *SubService) getSubs(subId string) ([]string, []string, int64, xray.Clie
 			} else {
 				link = s.GetLink(inbound, client.Email)
 			}
+			// FORK(telegram-subscription-details): Derive names from the same rendered links and fallback remarks.
+			if s.botNodeNames != nil {
+				s.captureBotNodeNames(link, s.genRemark(inbound, client.Email, "", ""))
+			}
 			result = append(result, link)
 			emails = append(emails, client.Email)
 			seenEmails[client.Email] = struct{}{}
@@ -528,6 +535,8 @@ func (s *SubService) getSubs(subId string) ([]string, []string, int64, xray.Clie
 		}
 		for _, el := range expandEntry(ext) {
 			if link := applyRemarkToLink(el.Link, el.Name); link != "" {
+				// FORK(telegram-subscription-details): External subscription entries must appear in /nodes too.
+				s.captureBotNodeNames(link, el.Name)
 				result = append(result, link)
 				emails = append(emails, ext.Email)
 				seenEmails[ext.Email] = struct{}{}

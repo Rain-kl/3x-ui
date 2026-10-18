@@ -177,10 +177,23 @@
       },
       "AISettings": {
         "properties": {
+          "binary": {
+            "description": "FORK(panel-ai): Connection credentials and paths belong to explicit administrator settings.",
+            "type": "string"
+          },
+          "directory": {
+            "type": "string"
+          },
           "enabled": {
             "type": "boolean"
           },
+          "hasPassword": {
+            "type": "boolean"
+          },
           "model": {
+            "type": "string"
+          },
+          "password": {
             "type": "string"
           },
           "retentionDays": {
@@ -188,13 +201,20 @@
           },
           "url": {
             "type": "string"
+          },
+          "username": {
+            "type": "string"
           }
         },
         "required": [
+          "binary",
+          "directory",
           "enabled",
+          "hasPassword",
           "model",
           "retentionDays",
-          "url"
+          "url",
+          "username"
         ],
         "type": "object"
       },
@@ -6234,7 +6254,7 @@
         ],
         "summary": "Atomically replace custom commands and update the native slash menu on the next poll.",
         "operationId": "post_panel_api_telegram_commands",
-        "description": "Up to 94 commands. Names are normalized to lowercase without a leading slash; 1–32 ASCII letters, digits or underscores. Built-in names and duplicates are rejected. Descriptions are 1–256 characters; plain-text replies are 1–4096 characters. Replies are available to unbound users. Disabled commands are excluded from matching and menus. List order defines menu order.",
+        "description": "Up to 93 commands. Names are normalized to lowercase without a leading slash; 1–32 ASCII letters, digits or underscores. Built-in names and duplicates are rejected. Descriptions are 1–256 characters; plain-text replies are 1–4096 characters. Replies are available to unbound users. Disabled commands are excluded from matching and menus. List order defines menu order.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8699,10 +8719,15 @@
                 "example": {
                   "success": true,
                   "obj": {
+                    "binary": "",
+                    "directory": "",
                     "enabled": false,
+                    "hasPassword": false,
                     "model": "",
+                    "password": "",
                     "retentionDays": 0,
-                    "url": ""
+                    "url": "",
+                    "username": ""
                   }
                 }
               }
@@ -8716,18 +8741,13 @@
         ],
         "summary": "Save panel AI settings. Enabling connects to or starts local OpenCode; no provider credentials are stored in the panel.",
         "operationId": "post_panel_api_ai_settings",
+        "description": "Connection URL, absolute executable path, workspace and authentication are configured explicitly here. No environment or directory discovery. Enabling requires a local HTTP URL. Empty executable connects only to an existing server. Password is never returned; an empty password preserves the stored value. Changing connection settings cancels active runs.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
-              },
-              "example": {
-                "enabled": true,
-                "url": "",
-                "model": "opencode/big-pickle",
-                "retentionDays": 90
+                "$ref": "#/components/schemas/AISettings"
               }
             }
           }
@@ -8754,10 +8774,15 @@
                 "example": {
                   "success": true,
                   "obj": {
+                    "binary": "",
+                    "directory": "",
                     "enabled": false,
+                    "hasPassword": false,
                     "model": "",
+                    "password": "",
                     "retentionDays": 0,
-                    "url": ""
+                    "url": "",
+                    "username": ""
                   }
                 }
               }
@@ -8771,7 +8796,7 @@
         "tags": [
           "Panel AI"
         ],
-        "summary": "Discover local OpenCode and report its real health, version, executable and workspace.",
+        "summary": "Connect to the configured local OpenCode and report its health, version, executable and workspace.",
         "operationId": "get_panel_api_ai_status",
         "responses": {
           "200": {
@@ -10500,7 +10525,7 @@
                     },
                     "swap": {
                       "current": 0,
-                      "total": 4294967296
+                      "total": 4293967296
                     },
                     "disk": {
                       "current": 53687091200,

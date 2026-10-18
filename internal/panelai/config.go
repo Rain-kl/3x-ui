@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/config"
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
@@ -22,6 +21,12 @@ import (
 var settingsMu sync.Mutex
 
 type AISettings struct {
+	// FORK(panel-ai): Connection credentials and paths belong to explicit administrator settings.
+	Binary        string `json:"binary"`
+	Directory     string `json:"directory"`
+	Username      string `json:"username"`
+	Password      string `json:"password,omitempty"`
+	HasPassword   bool   `json:"hasPassword"`
 	Enabled       bool   `json:"enabled"`
 	URL           string `json:"url"`
 	Model         string `json:"model"`
@@ -43,8 +48,15 @@ type AIModelOption struct {
 	Provider string `json:"provider"`
 }
 
+// FORK(panel-ai): Settings responses must never disclose the saved authentication password.
 func ReadSettings() (AISettings, error) {
-	result := AISettings{RetentionDays: 90}
+	value, err := readSettings()
+	value.HasPassword, value.Password = value.Password != "", ""
+	return value, err
+}
+
+func readSettings() (AISettings, error) {
+	result := AISettings{RetentionDays: 90, Username: "opencode"}
 	var row model.Setting
 	err := database.GetDB().Where("key = ?", "panelAIConfig").First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -62,18 +74,39 @@ func ReadSettings() (AISettings, error) {
 	return result, nil
 }
 
+// FORK(panel-ai): Persist explicit connection settings and preserve redacted passwords.
 func SaveSettings(value AISettings) error {
 	settingsMu.Lock()
 	defer settingsMu.Unlock()
-	previous, err := ReadSettings()
+	previous, err := readSettings()
 	if err != nil {
 		return err
+	}
+	value.Binary, value.Directory = strings.TrimSpace(value.Binary), strings.TrimSpace(value.Directory)
+	value.Username = strings.TrimSpace(value.Username)
+	if value.Username == "" {
+		value.Username = "opencode"
+	}
+	if len(value.Password) > 4096 || len(value.Username) > 256 || strings.ContainsAny(value.Username, ":\r\n") {
+		return fmt.Errorf("OpenCode username must be at most 256 characters without colon or line breaks; password at most 4096 bytes")
+	}
+	if value.Password == "" {
+		value.Password = previous.Password
+	}
+	value.HasPassword = false
+	for _, path := range []string{value.Binary, value.Directory} {
+		if path != "" && (!filepath.IsAbs(path) || len(path) > 4096 || strings.ContainsRune(path, 0)) {
+			return fmt.Errorf("OpenCode executable and workspace must be absolute paths of at most 4096 bytes")
+		}
 	}
 	value.URL = strings.TrimRight(strings.TrimSpace(value.URL), "/")
 	if value.URL != "" {
 		if err := validateLocalURL(value.URL); err != nil {
 			return err
 		}
+	}
+	if value.Enabled && value.URL == "" {
+		return fmt.Errorf("enabling AI requires an OpenCode service URL configured in AI settings")
 	}
 	if len(value.Model) > 512 || value.RetentionDays < 1 || value.RetentionDays > 3650 {
 		return fmt.Errorf("AI model must be at most 512 characters and retention 1..3650 days")
@@ -82,7 +115,7 @@ func SaveSettings(value AISettings) error {
 	if err != nil {
 		return err
 	}
-	err = database.GetDB().Transaction(func(tx *gorm.DB) error {
+	err = database.GetDB().Session(&gorm.Session{Logger: gormlogger.Discard}).Transaction(func(tx *gorm.DB) error {
 		var row model.Setting
 		readErr := tx.Where("key = ?", "panelAIConfig").First(&row).Error
 		if readErr != nil && !errors.Is(readErr, gorm.ErrRecordNotFound) {
@@ -94,7 +127,7 @@ func SaveSettings(value AISettings) error {
 	if err != nil {
 		return fmt.Errorf("save AI settings: %w", err)
 	}
-	if previous.Enabled != value.Enabled || previous.URL != value.URL {
+	if previous.Enabled != value.Enabled || previous.URL != value.URL || previous.Binary != value.Binary || previous.Directory != value.Directory || previous.Username != value.Username || previous.Password != value.Password {
 		Default.ResetConnection()
 	}
 	return nil
@@ -112,66 +145,22 @@ func validateLocalURL(raw string) error {
 	return nil
 }
 
-func workspaceDirectory() string {
-	if value := os.Getenv("XUI_OPENCODE_DIRECTORY"); value != "" {
-		return value
+// FORK(panel-ai): Use saved settings exclusively; do not inspect environment, PATH or user configuration files.
+func workspaceDirectory(value AISettings) string {
+	if value.Directory != "" {
+		return value.Directory
 	}
 	return filepath.Join(config.GetDBFolderPath(), "ai")
 }
 
-func discoverURL(value AISettings) (string, error) {
-	for _, raw := range []string{value.URL, os.Getenv("XUI_OPENCODE_URL"), os.Getenv("OPENCODE_SERVER_URL")} {
-		if raw != "" {
-			if err := validateLocalURL(raw); err != nil {
-				return "", err
-			}
-			return strings.TrimRight(raw, "/"), nil
-		}
+func configuredURL(value AISettings) (string, error) {
+	if value.URL == "" {
+		return "", fmt.Errorf("configure the OpenCode service URL in AI settings")
 	}
-	home, _ := os.UserHomeDir()
-	paths := []string{os.Getenv("OPENCODE_CONFIG"), filepath.Join(os.Getenv("OPENCODE_CONFIG_DIR"), "opencode.json"), filepath.Join(home, ".config", "opencode", "opencode.json")}
-	for _, path := range paths {
-		if path == "" || path == "opencode.json" {
-			continue
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			continue
-		}
-		var cfg struct {
-			Server struct {
-				Hostname string `json:"hostname"`
-				Port     int    `json:"port"`
-			} `json:"server"`
-		}
-		if json.Unmarshal(data, &cfg) == nil && cfg.Server.Port > 0 && cfg.Server.Port <= 65535 {
-			raw := "http://" + net.JoinHostPort("127.0.0.1", fmt.Sprint(cfg.Server.Port))
-			return raw, nil
-		}
+	if err := validateLocalURL(value.URL); err != nil {
+		return "", err
 	}
-	return "http://127.0.0.1:4096", nil
-}
-
-func discoverBinary() string {
-	for _, key := range []string{"XUI_OPENCODE_BIN", "OPENCODE_BIN"} {
-		if value := os.Getenv(key); value != "" {
-			if path, err := exec.LookPath(value); err == nil {
-				return path
-			}
-			return value
-		}
-	}
-	if path, err := exec.LookPath("opencode"); err == nil {
-		return path
-	}
-	home, _ := os.UserHomeDir()
-	for _, path := range []string{filepath.Join(home, ".opencode", "bin", "opencode"), filepath.Join(home, ".local", "bin", "opencode"), filepath.Join("node_modules", ".bin", "opencode")} {
-		if info, err := os.Stat(path); err == nil && !info.IsDir() {
-			absolute, _ := filepath.Abs(path)
-			return absolute
-		}
-	}
-	return ""
+	return strings.TrimRight(value.URL, "/"), nil
 }
 
 func filepathAbsolute(path string) (string, error) {

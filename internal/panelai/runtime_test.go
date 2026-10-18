@@ -23,7 +23,7 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
-	t.Setenv("XUI_OPENCODE_DIRECTORY", t.TempDir())
+	workspace := t.TempDir()
 	var mu sync.Mutex
 	var mcpURL, authorization string
 	var prompts atomic.Int32
@@ -104,7 +104,7 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 		}
 	}))
 	defer server.Close()
-	if err := SaveSettings(AISettings{Enabled: true, URL: server.URL, RetentionDays: 7}); err != nil {
+	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, URL: server.URL, RetentionDays: 7}); err != nil {
 		t.Fatal(err)
 	}
 	notifications := make(chan string, 2)

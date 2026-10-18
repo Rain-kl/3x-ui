@@ -84,9 +84,10 @@ export default function TelegramCommands() {
       {query.error && (
         <Alert type="error" title={query.error.message} style={{ marginBottom: 12 }} />
       )}
+      {/* FORK(telegram-subscription-details): Reserve a native menu slot for /nodes. */}
       <Button
         type="primary"
-        disabled={saving || !query.data || rows.length >= 94}
+        disabled={saving || !query.data || rows.length >= 93}
         style={{ marginBottom: 16 }}
         onClick={() =>
           setEditing({

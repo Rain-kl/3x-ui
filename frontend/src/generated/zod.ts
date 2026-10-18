@@ -73,10 +73,15 @@ export const AIRunPageSchema = z.object({
 export type AIRunPage = z.infer<typeof AIRunPageSchema>;
 
 export const AISettingsSchema = z.object({
+  binary: z.string(),
+  directory: z.string(),
   enabled: z.boolean(),
+  hasPassword: z.boolean(),
   model: z.string(),
+  password: z.string().optional(),
   retentionDays: z.number().int(),
   url: z.string(),
+  username: z.string(),
 });
 export type AISettings = z.infer<typeof AISettingsSchema>;
 

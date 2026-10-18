@@ -28,11 +28,12 @@ func ReadCustomCommands() (CustomCommands, error) {
 	return result, nil
 }
 
+// FORK(telegram-subscription-details): Reserve a native menu slot and command name for /nodes.
 func SaveCustomCommands(value CustomCommands) (CustomCommands, error) {
-	if len(value.Commands) > 94 {
-		return CustomCommands{}, fmt.Errorf("at most 94 Telegram custom commands are allowed")
+	if len(value.Commands) > 93 {
+		return CustomCommands{}, fmt.Errorf("at most 93 Telegram custom commands are allowed")
 	}
-	seen := map[string]bool{"start": true, "help": true, "subscription": true, "reset": true, "usage": true, "notifications": true, "bind": true, "unbind": true}
+	seen := map[string]bool{"nodes": true, "start": true, "help": true, "subscription": true, "reset": true, "usage": true, "notifications": true, "bind": true, "unbind": true}
 	for i := range value.Commands {
 		row := &value.Commands[i]
 		row.Command = strings.ToLower(strings.TrimPrefix(strings.TrimSpace(row.Command), "/"))
@@ -75,11 +76,16 @@ func (r *receiver) syncCommands() {
 		r.failure("bot.commands.failed", err)
 		return
 	}
-	commands := []map[string]string{{"command": "notifications", "description": "获取全部通知"}, {"command": "subscription", "description": "获取订阅链接"}, {"command": "reset", "description": "重置订阅链接"}, {"command": "usage", "description": "查询剩余流量和天数"}, {"command": "bind", "description": "绑定客户端"}, {"command": "unbind", "description": "解绑客户端"}}
+	commands := []map[string]string{{"command": "nodes", "description": "获取全部订阅节点名"}, {"command": "notifications", "description": "获取全部通知"}, {"command": "subscription", "description": "获取订阅链接"}, {"command": "reset", "description": "重置订阅链接"}, {"command": "usage", "description": "查询剩余流量和天数"}, {"command": "bind", "description": "绑定客户端"}, {"command": "unbind", "description": "解绑客户端"}}
 	for _, row := range value.Commands {
-		if row.Enabled {
+		if row.Enabled && row.Command != "nodes" {
 			commands = append(commands, map[string]string{"command": row.Command, "description": row.Description})
 		}
+	}
+	// FORK(telegram-subscription-details): Old 94-item configurations must not break the 100-command Telegram limit.
+	truncated := len(commands) > 100
+	if truncated {
+		commands = commands[:100]
 	}
 	encoded, err := json.Marshal(commands)
 	if err != nil {
@@ -88,6 +94,9 @@ func (r *receiver) syncCommands() {
 	}
 	if r.commandMenu == string(encoded) {
 		return
+	}
+	if truncated {
+		r.log(0, 0, "bot.commands.limit", "only the first 93 enabled custom commands fit alongside built-in commands; remove excess entries")
 	}
 	if err := r.user.call(r.ctx, "setMyCommands", map[string]any{"commands": commands}, nil); err != nil {
 		r.failure("bot.commands.failed", err)

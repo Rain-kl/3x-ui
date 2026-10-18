@@ -36,7 +36,6 @@ export default function AuditBandwidthCard({ nodeId, client }: { nodeId: number;
       if (!response.success) throw new Error(response.msg);
       return AuditBandwidthHistorySchema.parse(response.obj);
     },
-    enabled: mode === 'history',
     refetchInterval: 30000,
   });
   useEffect(
@@ -53,20 +52,32 @@ export default function AuditBandwidthCard({ nodeId, client }: { nodeId: number;
           upload: fresh ? value.data.upload : null,
           download: fresh ? value.data.download : null,
         };
-        setLive((previous) =>
-          previous.at(-1)?.time === point.time ? previous : [...previous, point].slice(-720),
-        );
+        setLive((previous) => {
+          const last = previous.at(-1);
+          if (last && point.time <= last.time) return previous;
+          const gap =
+            last && point.time - last.time > 15
+              ? [{ time: last.time + 0.001, upload: null, download: null }]
+              : [];
+          return [...previous, ...gap, point].slice(-720);
+        });
       }),
     [queryClient, nodeId, client],
   );
+  // FORK(audit-bandwidth): Seed the last hour from saved minutes, then prefer this session's live samples.
+  const historyPoints = (history.data?.points ?? []).map((point) => ({
+    time: point.time,
+    upload: point.coveredSeconds > 0 ? point.upload : null,
+    download: point.coveredSeconds > 0 ? point.download : null,
+  }));
+  const now = Math.max(current.dataUpdatedAt, current.errorUpdatedAt, history.dataUpdatedAt) / 1000;
+  const firstLive = live[0]?.time ?? now;
   const points =
     mode === 'live'
-      ? live
-      : (history.data?.points ?? []).map((point) => ({
-          time: point.time,
-          upload: point.coveredSeconds > 0 ? point.upload : null,
-          download: point.coveredSeconds > 0 ? point.download : null,
-        }));
+      ? [...historyPoints.filter((point) => point.time + 60 <= firstLive), ...live].filter(
+          (point) => point.time >= now - 3600,
+        )
+      : historyPoints;
   const error = current.error || history.error;
   return (
     <Card
@@ -106,7 +117,7 @@ export default function AuditBandwidthCard({ nodeId, client }: { nodeId: number;
         <Alert type="info" title={t('pages.audit.bandwidthMissing')} style={{ marginBottom: 12 }} />
       )}
       {points.some((point) => point.upload !== null || point.download !== null) ? (
-        <AuditBandwidthPlot points={points} />
+        <AuditBandwidthPlot points={points} windowSeconds={mode === 'live' ? 3600 : undefined} />
       ) : (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
       )}

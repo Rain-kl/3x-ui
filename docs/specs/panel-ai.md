@@ -4,9 +4,9 @@
 
 用户已确认采用 OpenCode 原生 Server API。面板不实现 agent 循环、模型提供商或推理运行时：OpenCode 持有模型配置、会话消息、工具调用和上下文；面板持有连接设置、会话引用、自然语言定时任务及运行结果。侧边栏 AI 进入「对话、任务、设置」。模型列表来自 GET /provider 的已连接 provider，不读取或返回其凭据；选择默认模型，provider 的密钥与连接仍在 OpenCode 管理。
 
-## 自动发现与生命周期
+## 连接与生命周期
 
-优先显式设置 URL，然后 XUI_OPENCODE_URL / OPENCODE_SERVER_URL，然后本地配置中的 server 端口和默认 127.0.0.1:4096。二进制发现 XUI_OPENCODE_BIN / OPENCODE_BIN、PATH、用户 .opencode/bin / .local/bin、面板目录 node_modules/.bin。工作目录为面板 DB 目录下的独立 ai 工作区，可用 XUI_OPENCODE_DIRECTORY 指定。仅启用 AI 时连接或启动发现的本地二进制；面板只停止自己启动的进程。服务认证使用 OPENCODE_SERVER_PASSWORD / OPENCODE_SERVER_USERNAME。状态如实报告路径、连接错误，禁止静默回退到伪造 AI 结果。
+连接参数由管理员在 AI 设置手动配置，不从环境变量、PATH、用户配置文件或默认端口发现。仅启用后连接指定本机 HTTP 服务；配置了绝对程序路径时，可在服务未启动时由面板启动。面板只停止自己启动的进程。认证及工作目录同样由设置控制，状态报告具体路径与连接错误，禁止伪造 AI 结果。
 
 ## 工具与权限
 
@@ -26,4 +26,10 @@
 
 ## 验收
 
-无 OpenCode 时状态明确报错；有本地服务时自动发现，读取真实模型，完成对话并实际调用审计工具；任务自然语言创建、到期运行、失败记录及管理员通知；取消释放运行；重启恢复不重放；越权和非法参数被拒绝；SQLite/PG 模型一致；导出和 AI 查询不会逐行查数据库或把整个日志库加载入上下文。
+无 OpenCode 时状态明确报错；有本地服务时使用已保存的连接设置，读取真实模型，完成对话并实际调用审计工具；任务自然语言创建、到期运行、失败记录及管理员通知；取消释放运行；重启恢复不重放；越权和非法参数被拒绝；SQLite/PG 模型一致；导出和 AI 查询不会逐行查数据库或把整个日志库加载入上下文。
+
+## 手动连接配置
+
+AI 设置页显式填写 OpenCode HTTP 服务地址、可选绝对可执行文件路径、可选绝对工作目录、认证用户名和密码。停止读取 XUI_OPENCODE_URL、OPENCODE_SERVER_URL、XUI_OPENCODE_BIN、OPENCODE_BIN、XUI_OPENCODE_DIRECTORY、OPENCODE_SERVER_USERNAME/PASSWORD，也不扫描本地 opencode.json、PATH 或4096端口。不预填有效服务地址，启用时必须保存本机 HTTP 服务地址；可执行路径为空时只连接已有服务，不自动查找或启动程序。工作目录为空使用面板数据目录内的 ai 子目录。
+
+密码保存到面板设置，管理 API 不返回密码原文；空白输入保留已存密码，仅返回 hasPassword。密码不进入保存响应、错误输出和 SQL 记录。启动子进程时只把面板已保存的认证设置传递给 OpenCode，用户无需配置环境变量。用户名默认 opencode。连接、认证、程序路径和目录变化取消运行任务并重建连接，模型列表继续读取 OpenCode 原生接口。

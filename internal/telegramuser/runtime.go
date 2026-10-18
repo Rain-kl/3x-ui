@@ -19,6 +19,9 @@ type Hooks struct {
 	Network      func() (Network, error)
 	Subscription func(int, bool) (string, error)
 	Usage        func(int) (string, error)
+
+	// FORK(telegram-subscription-details): Reuse subscription rendering without importing the web service layer.
+	SubscriptionDetails func(int) (SubscriptionDetails, error)
 }
 
 type UserTelegramStatus struct {
@@ -139,11 +142,14 @@ func (m *Manager) Reload() (resultErr error) {
 	}
 	m.mu.Lock()
 	m.current, m.lastErr = r, ""
-	r.wg.Add(3)
+	// FORK(telegram-subscription-details): Wait for pending deletion work before closing the database.
+	r.wg.Add(4)
 	m.mu.Unlock()
 	go r.run("poll", r.poll)
 	go r.run("delivery", r.deliver)
 	go r.run("retention", r.maintain)
+	// FORK(telegram-subscription-details): One durable worker replaces per-message deletion timers.
+	go r.run("message deletion", r.deleteExpiredMessages)
 	return nil
 }
 
@@ -391,6 +397,9 @@ func (r *receiver) command(tgID int64, text string) {
 		}
 		r.await[tgID] = awaiting{action: "unbind", clientID: binding.ClientID, until: time.Now().Add(3 * time.Minute)}
 		r.reply(tgID, "确认解除绑定？", map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": "unbind"}, {"text": "取消", "callback_data": "cancel"}}}})
+	// FORK(telegram-subscription-details): List names without exposing proxy credentials.
+	case "/nodes":
+		r.replyNodes(tgID)
 	case "/notifications":
 		if _, err := BoundClient(tgID); err != nil {
 			r.reply(tgID, err.Error(), nil)
@@ -418,7 +427,8 @@ func (r *receiver) command(tgID int64, text string) {
 				r.reply(tgID, "获取订阅失败，请联系管理员。", nil)
 				r.log(tgID, 0, "subscription.failed", err.Error())
 			} else {
-				r.reply(tgID, subscriptionLinkMessage(link), nil)
+				// FORK(telegram-subscription-details): Include mixed credentials and expire the sensitive reply.
+				r.replySubscription(tgID, client.Id, link)
 			}
 		case "/usage":
 			usage, err := r.hooks.Usage(client.Id)
@@ -439,7 +449,7 @@ func (r *receiver) command(tgID int64, text string) {
 		if r.customCommand(tgID, command) {
 			return
 		}
-		r.reply(tgID, "支持 /subscription、/reset、/usage、/notifications、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", nil)
+		r.reply(tgID, "支持 /subscription、/reset、/usage、/nodes、/notifications、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", nil)
 	}
 }
 
@@ -500,13 +510,9 @@ func (r *receiver) confirm(tgID int64, action string) {
 			return
 		}
 		r.log(tgID, 0, "subscription.reset", fmt.Sprintf("client=%d", client.Id))
-		r.reply(tgID, "新订阅链接：\n"+subscriptionLinkMessage(link), nil)
+		// FORK(telegram-subscription-details): Reset links need the same expiry and details as /subscription.
+		r.replySubscription(tgID, state.clientID, link)
 	}
-}
-
-// FORK(telegram-user-bot): Explain that Clash needs a subscription converter.
-func subscriptionLinkMessage(link string) string {
-	return link + "\n\nClash 用户需搭配订阅转换工具使用：\nhttps://sublink.osur.eu/"
 }
 
 func (r *receiver) reply(tgID int64, text string, keyboard map[string]any) {
@@ -534,6 +540,13 @@ func (r *receiver) maintain() {
 		}
 		if err := database.GetDB().Where("expires_at < ?", time.Now().UnixMilli()).Delete(&model.TelegramBindCode{}).Error; err != nil {
 			r.failure("cleanup.failed", err)
+		}
+		// FORK(telegram-subscription-details): Telegram cannot delete replies older than its 48-hour limit.
+		expired := database.GetDB().Where("due_at < ?", time.Now().Add(-48*time.Hour).UnixMilli()).Delete(&model.TelegramMessageDeletion{})
+		if expired.Error != nil {
+			r.failure("message.delete.cleanup.failed", expired.Error)
+		} else if expired.RowsAffected > 0 {
+			r.log(0, 0, "message.delete.expired", fmt.Sprintf("expired deletion tasks=%d", expired.RowsAffected))
 		}
 		sweepBindAttempts()
 		if !pause(r.ctx, time.Hour) {
