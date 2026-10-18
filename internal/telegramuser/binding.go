@@ -113,7 +113,7 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 			clientID = clients[0].Id
 		}
 		var client model.ClientRecord
-		if err := tx.Select("id").First(&client, clientID).Error; err != nil {
+		if err := tx.Select("id", "group_name").First(&client, clientID).Error; err != nil {
 			return fmt.Errorf("binding client no longer exists")
 		}
 		var existing []model.TelegramBinding
@@ -131,7 +131,7 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 		if err := tx.Create(&binding).Error; err != nil {
 			return fmt.Errorf("claim Telegram binding: %w", err)
 		}
-		return nil
+		return enqueueBindingNotifications(tx, binding, client)
 	})
 	return binding, err
 }

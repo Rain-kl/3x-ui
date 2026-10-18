@@ -35,13 +35,7 @@ func EnqueueNotification(tx *gorm.DB, notice model.SubscriptionNotification) err
 	if err := query.Find(&recipients).Error; err != nil {
 		return fmt.Errorf("resolve bound notification audience: %w", err)
 	}
-	var queue []model.TelegramMessage
-	parts := splitText(notice.Title+"\n\n"+notice.Body, 3500)
-	for _, recipient := range recipients {
-		for _, text := range parts {
-			queue = append(queue, model.TelegramMessage{TgID: recipient.TgID, TargetChatID: recipient.TgID, ClientID: recipient.ClientID, Direction: "outgoing", Kind: "text", Text: text, DeliveryBot: "user", SourceBot: "user", Role: "notification", Status: "pending", Priority: 10, NoticeID: notice.Id, NoticeVersion: notice.UpdatedAt})
-		}
-	}
+	queue := notificationMessages(notice, recipients)
 	if len(queue) == 0 {
 		return nil
 	}
@@ -76,4 +70,38 @@ func validNoticeDelivery(message *model.TelegramMessage) (bool, error) {
 		return slices.Contains(notice.ClientIDs, client.Id), nil
 	}
 	return slices.Contains(notice.Groups, client.Group), nil
+}
+
+func notificationMessages(notice model.SubscriptionNotification, recipients []model.TelegramBinding) []model.TelegramMessage {
+	parts := splitText(notice.Title+"\n\n"+notice.Body, 3500)
+	queue := make([]model.TelegramMessage, 0, len(recipients)*len(parts))
+	for _, recipient := range recipients {
+		for _, text := range parts {
+			queue = append(queue, model.TelegramMessage{TgID: recipient.TgID, TargetChatID: recipient.TgID, ClientID: recipient.ClientID, Direction: "outgoing", Kind: "text", Text: text, DeliveryBot: "user", SourceBot: "user", Role: "notification", Status: "pending", Priority: 10, NoticeID: notice.Id, NoticeVersion: notice.UpdatedAt})
+		}
+	}
+	return queue
+}
+
+func enqueueBindingNotifications(tx *gorm.DB, binding model.TelegramBinding, client model.ClientRecord) error {
+	var notices []model.SubscriptionNotification
+	if err := tx.Where("published = ?", true).Order("sort_index, id").Find(&notices).Error; err != nil {
+		return fmt.Errorf("load published notifications for new Telegram binding: %w", err)
+	}
+	var queue []model.TelegramMessage
+	matched := 0
+	for _, notice := range notices {
+		visible := notice.TargetType == "clients" && slices.Contains(notice.ClientIDs, client.Id) || notice.TargetType == "groups" && client.Group != "" && slices.Contains(notice.Groups, client.Group)
+		if visible {
+			matched++
+			queue = append(queue, notificationMessages(notice, []model.TelegramBinding{binding})...)
+		}
+	}
+	if len(queue) == 0 {
+		return nil
+	}
+	if err := tx.CreateInBatches(&queue, 100).Error; err != nil {
+		return fmt.Errorf("queue historical notifications for new Telegram binding: %w", err)
+	}
+	return tx.Create(&model.TelegramLog{TgID: binding.TgID, Event: "notification.binding.queued", Detail: fmt.Sprintf("client=%d notices=%d messages=%d", client.Id, matched, len(queue))}).Error
 }
