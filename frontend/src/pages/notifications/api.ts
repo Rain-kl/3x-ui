@@ -45,11 +45,7 @@ export async function deleteNotification(id: number) {
 }
 
 export const NotificationFormSchema = SubscriptionNotificationSchema.extend({
-  title: z
-    .string()
-    .trim()
-    .min(1, 'pages.notifications.required')
-    .max(120, 'pages.notifications.titleLimit'),
+  title: z.string().trim().max(120, 'pages.notifications.titleLimit'),
   body: z
     .string()
     .trim()

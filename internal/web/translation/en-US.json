@@ -1093,7 +1093,7 @@
       "tabRateLimit": "Rate Limit",
       "nativeRateLimitHint": "Requires Xray core v26.10.10-feat.2 or newer. Changing limits restarts active connections.",
       "downLimit": "Downlink Limit (Mbps)",
-      "downLimitDesc": "Client default downlink bandwidth cap, 0 means unlimited",
+      "downLimitDesc": "Client-wide downlink cap; 0 clears it. Per-inbound overrides or defaults may still apply.",
       "inboundRateLimitOverrides": "Inbound Rate Limit Overrides",
       "inheritGlobalLimit": "Inherit default limit ({limit} Mbps)",
       "tabTraffic": "Traffic",

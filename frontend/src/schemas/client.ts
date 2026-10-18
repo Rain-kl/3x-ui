@@ -377,6 +377,8 @@ export const ClientBulkAdjustFormSchema = z
     addGB: z.number(),
     flow: z.string().optional().default(''),
     limitHwid: z.number().int().min(0).nullable().optional(),
+    // FORK(client-rate-and-traffic-ratio): Bulk edits must set the same global Mbps cap as client edits.
+    downLimit: z.number().int().min(0).nullable().optional(),
     adTag: z.string().optional().default(''),
   })
   .refine(
@@ -385,6 +387,7 @@ export const ClientBulkAdjustFormSchema = z
       v.addGB !== 0 ||
       v.flow !== '' ||
       (v.limitHwid !== undefined && v.limitHwid !== null) ||
+      (v.downLimit !== undefined && v.downLimit !== null) ||
       (v.adTag !== undefined && v.adTag.trim() !== ''),
     {
       error: 'pages.clients.bulkAdjustNothing',

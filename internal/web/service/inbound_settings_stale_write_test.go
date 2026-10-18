@@ -175,7 +175,7 @@ var staleClientOps = []staleClientOp{
 		return err
 	}},
 	{"bulk adjust", false, func(t *testing.T, ib *model.Inbound) error {
-		_, _, err := (&ClientService{}).BulkAdjust(&InboundService{}, []string{"x@stale"}, 1, 0, "", nil, "")
+		_, _, err := (&ClientService{}).BulkAdjust(&InboundService{}, []string{"x@stale"}, 1, 0, "", nil, "", nil)
 		return err
 	}},
 	{"bulk delete", false, func(t *testing.T, ib *model.Inbound) error {
@@ -210,7 +210,7 @@ func TestBulkAdjustOnRenewedClientKeepsRenewal(t *testing.T) {
 	setupBulkDB(t)
 	ib := seedRenewableNeighbour(t, 23120, nil)
 	commitTickBetweenReadAndWrite(t, autoRenewTick, func() {
-		if _, _, err := (&ClientService{}).BulkAdjust(&InboundService{}, []string{"y@stale"}, 0, 500, "", nil, ""); err != nil {
+		if _, _, err := (&ClientService{}).BulkAdjust(&InboundService{}, []string{"y@stale"}, 0, 500, "", nil, "", nil); err != nil {
 			t.Errorf("BulkAdjust: %v", err)
 		}
 	})

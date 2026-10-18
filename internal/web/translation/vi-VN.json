@@ -1093,7 +1093,7 @@
       "tabRateLimit": "Giới hạn tốc độ",
       "nativeRateLimitHint": "Yêu cầu Xray core v26.10.10-feat.2 trở lên. Thay đổi giới hạn sẽ khởi động lại các kết nối đang hoạt động.",
       "downLimit": "Giới hạn tải xuống (Mbps)",
-      "downLimitDesc": "Băng thông tải xuống mặc định của khách, 0 nghĩa là không giới hạn",
+      "downLimitDesc": "Giới hạn tải xuống toàn cục của máy khách; 0 sẽ xóa giới hạn này. Giới hạn hoặc giá trị mặc định theo inbound vẫn có thể áp dụng.",
       "inboundRateLimitOverrides": "Ghi đè giới hạn tốc độ cho cổng liên kết",
       "inheritGlobalLimit": "Kế thừa giới hạn chung ({limit} Mbps)",
       "tabTraffic": "Lưu lượng",

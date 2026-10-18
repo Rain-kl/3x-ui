@@ -1093,7 +1093,7 @@
       "tabRateLimit": "速度制限",
       "nativeRateLimitHint": "Xray core v26.10.10-feat.2 以降が必要です。上限を変更するとアクティブな接続が再起動されます。",
       "downLimit": "下り速度制限 (Mbps)",
-      "downLimitDesc": "クライアントのデフォルト下り帯域上限、0で無制限",
+      "downLimitDesc": "クライアント全体の下り上限です。0で全体設定を解除しますが、インバウンドごとの上書きやデフォルト値が適用される場合があります。",
       "inboundRateLimitOverrides": "関連ノードの速度制限上書き",
       "inheritGlobalLimit": "全体制限を継承 ({limit} Mbps)",
       "tabTraffic": "トラフィック",

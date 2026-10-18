@@ -1093,7 +1093,7 @@
       "tabRateLimit": "限速",
       "nativeRateLimitHint": "需要 Xray core v26.10.10-feat.2 或更新版本。修改限速會重新啟動現有連線。",
       "downLimit": "下行限速 (Mbps)",
-      "downLimitDesc": "用戶端預設頻寬上限，0 為不限速",
+      "downLimitDesc": "用戶端全域下行限速；0 代表清除全域值，逐入站覆蓋值或入站預設值仍可能生效。",
       "inboundRateLimitOverrides": "關聯節點限速覆蓋",
       "inheritGlobalLimit": "繼承總限速 ({limit} Mbps)",
       "tabTraffic": "流量",

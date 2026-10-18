@@ -81,3 +81,10 @@ type TelegramAdminRelay struct {
 	TgID           int64  `json:"tgId"`
 	UserMessageID  int64  `json:"userMessageId" gorm:"index"`
 }
+
+type TelegramBlockedUser struct {
+	TgID      int64  `json:"tgId" gorm:"primaryKey;autoIncrement:false"`
+	Attempts  int    `json:"attempts"`
+	Reason    string `json:"reason"`
+	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+}

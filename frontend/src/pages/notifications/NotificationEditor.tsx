@@ -145,7 +145,7 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
           {error && <Alert type="error" showIcon title={error.message} />}
           <Row gutter={16}>
             <Col xs={24} md={18}>
-              <FormField name="title" label={t('pages.notifications.title')} required>
+              <FormField name="title" label={t('pages.notifications.title')}>
                 <Input maxLength={120} showCount />
               </FormField>
             </Col>
