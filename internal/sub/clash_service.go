@@ -112,7 +112,7 @@ func (s *SubClashService) getClash(subId string, host string, legacy bool) (stri
 	var noticeProxies []map[string]any
 	for _, notice := range notices {
 		if notice.PublishToNodes {
-			noticeProxies = append(noticeProxies, map[string]any{"name": noticeNodeName(notice), "type": "socks5", "server": "notification.invalid", "port": 1})
+			noticeProxies = append(noticeProxies, map[string]any{"name": noticeNodeName(notice), "type": "vless", "server": noticeNodeHost, "port": noticeNodePort, "uuid": noticeNodeUUID, "network": "tcp", "tls": false, "udp": false})
 		}
 	}
 	if len(proxies) == 0 && !hasInactiveExternal && len(noticeProxies) == 0 {

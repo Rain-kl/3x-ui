@@ -21,6 +21,12 @@ type SubscriptionNotice struct {
 	PublishToNodes bool   `json:"publishToNodes"`
 }
 
+const (
+	noticeNodeUUID = "00000000-0000-4000-8000-000000000001"
+	noticeNodeHost = "127.0.0.1"
+	noticeNodePort = 1
+)
+
 func subscriptionNotices(subID string) ([]SubscriptionNotice, error) {
 	result := []SubscriptionNotice{}
 	var notices []model.SubscriptionNotification
@@ -78,7 +84,7 @@ func noticeLinks(notices []SubscriptionNotice) []string {
 	result := make([]string, 0, len(notices))
 	for _, notice := range notices {
 		if notice.PublishToNodes {
-			result = append(result, "socks://notification.invalid:1#"+url.PathEscape(noticeNodeName(notice)))
+			result = append(result, fmt.Sprintf("vless://%s@%s:%d?encryption=none&type=tcp&security=none#%s", noticeNodeUUID, noticeNodeHost, noticeNodePort, url.PathEscape(noticeNodeName(notice))))
 		}
 	}
 	return result
@@ -88,12 +94,18 @@ func (s *SubJsonService) noticeConfig(notice SubscriptionNotice) json_util.RawMe
 	config := make(map[string]any)
 	maps.Copy(config, s.bakedTemplate())
 	config["remarks"] = noticeNodeName(notice)
-	config["outbounds"] = []any{map[string]any{"tag": "notification", "protocol": "blackhole"}}
+	config["outbounds"] = []any{
+		map[string]any{"tag": "proxy", "protocol": "vless", "settings": map[string]any{"vnext": []any{map[string]any{
+			"address": noticeNodeHost, "port": noticeNodePort,
+			"users": []any{map[string]any{"id": noticeNodeUUID, "encryption": "none"}},
+		}}}, "streamSettings": map[string]any{"network": "tcp", "security": "none"}},
+		map[string]any{"tag": "notification", "protocol": "blackhole"},
+	}
 	config["routing"] = map[string]any{"rules": []any{map[string]any{"type": "field", "network": "tcp,udp", "outboundTag": "notification"}}}
 	raw, _ := json.Marshal(config)
 	return raw
 }
 
 func isNotificationProxy(proxy map[string]any) bool {
-	return proxy["server"] == "notification.invalid" && proxy["port"] == 1
+	return proxy["type"] == "vless" && proxy["uuid"] == noticeNodeUUID && proxy["server"] == noticeNodeHost && proxy["port"] == noticeNodePort
 }
