@@ -12,6 +12,10 @@ _openapi:
         indicates missing data. Website and date filters do not apply.
       url: '#current-raw-uploaddownload-bytes-per-second-from-committed-per-inbound-counters-about-5-second-sampling-excludes-billing-ratios-freshfalse-indicates-missing-data-website-and-date-filters-do-not-apply'
     - depth: 2
+      title: Get the last hour of five-second server bandwidth samples. Missing
+        samples remain gaps; process restart clears this bounded cache.
+      url: '#get-the-last-hour-of-five-second-server-bandwidth-samples-missing-samples-remain-gaps-process-restart-clears-this-bounded-cache'
+    - depth: 2
       title: 24 hours of minute average bandwidth in bytes/second, with coveredSeconds
         indicating actual sampling coverage. No coverage is unknown, not zero.
         Persisted every 30 seconds; nodeId/client filters apply.
@@ -74,6 +78,17 @@ _openapi:
         connection counts are ordered by client name.
       url: '#paginate-all-clients-by-connection-count-using-the-dashboard-filters-defaults-to-page-1-and-20-items-allowed-sizes-are-20-50-and-100-equal-connection-counts-are-ordered-by-client-name'
     - depth: 2
+      title: Paginate subscription link access by client, IP and UTC date; include
+        recent protection outcomes and pending or failed alerts.
+      url: '#paginate-subscription-link-access-by-client-ip-and-utc-date-include-recent-protection-outcomes-and-pending-or-failed-alerts'
+    - depth: 2
+      title: Clear subscription access logs older than days (0 clears all). Protection
+        windows and blocks are preserved.
+      url: '#clear-subscription-access-logs-older-than-days-0-clears-all-protection-windows-and-blocks-are-preserved'
+    - depth: 2
+      title: Retry a failed security alert without resending completed alerts.
+      url: '#retry-a-failed-security-alert-without-resending-completed-alerts'
+    - depth: 2
       title: Query connection counts, exact measured bytes, top sites and clients,
         hourly trends, daily summaries, and recent events.
       url: '#query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trends-daily-summaries-and-recent-events'
@@ -84,6 +99,9 @@ _openapi:
           Fresh=false indicates missing data. Website and date filters do not
           apply.
         id: current-raw-uploaddownload-bytes-per-second-from-committed-per-inbound-counters-about-5-second-sampling-excludes-billing-ratios-freshfalse-indicates-missing-data-website-and-date-filters-do-not-apply
+      - content: Get the last hour of five-second server bandwidth samples. Missing
+          samples remain gaps; process restart clears this bounded cache.
+        id: get-the-last-hour-of-five-second-server-bandwidth-samples-missing-samples-remain-gaps-process-restart-clears-this-bounded-cache
       - content: 24 hours of minute average bandwidth in bytes/second, with
           coveredSeconds indicating actual sampling coverage. No coverage is
           unknown, not zero. Persisted every 30 seconds; nodeId/client filters
@@ -135,6 +153,14 @@ _openapi:
           Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100.
           Equal connection counts are ordered by client name.
         id: paginate-all-clients-by-connection-count-using-the-dashboard-filters-defaults-to-page-1-and-20-items-allowed-sizes-are-20-50-and-100-equal-connection-counts-are-ordered-by-client-name
+      - content: Paginate subscription link access by client, IP and UTC date; include
+          recent protection outcomes and pending or failed alerts.
+        id: paginate-subscription-link-access-by-client-ip-and-utc-date-include-recent-protection-outcomes-and-pending-or-failed-alerts
+      - content: Clear subscription access logs older than days (0 clears all).
+          Protection windows and blocks are preserved.
+        id: clear-subscription-access-logs-older-than-days-0-clears-all-protection-windows-and-blocks-are-preserved
+      - content: Retry a failed security alert without resending completed alerts.
+        id: retry-a-failed-security-alert-without-resending-completed-alerts
       - content: Query connection counts, exact measured bytes, top sites and clients,
           hourly trends, daily summaries, and recent events.
         id: query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trends-daily-summaries-and-recent-events
@@ -148,7 +174,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/bandwidth","method":"get"},{"path":"/panel/api/audit/bandwidth/history","method":"get"},{"path":"/panel/api/audit/export","method":"get"},{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/rates","method":"get"},{"path":"/panel/api/audit/rates/history","method":"get"},{"path":"/panel/api/audit/sites","method":"get"},{"path":"/panel/api/audit/clients","method":"get"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/bandwidth","method":"get"},{"path":"/panel/api/audit/bandwidth/recent","method":"get"},{"path":"/panel/api/audit/bandwidth/history","method":"get"},{"path":"/panel/api/audit/export","method":"get"},{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/rates","method":"get"},{"path":"/panel/api/audit/rates/history","method":"get"},{"path":"/panel/api/audit/sites","method":"get"},{"path":"/panel/api/audit/clients","method":"get"},{"path":"/panel/api/audit/subscription-access","method":"get"},{"path":"/panel/api/audit/subscription-access/clear","method":"post"},{"path":"/panel/api/audit/subscription-access/alerts/{id}/retry","method":"post"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
     </>
   );
 }

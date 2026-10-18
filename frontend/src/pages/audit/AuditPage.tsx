@@ -39,6 +39,8 @@ import {
 } from '@/schemas/audit';
 // FORK(audit-export): Complete datasets need a download entry independent of paginated views.
 import AuditExportModal from './AuditExportModal';
+// FORK(subscription-access-guard): Inspect link usage independently of proxy connection logs.
+import SubscriptionAccessModal from './SubscriptionAccessModal';
 import AuditSettingsModal from './AuditSettingsModal';
 import AuditSitesModal from './AuditSitesModal';
 import AuditRateChart from './AuditRateChart';
@@ -55,6 +57,7 @@ export default function AuditPage() {
   const { isDark, isUltra, antdThemeConfig } = useTheme();
   // FORK(audit-export): Keep export selection independent of audit settings.
   const [exportOpen, setExportOpen] = useState(false);
+  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sitesOpen, setSitesOpen] = useState(false);
   const settings = useQuery({
@@ -165,6 +168,7 @@ export default function AuditPage() {
           />
         )}
         {/* FORK(audit-export): A native download streams large ZIPs directly to the browser. */}
+        {subscriptionOpen && <SubscriptionAccessModal onClose={() => setSubscriptionOpen(false)} />}
         {exportOpen && <AuditExportModal client={client} onClose={() => setExportOpen(false)} />}
         {settingsOpen && policy && (
           <AuditSettingsModal
@@ -196,6 +200,10 @@ export default function AuditPage() {
                     <Typography.Text type="secondary">{t('pages.audit.subtitle')}</Typography.Text>
                   </div>
                   <Space>
+                    {/* FORK(subscription-access-guard): Provide access audit and security delivery visibility. */}
+                    <Button onClick={() => setSubscriptionOpen(true)}>
+                      {t('pages.audit.subscriptionAccessTitle')}
+                    </Button>
                     {/* FORK(audit-export): Export all retained data without truncating rankings. */}
                     <Button
                       disabled={!policy || data?.centralized}

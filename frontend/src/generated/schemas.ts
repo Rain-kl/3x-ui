@@ -4253,6 +4253,62 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "InvitationPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/InvitationView"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total"
+    ],
+    "type": "object"
+  },
+  "InvitationView": {
+    "properties": {
+      "clientId": {
+        "type": "integer"
+      },
+      "code": {
+        "type": "string"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "email": {
+        "type": "string"
+      },
+      "expiresAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "status": {
+        "type": "string"
+      },
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "clientId",
+      "code",
+      "createdAt",
+      "email",
+      "expiresAt",
+      "status",
+      "url"
+    ],
+    "type": "object"
+  },
   "LogEntry": {
     "properties": {
       "DateTime": {
@@ -5458,6 +5514,136 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "SubscriptionAccess": {
+    "properties": {
+      "blocked": {
+        "type": "boolean"
+      },
+      "client": {
+        "type": "string"
+      },
+      "clientId": {
+        "type": "integer"
+      },
+      "format": {
+        "type": "string"
+      },
+      "id": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "ip": {
+        "type": "string"
+      },
+      "method": {
+        "type": "string"
+      },
+      "status": {
+        "type": "integer"
+      },
+      "time": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "blocked",
+      "client",
+      "clientId",
+      "format",
+      "id",
+      "ip",
+      "method",
+      "status",
+      "time"
+    ],
+    "type": "object"
+  },
+  "SubscriptionAccessPage": {
+    "properties": {
+      "alerts": {
+        "items": {
+          "$ref": "#/components/schemas/SubscriptionSecurityAlert"
+        },
+        "type": "array"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/SubscriptionAccess"
+        },
+        "type": "array"
+      },
+      "risks": {
+        "items": {
+          "$ref": "#/components/schemas/SubscriptionLeak"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "alerts",
+      "items",
+      "risks",
+      "total"
+    ],
+    "type": "object"
+  },
+  "SubscriptionLeak": {
+    "properties": {
+      "alertsQueued": {
+        "type": "boolean"
+      },
+      "clientNames": {
+        "type": "string"
+      },
+      "clients": {
+        "type": "string"
+      },
+      "detectedAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "disabledAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "episode": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "ipCount": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "nextAttemptAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "resolvedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "alertsQueued",
+      "clientNames",
+      "clients",
+      "detectedAt",
+      "disabledAt",
+      "episode",
+      "error",
+      "ipCount",
+      "nextAttemptAt",
+      "resolvedAt"
+    ],
+    "type": "object"
+  },
   "SubscriptionNotification": {
     "properties": {
       "body": {
@@ -5522,6 +5708,61 @@ export const SCHEMAS: Record<string, unknown> = {
       "targetType",
       "title",
       "updatedAt"
+    ],
+    "type": "object"
+  },
+  "SubscriptionSecurityAlert": {
+    "properties": {
+      "attempts": {
+        "type": "integer"
+      },
+      "bot": {
+        "type": "string"
+      },
+      "chatId": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "clientId": {
+        "type": "integer"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "episode": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "id": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "nextAttemptAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "state": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "attempts",
+      "bot",
+      "chatId",
+      "clientId",
+      "createdAt",
+      "episode",
+      "error",
+      "id",
+      "nextAttemptAt",
+      "state",
+      "text"
     ],
     "type": "object"
   },

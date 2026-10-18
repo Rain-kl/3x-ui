@@ -16,6 +16,8 @@ import {
 import type { z } from 'zod';
 import { BindCodeSchema } from '@/generated/zod';
 import { telegramApi } from './api';
+// FORK(telegram-invite-management): Invitation history must remain visible after the creation dialog closes.
+import TelegramInvitations from './TelegramInvitations';
 
 export default function TelegramBindings({ onChat }: { onChat: (tgId: number) => void }) {
   const { t } = useTranslation();
@@ -117,6 +119,7 @@ export default function TelegramBindings({ onChat }: { onChat: (tgId: number) =>
           showSizeChanger: false,
         }}
       />
+      <TelegramInvitations />
       <Modal
         open={open}
         title={t('pages.telegram.createCode')}
@@ -161,6 +164,7 @@ export default function TelegramBindings({ onChat }: { onChat: (tgId: number) =>
               setBusy(true);
               try {
                 setCode(await telegramApi.bindCode(selected));
+                await client.invalidateQueries({ queryKey: ['telegram', 'invitations'] });
               } catch (error) {
                 messageApi.error(error instanceof Error ? error.message : t('somethingWentWrong'));
               } finally {

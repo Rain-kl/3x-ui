@@ -44,6 +44,7 @@ func run(root, outDir string) error {
 				"SubBalancer",
 				"SubscriptionNotification",
 				"TelegramMessage", "TelegramLog", "TelegramCustomCommand",
+				"SubscriptionAccess", "SubscriptionLeak", "SubscriptionSecurityAlert",
 				"AIConversation", "AITask", "AIRun",
 			),
 			AliasAllow: setOf("Protocol"),
@@ -67,7 +68,7 @@ func run(root, outDir string) error {
 		},
 		{
 			Path:        resolveRel(root, "internal/telegramuser"),
-			StructAllow: setOf("CustomCommands", "UserTelegramSettings", "UserTelegramStatus", "BindCode", "ConversationView", "ConversationPage", "TelegramMessagePage", "TelegramLogPage", "TelegramBindingView", "TelegramBindingPage"),
+			StructAllow: setOf("InvitationView", "InvitationPage", "CustomCommands", "UserTelegramSettings", "UserTelegramStatus", "BindCode", "ConversationView", "ConversationPage", "TelegramMessagePage", "TelegramLogPage", "TelegramBindingView", "TelegramBindingPage"),
 		},
 		{
 			Path:        resolveRel(root, "internal/routingsync"),
@@ -107,7 +108,7 @@ func run(root, outDir string) error {
 				"NotificationPage",
 				"NotificationClient",
 				"AuditAggregate",
-				"AuditSitesPage",
+				"AuditSitesPage", "SubscriptionAccessPage",
 				"AuditRetention",
 				"AuditRateCounts",
 				"AuditRateAlert",

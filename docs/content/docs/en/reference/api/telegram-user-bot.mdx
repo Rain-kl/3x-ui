@@ -49,6 +49,13 @@ _openapi:
       title: Search lightweight clients for binding-code generation.
       url: '#search-lightweight-clients-for-binding-code-generation'
     - depth: 2
+      title: List current invitation codes, links and lifecycle states.
+      url: '#list-current-invitation-codes-links-and-lifecycle-states'
+    - depth: 2
+      title: Revoke the current unused invitation without changing an existing
+        binding.
+      url: '#revoke-the-current-unused-invitation-without-changing-an-existing-binding'
+    - depth: 2
       title: Generate a one-time binding code valid for 30 minutes.
       url: '#generate-a-one-time-binding-code-valid-for-30-minutes'
     - depth: 2
@@ -90,6 +97,11 @@ _openapi:
         id: page-verified-one-to-one-bindings
       - content: Search lightweight clients for binding-code generation.
         id: search-lightweight-clients-for-binding-code-generation
+      - content: List current invitation codes, links and lifecycle states.
+        id: list-current-invitation-codes-links-and-lifecycle-states
+      - content: Revoke the current unused invitation without changing an existing
+          binding.
+        id: revoke-the-current-unused-invitation-without-changing-an-existing-binding
       - content: Generate a one-time binding code valid for 30 minutes.
         id: generate-a-one-time-binding-code-valid-for-30-minutes
       - content: Remove a binding and cancel its queued notices.
@@ -129,7 +141,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/commands","method":"get"},{"path":"/panel/api/telegram/commands","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/commands","method":"get"},{"path":"/panel/api/telegram/commands","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/invitations","method":"get"},{"path":"/panel/api/telegram/invitations/{clientId}/revoke","method":"post"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
     </>
   );
 }

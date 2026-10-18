@@ -724,9 +724,24 @@ func (r *Remote) UpdateUser(ctx context.Context, ib *model.Inbound, oldEmail str
 	payload.TotalGBByInbound = map[int]int64{id: quota}
 	path := "panel/api/clients/update/" + url.PathEscape(oldEmail) +
 		"?inboundIds=" + strconv.Itoa(id)
-	if _, err := r.do(ctx, http.MethodPost, path, payload); err != nil {
+	// FORK(telegram-reset-revoke): Security updates must not treat a queued child restart as applied credentials.
+	immediate := requiresImmediateApply(ctx)
+	if immediate {
+		path += "&applyImmediate=1"
+	}
+	response, err := r.do(ctx, http.MethodPost, path, payload)
+	if err != nil {
 		return err
 	}
+	if immediate {
+		var result struct {
+			Applied bool `json:"applied"`
+		}
+		if err := json.Unmarshal(response.Obj, &result); err != nil || !result.Applied {
+			return fmt.Errorf("node %d did not confirm immediate client application; upgrade its panel before retrying", r.node.Id)
+		}
+	}
+
 	return nil
 }
 

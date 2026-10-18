@@ -767,6 +767,8 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	// FORK-END(panel-ai)
 	// FORK(audit-bandwidth): Batch compact bandwidth history independently of page visits.
 	_, _ = s.cron.AddFunc("@every 30s", service.FlushAuditBandwidth)
+	// FORK(subscription-access-guard): Retry failed disables and notifications independently of user Bot polling.
+	_, _ = s.cron.AddFunc("@every 10s", service.MaintainSubscriptionSecurity)
 	s.startTask(restartXray, loc)
 	// FORK-BEGIN(telegram-user-bot)
 	if err := telegramuser.Default.Start(s.ctx, service.UserTelegramHooks()); err != nil {

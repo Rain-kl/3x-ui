@@ -1002,6 +1002,21 @@ export interface InboundTrafficSummary {
   up: number;
 }
 
+export interface InvitationPage {
+  items: InvitationView[];
+  total: number;
+}
+
+export interface InvitationView {
+  clientId: number;
+  code: string;
+  createdAt: number;
+  email: string;
+  expiresAt: number;
+  status: string;
+  url: string;
+}
+
 export interface LogEntry {
   DateTime: string;
   Email: string;
@@ -1272,6 +1287,38 @@ export interface SubBalancer {
   updatedAt: number;
 }
 
+export interface SubscriptionAccess {
+  blocked: boolean;
+  client: string;
+  clientId: number;
+  format: string;
+  id: number;
+  ip: string;
+  method: string;
+  status: number;
+  time: number;
+}
+
+export interface SubscriptionAccessPage {
+  alerts: SubscriptionSecurityAlert[];
+  items: SubscriptionAccess[];
+  risks: SubscriptionLeak[];
+  total: number;
+}
+
+export interface SubscriptionLeak {
+  alertsQueued: boolean;
+  clientNames: string;
+  clients: string;
+  detectedAt: number;
+  disabledAt: number;
+  episode: string;
+  error: string;
+  ipCount: number;
+  nextAttemptAt: number;
+  resolvedAt: number;
+}
+
 export interface SubscriptionNotification {
   body: string;
   clientIds: number[];
@@ -1285,6 +1332,20 @@ export interface SubscriptionNotification {
   targetType: string;
   title: string;
   updatedAt: number;
+}
+
+export interface SubscriptionSecurityAlert {
+  attempts: number;
+  bot: string;
+  chatId: number;
+  clientId: number;
+  createdAt: number;
+  episode: string;
+  error: string;
+  id: number;
+  nextAttemptAt: number;
+  state: string;
+  text: string;
 }
 
 export interface TelegramBindingPage {

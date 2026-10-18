@@ -69,6 +69,11 @@ func BuildAuditExport(parent context.Context, kind, client string) (*os.File, er
 				// FORK(audit-bandwidth): Complete audit archives include sampled bandwidth history.
 				{"audit_bandwidth_minutes", &model.AuditBandwidthMinute{}},
 				{"audit_receipts", &model.AuditReceipt{}},
+				// FORK(subscription-access-guard): Full archives must include subscription access and security outcomes.
+				{"subscription_accesses", &model.SubscriptionAccess{}},
+				{"subscription_access_ips", &model.SubscriptionAccessIP{}},
+				{"subscription_leaks", &model.SubscriptionLeak{}},
+				{"subscription_security_alerts", &model.SubscriptionSecurityAlert{}},
 			} {
 				count, err := auditExportJSON(archive, table.name+".jsonl", tx.Model(table.model))
 				if err != nil {

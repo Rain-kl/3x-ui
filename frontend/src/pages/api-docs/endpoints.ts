@@ -340,6 +340,23 @@ export const sections: readonly Section[] = [
         responseSchema: 'NotificationClient',
         responseSchemaArray: true,
       },
+      // FORK(telegram-invite-management): Persisted invitations need an authenticated management contract.
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/invitations',
+        summary: 'List current invitation codes, links and lifecycle states.',
+        responseSchema: 'InvitationPage',
+        params: [
+          { name: 'page', in: 'query', type: 'integer', optional: true },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/invitations/:clientId/revoke',
+        summary: 'Revoke the current unused invitation without changing an existing binding.',
+        params: [{ name: 'clientId', in: 'path', type: 'integer' }],
+      },
       {
         method: 'POST',
         path: '/panel/api/telegram/bind-code',
@@ -805,6 +822,18 @@ export const sections: readonly Section[] = [
           { name: 'client', in: 'query', type: 'string', optional: true },
         ],
       },
+      // FORK(audit-bandwidth): Fine-grained history preserves peaks across browser reloads.
+      {
+        method: 'GET',
+        path: '/panel/api/audit/bandwidth/recent',
+        summary:
+          'Get the last hour of five-second server bandwidth samples. Missing samples remain gaps; process restart clears this bounded cache.',
+        responseSchema: 'AuditBandwidthHistory',
+        params: [
+          { name: 'nodeId', in: 'query', type: 'integer', optional: true },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+        ],
+      },
       {
         method: 'GET',
         path: '/panel/api/audit/bandwidth/history',
@@ -986,6 +1015,34 @@ export const sections: readonly Section[] = [
             enum: [20, 50, 100],
           },
         ],
+      },
+      // FORK(subscription-access-guard): Document subscription audit and retry operations.
+      {
+        method: 'GET',
+        path: '/panel/api/audit/subscription-access',
+        summary:
+          'Paginate subscription link access by client, IP and UTC date; include recent protection outcomes and pending or failed alerts.',
+        responseSchema: 'SubscriptionAccessPage',
+        params: [
+          { name: 'client', in: 'query', type: 'string', optional: true },
+          { name: 'ip', in: 'query', type: 'string', optional: true },
+          { name: 'day', in: 'query', type: 'string', optional: true },
+          { name: 'page', in: 'query', type: 'integer', optional: true },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true },
+        ],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/audit/subscription-access/clear',
+        summary:
+          'Clear subscription access logs older than days (0 clears all). Protection windows and blocks are preserved.',
+        body: '{"days":30}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/audit/subscription-access/alerts/:id/retry',
+        summary: 'Retry a failed security alert without resending completed alerts.',
+        params: [{ name: 'id', in: 'path', type: 'integer' }],
       },
       {
         method: 'GET',
@@ -1887,6 +1944,14 @@ export const sections: readonly Section[] = [
         description:
           'The inbounds are applied concurrently and independently: one that fails no longer stops the others. Every inbound error names the inbound it came from (`inbound 7: <message>`), and several failures are reported together, one per line. So a `success:false` response can still have applied the edit to the remaining inbounds. The client record is written after the inbounds, so a failure there is reported without an `inbound <id>:` prefix and leaves the inbound edits in place.',
         params: [
+          // FORK(telegram-reset-revoke): Security callers require a confirmed running configuration.
+          {
+            name: 'applyImmediate',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            desc: '1 applies saved configuration to a running core before returning obj.applied=true. Stopped cores stay stopped. Errors or pending descendant changes return failure.',
+          },
           {
             name: 'email',
             in: 'path',

@@ -196,7 +196,8 @@ func (s *SubService) clientsForLinkExport(inbound *model.Inbound) ([]model.Clien
 	if database.GetDB() != nil {
 		clients, err := s.inboundService.ListClientsForInbound(inbound.Id)
 		if err == nil && len(clients) > 0 {
-			return clients, nil
+			// FORK(telegram-reset-revoke): Export the credentials actually installed on this inbound.
+			return s.overlayInboundProxyCredentials(inbound, clients)
 		}
 	}
 	return s.inboundService.GetClients(inbound)
@@ -329,6 +330,12 @@ func (s *SubService) matchingClients(inbound *model.Inbound, subId string) []mod
 			return nil
 		}
 		out = overlaid
+	}
+	// FORK(telegram-reset-revoke): Cipher/domain-specific credentials cannot be collapsed into a shared client row.
+	out, err = s.overlayInboundProxyCredentials(inbound, out)
+	if err != nil {
+		logger.Errorf("read inbound %d credentials: %v", inbound.Id, err)
+		return nil
 	}
 	s.primeLinkClients(inbound.Id, out, false)
 	return out

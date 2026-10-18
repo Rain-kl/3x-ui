@@ -48,9 +48,17 @@ func (s *SubService) manualMixedNodes(subID string) ([]SubMixedNode, error) {
 	for _, r := range rows {
 		var settings struct {
 			Auth string `json:"auth"`
+			// FORK(telegram-reset-revoke): Mixed credentials can differ from the shared row after cipher-specific rotation.
+			Clients []model.Client `json:"clients"`
 		}
 		if err := json.Unmarshal([]byte(r.Settings), &settings); err != nil {
 			return nil, fmt.Errorf("mixed inbound %d settings: %w", r.Id, err)
+		}
+		for _, peer := range settings.Clients {
+			if strings.EqualFold(peer.Email, r.Email) {
+				r.Username, r.Password = peer.Username, peer.Password
+				break
+			}
 		}
 		if settings.Auth != "password" || r.Password == "" {
 			continue

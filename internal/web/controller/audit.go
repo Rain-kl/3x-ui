@@ -11,10 +11,18 @@ import (
 )
 
 func newAuditController(g *gin.RouterGroup) {
+	// FORK(subscription-access-guard): Subscription retrieval has separate access logs and security actions.
+	registerSubscriptionAccess(g)
 	// FORK-BEGIN(audit-bandwidth)
 	g.GET("/bandwidth", func(c *gin.Context) {
 		node, _ := strconv.Atoi(c.Query("nodeId"))
 		value, err := (service.AuditService{}).QueryBandwidth(service.AuditFilter{NodeID: node, Client: c.Query("client")})
+		jsonObj(c, value, err)
+	})
+	// FORK(audit-bandwidth): Refreshes need the same fine-grained history as an already open page.
+	g.GET("/bandwidth/recent", func(c *gin.Context) {
+		node, _ := strconv.Atoi(c.Query("nodeId"))
+		value, err := (service.AuditService{}).QueryBandwidthRecent(service.AuditFilter{NodeID: node, Client: c.Query("client")})
 		jsonObj(c, value, err)
 	})
 	g.GET("/bandwidth/history", func(c *gin.Context) {

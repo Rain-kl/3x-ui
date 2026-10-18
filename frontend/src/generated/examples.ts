@@ -1168,6 +1168,29 @@ export const EXAMPLES: Record<string, unknown> = {
     "total": 10737418240,
     "up": 1048576
   },
+  "InvitationPage": {
+    "items": [
+      {
+        "clientId": 0,
+        "code": "",
+        "createdAt": 0,
+        "email": "",
+        "expiresAt": 0,
+        "status": "",
+        "url": ""
+      }
+    ],
+    "total": 0
+  },
+  "InvitationView": {
+    "clientId": 0,
+    "code": "",
+    "createdAt": 0,
+    "email": "",
+    "expiresAt": 0,
+    "status": "",
+    "url": ""
+  },
   "LogEntry": {
     "DateTime": "2025-01-01T12:00:00Z",
     "Email": "alice@example.com",
@@ -1450,6 +1473,74 @@ export const EXAMPLES: Record<string, unknown> = {
     "strategy": "random",
     "updatedAt": 1710000000000
   },
+  "SubscriptionAccess": {
+    "blocked": false,
+    "client": "",
+    "clientId": 0,
+    "format": "",
+    "id": 0,
+    "ip": "",
+    "method": "",
+    "status": 0,
+    "time": 0
+  },
+  "SubscriptionAccessPage": {
+    "alerts": [
+      {
+        "attempts": 0,
+        "bot": "",
+        "chatId": 0,
+        "clientId": 0,
+        "createdAt": 0,
+        "episode": "",
+        "error": "",
+        "id": 0,
+        "nextAttemptAt": 0,
+        "state": "",
+        "text": ""
+      }
+    ],
+    "items": [
+      {
+        "blocked": false,
+        "client": "",
+        "clientId": 0,
+        "format": "",
+        "id": 0,
+        "ip": "",
+        "method": "",
+        "status": 0,
+        "time": 0
+      }
+    ],
+    "risks": [
+      {
+        "alertsQueued": false,
+        "clientNames": "",
+        "clients": "",
+        "detectedAt": 0,
+        "disabledAt": 0,
+        "episode": "",
+        "error": "",
+        "ipCount": 0,
+        "nextAttemptAt": 0,
+        "resolvedAt": 0
+      }
+    ],
+    "total": 0
+  },
+  "SubscriptionLeak": {
+    "alertsQueued": false,
+    "clientNames": "",
+    "clients": "",
+    "detectedAt": 0,
+    "disabledAt": 0,
+    "episode": "",
+    "error": "",
+    "ipCount": 0,
+    "nextAttemptAt": 0,
+    "resolvedAt": 0
+  },
   "SubscriptionNotification": {
     "body": "Scheduled maintenance at 02:00.",
     "clientIds": [
@@ -1467,6 +1558,19 @@ export const EXAMPLES: Record<string, unknown> = {
     "targetType": "clients",
     "title": "Maintenance",
     "updatedAt": 0
+  },
+  "SubscriptionSecurityAlert": {
+    "attempts": 0,
+    "bot": "",
+    "chatId": 0,
+    "clientId": 0,
+    "createdAt": 0,
+    "episode": "",
+    "error": "",
+    "id": 0,
+    "nextAttemptAt": 0,
+    "state": "",
+    "text": ""
   },
   "TelegramBindingPage": {
     "items": [

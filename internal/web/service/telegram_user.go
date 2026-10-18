@@ -50,7 +50,14 @@ func userTelegramSubscription(clientID int, reset bool) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("load subscription client: %w", err)
 	}
-	if reset || record.SubID == "" {
+	// FORK(telegram-reset-revoke): A new subscription URL alone does not revoke imported proxy credentials.
+	if reset {
+		record, err = s.ResetSubscriptionCredentials(clientID)
+		if err != nil {
+			return "", fmt.Errorf("reset subscription and revoke old proxy credentials: %w", err)
+		}
+	}
+	if record.SubID == "" {
 		client := record.ToClient()
 		client.SubID = uuid.NewString()
 		needRestart, updateErr := s.Update(&InboundService{}, clientID, *client, record.LimitHwid)

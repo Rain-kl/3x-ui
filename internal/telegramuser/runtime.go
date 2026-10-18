@@ -377,11 +377,19 @@ func (r *receiver) command(tgID int64, text string) {
 	}
 	switch command {
 	case "/start", "/help":
-		if len(parts) == 2 && strings.HasPrefix(parts[1], "bind_") {
+		if command == "/start" && len(parts) >= 2 && strings.HasPrefix(parts[1], "bind_") {
 			r.bind(tgID, parts[1])
 			return
 		}
-		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码进行绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", nil)
+		// FORK(telegram-invite-management): Missing deep-link payloads need an explicit, logged diagnosis.
+		if command == "/start" {
+			if _, err := BoundClient(tgID); err != nil {
+				r.log(tgID, 0, "binding.start.missing", "Telegram delivered /start without a binding parameter")
+				r.reply(tgID, "当前尚未绑定。请重新打开管理员提供的完整绑定链接并点击开始，或直接发送绑定码。此次 /start 未携带绑定参数。", nil)
+				return
+			}
+		}
+		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码即可绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", nil)
 	case "/bind":
 		if len(parts) > 1 {
 			r.bind(tgID, parts[1])
@@ -441,7 +449,7 @@ func (r *receiver) command(tgID int64, text string) {
 		default:
 			action := strings.TrimPrefix(command, "/")
 			r.await[tgID] = awaiting{action: action, clientID: client.Id, until: time.Now().Add(3 * time.Minute)}
-			label := "确认重置订阅链接（旧链接将失效）"
+			label := "确认重置订阅和全部节点凭据（旧链接和已导入节点将失效，请重新导入）"
 			r.reply(tgID, label+"？", map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": action}, {"text": "取消", "callback_data": "cancel"}}}})
 		}
 	default:
@@ -538,7 +546,8 @@ func (r *receiver) maintain() {
 		if err := Clear("messages", r.cfg.MessageDays); err != nil {
 			r.failure("cleanup.failed", err)
 		}
-		if err := database.GetDB().Where("expires_at < ?", time.Now().UnixMilli()).Delete(&model.TelegramBindCode{}).Error; err != nil {
+		// FORK(telegram-invite-management): Keep current invitation state available after expiry or consumption.
+		if err := database.GetDB().Where("client_id NOT IN (SELECT id FROM clients)").Delete(&model.TelegramBindCode{}).Error; err != nil {
 			r.failure("cleanup.failed", err)
 		}
 		// FORK(telegram-subscription-details): Telegram cannot delete replies older than its 48-hour limit.

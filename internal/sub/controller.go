@@ -330,18 +330,19 @@ func NewSUBController(g *gin.RouterGroup, options ...SUBControllerOption) *SUBCo
 // initRouter registers HTTP routes for subscription links and JSON endpoints
 // on the provided router group.
 func (a *SUBController) initRouter(g *gin.RouterGroup) {
-	gLink := g.Group(a.subPath)
+	// FORK(subscription-access-guard): Apply one guard before every subscription representation is rendered.
+	gLink := g.Group(a.subPath, a.subscriptionAccess)
 	gLink.GET(":subid", a.subs)
 	gLink.HEAD(":subid", a.subs)
 	gLink.GET(":subid/hwid-status", a.hwidStatus)
 	gLink.HEAD(":subid/hwid-status", a.hwidStatus)
 	if a.jsonEnabled {
-		gJson := g.Group(a.subJsonPath)
+		gJson := g.Group(a.subJsonPath, a.subscriptionAccess)
 		gJson.GET(":subid", a.subJsons)
 		gJson.HEAD(":subid", a.subJsons)
 	}
 	if a.clashEnabled {
-		gClash := g.Group(a.subClashPath)
+		gClash := g.Group(a.subClashPath, a.subscriptionAccess)
 		gClash.GET(":subid", a.subClashs)
 		gClash.HEAD(":subid", a.subClashs)
 		if sameSubscriptionPath(a.subClashPath, subMihomoPath) {
@@ -349,14 +350,14 @@ func (a *SUBController) initRouter(g *gin.RouterGroup) {
 		} else if owner := a.configuredSubscriptionPathOwner(subMihomoPath); owner != "" {
 			logger.Warningf("Mihomo subscription alias %q is unavailable because it conflicts with the configured %s path", subMihomoPath, owner)
 		} else {
-			gMihomo := g.Group(subMihomoPath)
+			gMihomo := g.Group(subMihomoPath, a.subscriptionAccess)
 			gMihomo.GET(":subid", a.subClashs)
 			gMihomo.HEAD(":subid", a.subClashs)
 		}
 		if owner := a.configuredSubscriptionPathOwner(subClashLegacyPath); owner != "" {
 			logger.Warningf("Legacy Clash subscription alias %q is unavailable because it conflicts with the configured %s path", subClashLegacyPath, owner)
 		} else {
-			gLegacy := g.Group(subClashLegacyPath)
+			gLegacy := g.Group(subClashLegacyPath, a.subscriptionAccess)
 			gLegacy.GET(":subid", a.subClashLegacy)
 			gLegacy.HEAD(":subid", a.subClashLegacy)
 		}

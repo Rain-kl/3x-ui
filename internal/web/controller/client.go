@@ -255,6 +255,21 @@ func (a *ClientController) update(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "somethingWentWrong"), err)
 		return
 	}
+	// FORK(telegram-reset-revoke): A security caller needs runtime confirmation while stopped cores stay stopped.
+	if c.Query("applyImmediate") == "1" {
+		if a.clientService.HasPendingNode(&a.inboundService, email) {
+			jsonMsg(c, "client changes are still pending on descendant nodes", errors.New("immediate client application is not confirmed"))
+			return
+		}
+		if a.xrayService.IsXrayRunning() {
+			if err := a.xrayService.RestartXray(false); err != nil {
+				jsonMsg(c, "client credentials saved but immediate application failed", err)
+				return
+			}
+		}
+		jsonObj(c, map[string]bool{"applied": true}, nil)
+		return
+	}
 	jsonMsgObj(c, I18nWeb(c, "pages.inbounds.toasts.inboundClientUpdateSuccess"), pendingNodeObj(a.clientService.HasPendingNode(&a.inboundService, email)), nil)
 }
 

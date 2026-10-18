@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { HttpUtil } from '@/utils';
 import {
   BindCodeSchema,
+  InvitationPageSchema,
   CustomCommandsSchema,
   TelegramCustomCommandSchema,
   ConversationPageSchema,
@@ -82,6 +83,11 @@ export const telegramApi = {
       `/clients?page=${page}&pageSize=50&search=${encodeURIComponent(search)}`,
       z.array(NotificationClientSchema),
     ),
+  // FORK(telegram-invite-management): Recover current invitations without generating replacement codes.
+  invitations: (page: number) =>
+    getTelegram(`/invitations?page=${page}&pageSize=20`, InvitationPageSchema),
+  revokeInvitation: (clientId: number) =>
+    postTelegram(`/invitations/${clientId}/revoke`, undefined, z.unknown()),
   bindCode: (clientId: number) => postTelegram('/bind-code', { clientId }, BindCodeSchema),
   unbind: (tgId: number) => postTelegram(`/bindings/${tgId}/unbind`, undefined, z.unknown()),
   logs: (page: number, size: number, event: string, tgId: string) =>

@@ -33,6 +33,22 @@ func reserveTelegramAttachment(c *gin.Context) bool {
 }
 
 func newTelegramUserController(g *gin.RouterGroup) {
+	// FORK(telegram-invite-management): Invitations remain reviewable and revocable after their creation dialog closes.
+	g.GET("/invitations", func(c *gin.Context) {
+		page, size := notificationPaging(c)
+		c.Header("Cache-Control", "no-store")
+		result, err := telegramuser.Invitations(page, size)
+		jsonObj(c, result, err)
+	})
+	g.POST("/invitations/:clientId/revoke", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("clientId"))
+		if err != nil {
+			jsonObj(c, nil, fmt.Errorf("invalid invitation client ID"))
+			return
+		}
+		jsonObj(c, true, telegramuser.RevokeInvitation(id))
+	})
+
 	// FORK-BEGIN(telegram-custom-commands)
 	g.GET("/commands", func(c *gin.Context) {
 		result, err := telegramuser.ReadCustomCommands()

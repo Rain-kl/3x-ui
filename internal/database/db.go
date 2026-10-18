@@ -105,6 +105,8 @@ func allModels() []any {
 		&model.AuditMinuteStat{},
 		// FORK(audit-bandwidth): Keep sampled bandwidth across restarts and database migrations.
 		&model.AuditBandwidthMinute{},
+		// FORK(subscription-access-guard): Security windows and delivery state must survive restart and migration.
+		&model.SubscriptionAccess{}, &model.SubscriptionAccessIP{}, &model.SubscriptionLeak{}, &model.SubscriptionSecurityAlert{},
 		// FORK(panel-ai): Preserve AI conversations, schedules and results across database engines.
 		&model.AIConversation{}, &model.AITask{}, &model.AIRun{},
 	}

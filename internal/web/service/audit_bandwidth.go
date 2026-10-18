@@ -129,3 +129,63 @@ func (AuditService) QueryBandwidthHistory(f AuditFilter) (*AuditBandwidthHistory
 	})
 	return result, err
 }
+
+// FORK(audit-bandwidth): Both initial render and refresh use the same fine-grained server history.
+func (AuditService) QueryBandwidthRecent(f AuditFilter) (*AuditBandwidthHistory, error) {
+	if err := validateAuditRateFilter(f); err != nil {
+		return nil, err
+	}
+	if f.NodeID < -1 {
+		return nil, fmt.Errorf("invalid bandwidth node")
+	}
+	result := &AuditBandwidthHistory{Points: []AuditBandwidthPoint{}}
+	err := auditReadSnapshot(func(tx *gorm.DB) error {
+		state, err := readAuditControl(tx)
+		if err != nil {
+			return err
+		}
+		if isAuditChild(tx) {
+			return fmt.Errorf("bandwidth audit is centralized; view the master panel")
+		}
+		now := time.Now().UTC()
+		end := now.Unix() / 5 * 5
+		start := end - 3600
+		buckets := map[int64]AuditBandwidthPoint{}
+		auditBandwidth.mu.Lock()
+		defer auditBandwidth.mu.Unlock()
+		for nodeID, samples := range auditBandwidth.recent {
+			if (f.NodeID > 0 && nodeID != f.NodeID) || (f.NodeID == -1 && nodeID != 0) {
+				continue
+			}
+			nodeBuckets := map[int64]AuditBandwidthPoint{}
+			for _, sample := range samples {
+				slot := sample.At.Unix() / 5 * 5
+				if slot < start || sample.From.Before(state.ClearBefore) {
+					continue
+				}
+				point := AuditBandwidthPoint{Time: slot, CoveredSeconds: 5}
+				if f.Client != "" {
+					rate := sample.Rates[f.Client]
+					point.Upload, point.Download = rate[0], rate[1]
+				} else {
+					point.Upload, point.Download = sample.Total[0], sample.Total[1]
+				}
+				nodeBuckets[slot] = point
+			}
+			for slot, point := range nodeBuckets {
+				total := buckets[slot]
+				total.Upload += point.Upload
+				total.Download += point.Download
+				total.CoveredSeconds += point.CoveredSeconds
+				buckets[slot] = total
+			}
+		}
+		for slot := start; slot <= end; slot += 5 {
+			point := buckets[slot]
+			point.Time = slot
+			result.Points = append(result.Points, point)
+		}
+		return nil
+	})
+	return result, err
+}

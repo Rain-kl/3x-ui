@@ -22,6 +22,11 @@ type TelegramBinding struct {
 }
 
 type TelegramBindCode struct {
+	// FORK(telegram-invite-management): Administrators need recoverable current codes and persistent lifecycle state.
+	Code      string `json:"-"`
+	CreatedAt int64  `json:"createdAt" gorm:"autoCreateTime:milli"`
+	UsedAt    int64  `json:"usedAt" gorm:"default:0"`
+	RevokedAt int64  `json:"revokedAt" gorm:"default:0"`
 	Hash      string `json:"-" gorm:"primaryKey"`
 	ClientID  int    `json:"clientId" gorm:"index"`
 	ExpiresAt int64  `json:"expiresAt" gorm:"index"`

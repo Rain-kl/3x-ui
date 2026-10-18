@@ -1078,6 +1078,23 @@ export const InboundTrafficSummarySchema = z.object({
 });
 export type InboundTrafficSummary = z.infer<typeof InboundTrafficSummarySchema>;
 
+export const InvitationPageSchema = z.object({
+  items: z.array(z.lazy(() => InvitationViewSchema)),
+  total: z.number().int(),
+});
+export type InvitationPage = z.infer<typeof InvitationPageSchema>;
+
+export const InvitationViewSchema = z.object({
+  clientId: z.number().int(),
+  code: z.string(),
+  createdAt: z.number().int(),
+  email: z.string(),
+  expiresAt: z.number().int(),
+  status: z.string(),
+  url: z.string(),
+});
+export type InvitationView = z.infer<typeof InvitationViewSchema>;
+
 export const LogEntrySchema = z.object({
   DateTime: z.string(),
   Email: z.string(),
@@ -1366,6 +1383,41 @@ export const SubBalancerSchema = z.object({
 });
 export type SubBalancer = z.infer<typeof SubBalancerSchema>;
 
+export const SubscriptionAccessSchema = z.object({
+  blocked: z.boolean(),
+  client: z.string(),
+  clientId: z.number().int(),
+  format: z.string(),
+  id: z.number().int(),
+  ip: z.string(),
+  method: z.string(),
+  status: z.number().int(),
+  time: z.number().int(),
+});
+export type SubscriptionAccess = z.infer<typeof SubscriptionAccessSchema>;
+
+export const SubscriptionAccessPageSchema = z.object({
+  alerts: z.array(z.lazy(() => SubscriptionSecurityAlertSchema)),
+  items: z.array(z.lazy(() => SubscriptionAccessSchema)),
+  risks: z.array(z.lazy(() => SubscriptionLeakSchema)),
+  total: z.number().int(),
+});
+export type SubscriptionAccessPage = z.infer<typeof SubscriptionAccessPageSchema>;
+
+export const SubscriptionLeakSchema = z.object({
+  alertsQueued: z.boolean(),
+  clientNames: z.string(),
+  clients: z.string(),
+  detectedAt: z.number().int(),
+  disabledAt: z.number().int(),
+  episode: z.string(),
+  error: z.string(),
+  ipCount: z.number().int(),
+  nextAttemptAt: z.number().int(),
+  resolvedAt: z.number().int(),
+});
+export type SubscriptionLeak = z.infer<typeof SubscriptionLeakSchema>;
+
 export const SubscriptionNotificationSchema = z.object({
   body: z.string(),
   clientIds: z.array(z.number().int()),
@@ -1381,6 +1433,21 @@ export const SubscriptionNotificationSchema = z.object({
   updatedAt: z.number().int(),
 });
 export type SubscriptionNotification = z.infer<typeof SubscriptionNotificationSchema>;
+
+export const SubscriptionSecurityAlertSchema = z.object({
+  attempts: z.number().int(),
+  bot: z.string(),
+  chatId: z.number().int(),
+  clientId: z.number().int(),
+  createdAt: z.number().int(),
+  episode: z.string(),
+  error: z.string(),
+  id: z.number().int(),
+  nextAttemptAt: z.number().int(),
+  state: z.string(),
+  text: z.string(),
+});
+export type SubscriptionSecurityAlert = z.infer<typeof SubscriptionSecurityAlertSchema>;
 
 export const TelegramBindingPageSchema = z.object({
   items: z.array(z.lazy(() => TelegramBindingViewSchema)),
