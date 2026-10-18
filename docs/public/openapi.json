@@ -1916,6 +1916,26 @@
         ],
         "type": "object"
       },
+      "BindCode": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "expiresAt",
+          "url"
+        ],
+        "type": "object"
+      },
       "Client": {
         "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
         "properties": {
@@ -2821,6 +2841,63 @@
           "revision",
           "rules",
           "source"
+        ],
+        "type": "object"
+      },
+      "ConversationPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationView"
+            },
+            "type": "array"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "ConversationView": {
+        "properties": {
+          "clientEmail": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "integer"
+          },
+          "lastMessageAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "tgId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "unread": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientEmail",
+          "clientId",
+          "lastMessageAt",
+          "name",
+          "tgId",
+          "unread",
+          "username"
         ],
         "type": "object"
       },
@@ -5072,6 +5149,229 @@
         ],
         "type": "object"
       },
+      "TelegramBindingPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TelegramBindingView"
+            },
+            "type": "array"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "TelegramBindingView": {
+        "properties": {
+          "clientId": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "tgId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "clientId",
+          "createdAt",
+          "email",
+          "id",
+          "tgId",
+          "username"
+        ],
+        "type": "object"
+      },
+      "TelegramLog": {
+        "properties": {
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "messageId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "tgId": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "createdAt",
+          "detail",
+          "event",
+          "id",
+          "messageId",
+          "tgId"
+        ],
+        "type": "object"
+      },
+      "TelegramLogPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TelegramLog"
+            },
+            "type": "array"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "TelegramMessage": {
+        "properties": {
+          "attempts": {
+            "type": "integer"
+          },
+          "clientId": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "deliveryBot": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "externalId": {
+            "type": "integer"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "fileSize": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "id": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "nextAttemptAt": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "noticeId": {
+            "type": "integer"
+          },
+          "replyId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "role": {
+            "type": "string"
+          },
+          "sourceBot": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "tgId": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "updatedAt": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attempts",
+          "clientId",
+          "createdAt",
+          "deliveryBot",
+          "direction",
+          "error",
+          "externalId",
+          "fileName",
+          "fileSize",
+          "id",
+          "kind",
+          "mime",
+          "nextAttemptAt",
+          "noticeId",
+          "replyId",
+          "role",
+          "sourceBot",
+          "status",
+          "text",
+          "tgId",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "TelegramMessagePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TelegramMessage"
+            },
+            "type": "array"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
       "Traffic": {
         "description": "Traffic represents network traffic statistics for Xray connections.\nIt tracks upload and download bytes for inbound or outbound traffic.",
         "properties": {
@@ -5199,6 +5499,67 @@
         ],
         "type": "object"
       },
+      "UserTelegramSettings": {
+        "properties": {
+          "botUsername": {
+            "type": "string"
+          },
+          "clearToken": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "forwardAdmins": {
+            "type": "boolean"
+          },
+          "hasToken": {
+            "type": "boolean"
+          },
+          "logDays": {
+            "type": "integer"
+          },
+          "messageDays": {
+            "type": "integer"
+          },
+          "publicSubUrl": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "botUsername",
+          "clearToken",
+          "enabled",
+          "forwardAdmins",
+          "hasToken",
+          "logDays",
+          "messageDays",
+          "publicSubUrl"
+        ],
+        "type": "object"
+      },
+      "UserTelegramStatus": {
+        "properties": {
+          "botUsername": {
+            "type": "string"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "running": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "botUsername",
+          "lastError",
+          "running"
+        ],
+        "type": "object"
+      },
       "WebSocketEnvelope": {
         "type": "object",
         "required": [
@@ -5242,6 +5603,10 @@
     }
   ],
   "tags": [
+    {
+      "name": "Telegram user Bot",
+      "description": "Separate user-facing Telegram Bot, one-to-one verified client bindings, durable conversations, administrator reply bridging, targeted notice delivery and retention controls. All endpoints require administrator scope."
+    },
     {
       "name": "Subscription notifications",
       "description": "Administrator-managed notices targeted to clients or current group members. Published notices appear on the subscription page and optionally as non-proxy nodes in raw, JSON and Clash subscriptions."
@@ -5304,6 +5669,984 @@
     }
   ],
   "paths": {
+    "/panel/api/telegram/settings": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Read user Bot settings without returning the token.",
+        "operationId": "get_panel_api_telegram_settings",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/UserTelegramSettings"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "botUsername": "",
+                    "clearToken": false,
+                    "enabled": false,
+                    "forwardAdmins": false,
+                    "hasToken": false,
+                    "logDays": 0,
+                    "messageDays": 0,
+                    "publicSubUrl": "",
+                    "token": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Save user Bot settings and reload its receiver.",
+        "operationId": "post_panel_api_telegram_settings",
+        "description": "A blank token preserves the existing secret. clearToken removes it; enabled requires a token and the complete public subscription URL prefix. Bot tokens must differ. hasToken and botUsername are read-only. Retention is 1–3650 days. Proxy/API settings and administrator recipients are inherited from existing Telegram configuration.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserTelegramSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/UserTelegramSettings"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "botUsername": "",
+                    "clearToken": false,
+                    "enabled": false,
+                    "forwardAdmins": false,
+                    "hasToken": false,
+                    "logDays": 0,
+                    "messageDays": 0,
+                    "publicSubUrl": "",
+                    "token": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/status": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Read receiver status, Bot username and its last error.",
+        "operationId": "get_panel_api_telegram_status",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/UserTelegramStatus"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "botUsername": "",
+                    "lastError": "",
+                    "running": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/conversations": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Page conversations and unread counts.",
+        "operationId": "get_panel_api_telegram_conversations",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/ConversationPage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "clientEmail": "",
+                        "clientId": 0,
+                        "lastMessageAt": 0,
+                        "name": "",
+                        "tgId": 0,
+                        "unread": 0,
+                        "username": ""
+                      }
+                    ],
+                    "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/conversations/{tgId}/read": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Mark a conversation read through a displayed message.",
+        "operationId": "post_panel_api_telegram_conversations_tgId_read",
+        "parameters": [
+          {
+            "name": "tgId",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "throughId": {
+                    "type": "integer",
+                    "description": ""
+                  }
+                },
+                "required": [
+                  "throughId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/messages": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Page message history with delivery state, newest first.",
+        "operationId": "get_panel_api_telegram_messages",
+        "parameters": [
+          {
+            "name": "tgId",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/TelegramMessagePage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "attempts": 0,
+                        "clientId": 0,
+                        "createdAt": 0,
+                        "deliveryBot": "",
+                        "direction": "",
+                        "error": "",
+                        "externalId": 0,
+                        "fileName": "",
+                        "fileSize": 0,
+                        "id": 0,
+                        "kind": "",
+                        "mime": "",
+                        "nextAttemptAt": 0,
+                        "noticeId": 0,
+                        "replyId": 0,
+                        "role": "",
+                        "sourceBot": "",
+                        "status": "",
+                        "text": "",
+                        "tgId": 0,
+                        "updatedAt": 0
+                      }
+                    ],
+                    "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/messages/send": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Queue a text message to one user conversation.",
+        "operationId": "post_panel_api_telegram_messages_send",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tgId": {
+                    "type": "integer",
+                    "description": ""
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "1–3500 characters."
+                  },
+                  "replyId": {
+                    "type": "integer",
+                    "description": ""
+                  }
+                },
+                "required": [
+                  "tgId",
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/TelegramMessage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "attempts": 0,
+                    "clientId": 0,
+                    "createdAt": 0,
+                    "deliveryBot": "",
+                    "direction": "",
+                    "error": "",
+                    "externalId": 0,
+                    "fileName": "",
+                    "fileSize": 0,
+                    "id": 0,
+                    "kind": "",
+                    "mime": "",
+                    "nextAttemptAt": 0,
+                    "noticeId": 0,
+                    "replyId": 0,
+                    "role": "",
+                    "sourceBot": "",
+                    "status": "",
+                    "text": "",
+                    "tgId": 0,
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/messages/upload": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Send an attachment and persist its delivery result.",
+        "operationId": "post_panel_api_telegram_messages_upload",
+        "description": "Maximum file size 20 MiB. Content is uploaded to Telegram, not retained as a panel binary. Photos, audio and video use the matching Telegram media method.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tgId": {
+                    "type": "integer",
+                    "description": ""
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": ""
+                  },
+                  "caption": {
+                    "type": "string",
+                    "description": "At most 900 characters."
+                  },
+                  "replyId": {
+                    "type": "integer",
+                    "description": ""
+                  }
+                },
+                "required": [
+                  "tgId",
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/TelegramMessage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "attempts": 0,
+                    "clientId": 0,
+                    "createdAt": 0,
+                    "deliveryBot": "",
+                    "direction": "",
+                    "error": "",
+                    "externalId": 0,
+                    "fileName": "",
+                    "fileSize": 0,
+                    "id": 0,
+                    "kind": "",
+                    "mime": "",
+                    "nextAttemptAt": 0,
+                    "noticeId": 0,
+                    "replyId": 0,
+                    "role": "",
+                    "sourceBot": "",
+                    "status": "",
+                    "text": "",
+                    "tgId": 0,
+                    "updatedAt": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/media/{id}": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Download a message attachment through authenticated Bot access.",
+        "operationId": "get_panel_api_telegram_media_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attachment bytes, max 20 MiB. No Bot token is exposed.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/bindings": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Page verified one-to-one bindings.",
+        "operationId": "get_panel_api_telegram_bindings",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/TelegramBindingPage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "clientId": 0,
+                        "createdAt": 0,
+                        "email": "",
+                        "id": 0,
+                        "tgId": 0,
+                        "username": ""
+                      }
+                    ],
+                    "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/clients": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Search lightweight clients for binding-code generation.",
+        "operationId": "get_panel_api_telegram_clients",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/NotificationClient"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "email": "",
+                      "group": "",
+                      "id": 0
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/bind-code": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Generate a one-time binding code valid for 30 minutes.",
+        "operationId": "post_panel_api_telegram_bind_code",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientId": {
+                    "type": "integer",
+                    "description": ""
+                  }
+                },
+                "required": [
+                  "clientId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/BindCode"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "code": "",
+                    "expiresAt": 0,
+                    "url": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/bindings/{tgId}/unbind": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Remove a binding and cancel its queued notices.",
+        "operationId": "post_panel_api_telegram_bindings_tgId_unbind",
+        "parameters": [
+          {
+            "name": "tgId",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/logs": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Page message, delivery and operational logs.",
+        "operationId": "get_panel_api_telegram_logs",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "event",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tgId",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/TelegramLogPage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "createdAt": 0,
+                        "detail": "",
+                        "event": "",
+                        "id": 0,
+                        "messageId": 0,
+                        "tgId": 0
+                      }
+                    ],
+                    "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/clear": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Permanently clean old logs or message history, preserving bindings and pending messages.",
+        "operationId": "post_panel_api_telegram_clear",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "logs",
+                      "messages"
+                    ],
+                    "description": ""
+                  },
+                  "days": {
+                    "type": "integer",
+                    "description": "0 deletes all completed history; 1–3650 deletes older records."
+                  }
+                },
+                "required": [
+                  "kind",
+                  "days"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/notifications": {
       "get": {
         "tags": [

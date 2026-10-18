@@ -9,6 +9,8 @@ const TITLE_KEYS: Record<string, string> = {
   '/groups': 'menu.groups',
   // FORK(subscription-notifications): Match the page title to its sidebar entry.
   '/notifications': 'menu.notifications',
+  // FORK(telegram-user-bot): The browser title follows the Telegram support page.
+  '/telegram': 'menu.telegram',
   '/nodes': 'menu.nodes',
   '/audit': 'menu.audit',
   '/hosts': 'menu.hosts',

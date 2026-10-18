@@ -22,6 +22,9 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/eventbus"
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
+
+	// FORK(telegram-user-bot): The independent user receiver follows the panel lifecycle.
+	"github.com/mhsanaei/3x-ui/v3/internal/telegramuser"
 	"github.com/mhsanaei/3x-ui/v3/internal/tuic"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 	"github.com/mhsanaei/3x-ui/v3/internal/util/cronspec"
@@ -180,7 +183,8 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	// large backups and streams them to disk, so only its exact route suffix is
 	// exempt. Follow-up: make the limit a setting.
 	const maxRequestBodyBytes = 10 << 20 // 10 MiB
-	engine.Use(middleware.MaxBodyBytes(maxRequestBodyBytes, "/panel/api/server/importDB"))
+	// FORK(telegram-user-bot): Telegram uploads have their own authenticated 21 MiB multipart limit.
+	engine.Use(middleware.MaxBodyBytes(maxRequestBodyBytes, "/panel/api/server/importDB", "/panel/api/telegram/messages/upload"))
 
 	webDomain, err := s.settingService.GetWebDomain()
 	if err != nil {
@@ -724,6 +728,13 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	})
 
 	controller.SetReloadTgbotFunc(func() {
+		// FORK-BEGIN(telegram-user-bot)
+		defer func() {
+			if err := telegramuser.Default.Reload(); err != nil {
+				logger.Warning("reload user Telegram Bot: ", err)
+			}
+		}()
+		// FORK-END(telegram-user-bot)
 		enabled, err := s.settingService.GetTgbotEnabled()
 		if err != nil || !enabled {
 			if s.tgbotService.IsRunning() {
@@ -746,6 +757,11 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	})
 
 	s.startTask(restartXray, loc)
+	// FORK-BEGIN(telegram-user-bot)
+	if err := telegramuser.Default.Start(s.ctx, service.UserTelegramHooks()); err != nil {
+		logger.Warning("start user Telegram Bot: ", err)
+	}
+	// FORK-END(telegram-user-bot)
 
 	if startTgBot {
 		isTgbotenabled, err := s.settingService.GetTgbotEnabled()
@@ -813,6 +829,8 @@ func (s *Server) stop(stopXray bool, stopTgBot bool) error {
 	if stopTgBot && s.tgbotService.IsRunning() {
 		s.tgbotService.Stop()
 	}
+	// FORK(telegram-user-bot): Cancel polling and wait for deliveries before closing the panel database.
+	telegramuser.Default.Stop()
 	if s.discordGateway != nil && s.discordGateway.IsRunning() {
 		s.discordGateway.Stop()
 	}

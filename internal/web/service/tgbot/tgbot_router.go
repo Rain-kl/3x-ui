@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	// FORK(telegram-user-bot): Replies to relayed user messages must return to the persisted conversation.
+	"github.com/mhsanaei/3x-ui/v3/internal/telegramuser"
 
 	"github.com/mymmrac/telego"
 	th "github.com/mymmrac/telego/telegohandler"
@@ -79,6 +81,25 @@ func (t *Tgbot) OnReceive() {
 		tgBotMutex.Lock()
 		botHandler = h
 		tgBotMutex.Unlock()
+		// FORK-BEGIN(telegram-user-bot)
+		h.HandleMessage(func(ctx *th.Context, message telego.Message) error {
+			defer recoverBotPanic()
+			userStateMgr.clear(messageActor(message))
+			handled, err := telegramuser.QueueAdminReply(&message)
+			if err != nil {
+				t.SendMsgToTgbot(message.Chat.ID, "转发给用户失败："+err.Error())
+			} else if handled {
+				t.SendMsgToTgbot(message.Chat.ID, "已加入用户消息发送队列。")
+			}
+			return nil
+		}, func(_ context.Context, update telego.Update) bool {
+			message := update.Message
+			if message == nil || message.From == nil || message.ReplyToMessage == nil || !checkAdmin(message.From.ID) {
+				return false
+			}
+			return telegramuser.HasAdminRelay(message.Chat.ID, message.ReplyToMessage.MessageID)
+		})
+		// FORK-END(telegram-user-bot)
 
 		h.HandleMessage(func(ctx *th.Context, message telego.Message) error {
 			defer recoverBotPanic()

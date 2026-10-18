@@ -152,3 +152,13 @@
 - **修改文件**：数据库 Client/ClientRecord 与迁移、`internal/web/service/inbound_mixed.go`、客户端及 Runtime 分发、`internal/xray` 配置/API/版本检查、`internal/sub/mixed_manual.go`、前端入站及客户端表单、订阅页、生成接口模型和 13 种语言词条。
 - **上游改动标记**：`FORK(mixed-clients)`；定制核心的对应改动见 Rain-kl/Xray-core 同名条目。
 - **设计文档**：[mixed 客户端规范](docs/specs/mixed-clients.md)；**实现文档**：[Agent Note](.agents/notes/mixed-clients.md)。
+
+## 用户 Telegram Bot（telegram-user-bot）
+
+- **需求背景**：用户需要通过 Telegram 绑定购买的客户端、查询订阅和用量、接收定向通知并联系管理员；管理员需要持久化的双向聊天及排障日志。
+- **修改内容**：新增独立用户 Bot，订阅链接或 30 分钟一次性绑定码绑定，账号与客户端双向唯一。支持获取/确认重置订阅、查询剩余流量与天数、绑定/确认解绑。独立绑定表保持旧管理 Bot 兼容。
+- **管理与聊天**：侧边栏 Telegram 含消息、日志、设置三个页签；分页会话、未读、文字/附件、指定消息回复、网页主动发送。非指令咨询通过既有管理员 Bot 转发，管理员回复原转发消息即可定向答复。跨 Bot 附件下载后上传，不暴露 Token。
+- **通知与维护**：发布订阅通知时仅向命中客户端或分组的绑定账户排队；发送前重查版本和绑定，咨询优先，支持限速和有界重试。收发消息和运行错误入库，独立保留周期及手动清理；不删除绑定或待发送/发送中消息。Token 与绑定凭据脱敏，管理接口沿用管理员权限及 CSRF。
+- **修改文件**：`internal/telegramuser/`、`internal/database/model/telegram_user.go`、两处模型注册、Web 生命周期/控制器、Service 适配、管理员 Bot 回复路由、通知发布事务、`frontend/src/pages/telegram/`、侧边栏/路由、13 种语言词条与生成接口文档。
+- **上游改动标记**：`FORK(telegram-user-bot)`。
+- **设计文档**：[用户 Telegram Bot 规范](docs/specs/telegram-user-bot.md)；**实现文档**：[Agent Note](.agents/notes/telegram-user-bot.md)。

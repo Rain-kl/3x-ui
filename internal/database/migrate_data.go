@@ -53,6 +53,10 @@ func migrationModels() []any {
 		&model.ClientGroup{},
 		// FORK(subscription-notifications): Preserve notices when moving between database engines.
 		&model.SubscriptionNotification{},
+		// FORK-BEGIN(telegram-user-bot)
+		&model.TelegramUserConfig{}, &model.TelegramBinding{}, &model.TelegramBindCode{},
+		&model.TelegramConversation{}, &model.TelegramMessage{}, &model.TelegramLog{}, &model.TelegramAdminRelay{},
+		// FORK-END(telegram-user-bot)
 		&model.InboundFallback{},
 		&model.Host{},
 		&model.NodeClientTraffic{},

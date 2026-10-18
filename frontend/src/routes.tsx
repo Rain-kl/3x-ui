@@ -10,6 +10,8 @@ const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
 const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
 // FORK(subscription-notifications): Operators manage targeted subscription announcements from the panel.
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
+// FORK(telegram-user-bot): User support, binding and delivery settings share a dedicated panel route.
+const TelegramPage = lazy(() => import('@/pages/telegram/TelegramPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
 const AuditPage = lazy(() => import('@/pages/audit/AuditPage'));
 const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
@@ -49,6 +51,8 @@ const routes: RouteObject[] = [
       { path: 'groups', element: withSuspense(<GroupsPage />) },
       // FORK(subscription-notifications): Keep the editor inside the authenticated panel layout.
       { path: 'notifications', element: withSuspense(<NotificationsPage />) },
+      // FORK(telegram-user-bot): Keep the user Bot management page in the authenticated shell.
+      { path: 'telegram', element: withSuspense(<TelegramPage />) },
       { path: 'nodes', element: withSuspense(<NodesPage />) },
       { path: 'audit', element: withSuspense(<AuditPage />) },
       { path: 'hosts', element: withSuspense(<HostsPage />) },

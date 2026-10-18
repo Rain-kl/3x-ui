@@ -1,0 +1,114 @@
+---
+title: Telegram user Bot
+description: Separate user-facing Telegram Bot, one-to-one verified client
+  bindings, durable conversations, administrator reply bridging, targeted notice
+  delivery and retention controls. All endpoints require administrator scope.
+full: true
+_openapi:
+  preload:
+    - ./public/openapi.json
+  toc:
+    - depth: 2
+      title: Read user Bot settings without returning the token.
+      url: '#read-user-bot-settings-without-returning-the-token'
+    - depth: 2
+      title: Save user Bot settings and reload its receiver.
+      url: '#save-user-bot-settings-and-reload-its-receiver'
+    - depth: 2
+      title: Read receiver status, Bot username and its last error.
+      url: '#read-receiver-status-bot-username-and-its-last-error'
+    - depth: 2
+      title: Page conversations and unread counts.
+      url: '#page-conversations-and-unread-counts'
+    - depth: 2
+      title: Mark a conversation read through a displayed message.
+      url: '#mark-a-conversation-read-through-a-displayed-message'
+    - depth: 2
+      title: Page message history with delivery state, newest first.
+      url: '#page-message-history-with-delivery-state-newest-first'
+    - depth: 2
+      title: Queue a text message to one user conversation.
+      url: '#queue-a-text-message-to-one-user-conversation'
+    - depth: 2
+      title: Send an attachment and persist its delivery result.
+      url: '#send-an-attachment-and-persist-its-delivery-result'
+    - depth: 2
+      title: Download a message attachment through authenticated Bot access.
+      url: '#download-a-message-attachment-through-authenticated-bot-access'
+    - depth: 2
+      title: Page verified one-to-one bindings.
+      url: '#page-verified-one-to-one-bindings'
+    - depth: 2
+      title: Search lightweight clients for binding-code generation.
+      url: '#search-lightweight-clients-for-binding-code-generation'
+    - depth: 2
+      title: Generate a one-time binding code valid for 30 minutes.
+      url: '#generate-a-one-time-binding-code-valid-for-30-minutes'
+    - depth: 2
+      title: Remove a binding and cancel its queued notices.
+      url: '#remove-a-binding-and-cancel-its-queued-notices'
+    - depth: 2
+      title: Page message, delivery and operational logs.
+      url: '#page-message-delivery-and-operational-logs'
+    - depth: 2
+      title: Permanently clean old logs or message history, preserving bindings and
+        pending messages.
+      url: '#permanently-clean-old-logs-or-message-history-preserving-bindings-and-pending-messages'
+  structuredData:
+    headings:
+      - content: Read user Bot settings without returning the token.
+        id: read-user-bot-settings-without-returning-the-token
+      - content: Save user Bot settings and reload its receiver.
+        id: save-user-bot-settings-and-reload-its-receiver
+      - content: Read receiver status, Bot username and its last error.
+        id: read-receiver-status-bot-username-and-its-last-error
+      - content: Page conversations and unread counts.
+        id: page-conversations-and-unread-counts
+      - content: Mark a conversation read through a displayed message.
+        id: mark-a-conversation-read-through-a-displayed-message
+      - content: Page message history with delivery state, newest first.
+        id: page-message-history-with-delivery-state-newest-first
+      - content: Queue a text message to one user conversation.
+        id: queue-a-text-message-to-one-user-conversation
+      - content: Send an attachment and persist its delivery result.
+        id: send-an-attachment-and-persist-its-delivery-result
+      - content: Download a message attachment through authenticated Bot access.
+        id: download-a-message-attachment-through-authenticated-bot-access
+      - content: Page verified one-to-one bindings.
+        id: page-verified-one-to-one-bindings
+      - content: Search lightweight clients for binding-code generation.
+        id: search-lightweight-clients-for-binding-code-generation
+      - content: Generate a one-time binding code valid for 30 minutes.
+        id: generate-a-one-time-binding-code-valid-for-30-minutes
+      - content: Remove a binding and cancel its queued notices.
+        id: remove-a-binding-and-cancel-its-queued-notices
+      - content: Page message, delivery and operational logs.
+        id: page-message-delivery-and-operational-logs
+      - content: Permanently clean old logs or message history, preserving bindings and
+          pending messages.
+        id: permanently-clean-old-logs-or-message-history-preserving-bindings-and-pending-messages
+    contents:
+      - content: A blank token preserves the existing secret. clearToken removes it;
+          enabled requires a token and the complete public subscription URL
+          prefix. Bot tokens must differ. hasToken and botUsername are
+          read-only. Retention is 1–3650 days. Proxy/API settings and
+          administrator recipients are inherited from existing Telegram
+          configuration.
+        heading: save-user-bot-settings-and-reload-its-receiver
+      - content: Maximum file size 20 MiB. Content is uploaded to Telegram, not retained
+          as a panel binary. Photos, audio and video use the matching Telegram
+          media method.
+        heading: send-an-attachment-and-persist-its-delivery-result
+---
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+export default function Layout(props) {
+  const { OpenAPIPage } = props.components ?? {};
+  return (
+    <>
+      {props.children}
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
+    </>
+  );
+}

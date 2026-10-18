@@ -488,6 +488,13 @@ export const AuditSitesPageSchema = z.object({
 });
 export type AuditSitesPage = z.infer<typeof AuditSitesPageSchema>;
 
+export const BindCodeSchema = z.object({
+  code: z.string(),
+  expiresAt: z.number().int(),
+  url: z.string(),
+});
+export type BindCode = z.infer<typeof BindCodeSchema>;
+
 export const ClientSchema = z.object({
   adTag: z.string().optional(),
   allowedIPs: z.array(z.string()).optional(),
@@ -694,6 +701,23 @@ export const ControlSchema = z.object({
   source: z.string(),
 });
 export type Control = z.infer<typeof ControlSchema>;
+
+export const ConversationPageSchema = z.object({
+  items: z.array(z.lazy(() => ConversationViewSchema)),
+  total: z.number().int(),
+});
+export type ConversationPage = z.infer<typeof ConversationPageSchema>;
+
+export const ConversationViewSchema = z.object({
+  clientEmail: z.string(),
+  clientId: z.number().int(),
+  lastMessageAt: z.number().int(),
+  name: z.string(),
+  tgId: z.number().int(),
+  unread: z.number().int(),
+  username: z.string(),
+});
+export type ConversationView = z.infer<typeof ConversationViewSchema>;
 
 export const FallbackParentInfoSchema = z.object({
   masterId: z.number().int(),
@@ -1230,6 +1254,69 @@ export const SubscriptionNotificationSchema = z.object({
 });
 export type SubscriptionNotification = z.infer<typeof SubscriptionNotificationSchema>;
 
+export const TelegramBindingPageSchema = z.object({
+  items: z.array(z.lazy(() => TelegramBindingViewSchema)),
+  total: z.number().int(),
+});
+export type TelegramBindingPage = z.infer<typeof TelegramBindingPageSchema>;
+
+export const TelegramBindingViewSchema = z.object({
+  clientId: z.number().int(),
+  createdAt: z.number().int(),
+  email: z.string(),
+  id: z.number().int(),
+  tgId: z.number().int(),
+  username: z.string(),
+});
+export type TelegramBindingView = z.infer<typeof TelegramBindingViewSchema>;
+
+export const TelegramLogSchema = z.object({
+  createdAt: z.number().int(),
+  detail: z.string(),
+  event: z.string(),
+  id: z.number().int(),
+  messageId: z.number().int(),
+  tgId: z.number().int(),
+});
+export type TelegramLog = z.infer<typeof TelegramLogSchema>;
+
+export const TelegramLogPageSchema = z.object({
+  items: z.array(z.lazy(() => TelegramLogSchema)),
+  total: z.number().int(),
+});
+export type TelegramLogPage = z.infer<typeof TelegramLogPageSchema>;
+
+export const TelegramMessageSchema = z.object({
+  attempts: z.number().int(),
+  clientId: z.number().int(),
+  createdAt: z.number().int(),
+  deliveryBot: z.string(),
+  direction: z.string(),
+  error: z.string(),
+  externalId: z.number().int(),
+  fileName: z.string(),
+  fileSize: z.number().int(),
+  id: z.number().int(),
+  kind: z.string(),
+  mime: z.string(),
+  nextAttemptAt: z.number().int(),
+  noticeId: z.number().int(),
+  replyId: z.number().int(),
+  role: z.string(),
+  sourceBot: z.string(),
+  status: z.string(),
+  text: z.string(),
+  tgId: z.number().int(),
+  updatedAt: z.number().int(),
+});
+export type TelegramMessage = z.infer<typeof TelegramMessageSchema>;
+
+export const TelegramMessagePageSchema = z.object({
+  items: z.array(z.lazy(() => TelegramMessageSchema)),
+  total: z.number().int(),
+});
+export type TelegramMessagePage = z.infer<typeof TelegramMessagePageSchema>;
+
 export const TrafficSchema = z.object({
   Down: z.number().int(),
   IsInbound: z.boolean(),
@@ -1267,4 +1354,24 @@ export const UserSchema = z.object({
   username: z.string(),
 });
 export type User = z.infer<typeof UserSchema>;
+
+export const UserTelegramSettingsSchema = z.object({
+  botUsername: z.string(),
+  clearToken: z.boolean(),
+  enabled: z.boolean(),
+  forwardAdmins: z.boolean(),
+  hasToken: z.boolean(),
+  logDays: z.number().int(),
+  messageDays: z.number().int(),
+  publicSubUrl: z.string(),
+  token: z.string().optional(),
+});
+export type UserTelegramSettings = z.infer<typeof UserTelegramSettingsSchema>;
+
+export const UserTelegramStatusSchema = z.object({
+  botUsername: z.string(),
+  lastError: z.string(),
+  running: z.boolean(),
+});
+export type UserTelegramStatus = z.infer<typeof UserTelegramStatusSchema>;
 

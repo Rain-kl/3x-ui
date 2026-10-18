@@ -459,6 +459,12 @@ export interface AuditSitesPage {
   total: number;
 }
 
+export interface BindCode {
+  code: string;
+  expiresAt: number;
+  url: string;
+}
+
 export interface Client {
   adTag?: string;
   allowedIPs?: string[];
@@ -652,6 +658,21 @@ export interface Control {
   revision: number;
   rules: Record<string, unknown>[];
   source: string;
+}
+
+export interface ConversationPage {
+  items: ConversationView[];
+  total: number;
+}
+
+export interface ConversationView {
+  clientEmail: string;
+  clientId: number;
+  lastMessageAt: number;
+  name: string;
+  tgId: number;
+  unread: number;
+  username: string;
 }
 
 export interface FallbackParentInfo {
@@ -1153,6 +1174,63 @@ export interface SubscriptionNotification {
   updatedAt: number;
 }
 
+export interface TelegramBindingPage {
+  items: TelegramBindingView[];
+  total: number;
+}
+
+export interface TelegramBindingView {
+  clientId: number;
+  createdAt: number;
+  email: string;
+  id: number;
+  tgId: number;
+  username: string;
+}
+
+export interface TelegramLog {
+  createdAt: number;
+  detail: string;
+  event: string;
+  id: number;
+  messageId: number;
+  tgId: number;
+}
+
+export interface TelegramLogPage {
+  items: TelegramLog[];
+  total: number;
+}
+
+export interface TelegramMessage {
+  attempts: number;
+  clientId: number;
+  createdAt: number;
+  deliveryBot: string;
+  direction: string;
+  error: string;
+  externalId: number;
+  fileName: string;
+  fileSize: number;
+  id: number;
+  kind: string;
+  mime: string;
+  nextAttemptAt: number;
+  noticeId: number;
+  replyId: number;
+  role: string;
+  sourceBot: string;
+  status: string;
+  text: string;
+  tgId: number;
+  updatedAt: number;
+}
+
+export interface TelegramMessagePage {
+  items: TelegramMessage[];
+  total: number;
+}
+
 export interface Traffic {
   Down: number;
   IsInbound: boolean;
@@ -1185,5 +1263,23 @@ export interface User {
   id: number;
   password: string;
   username: string;
+}
+
+export interface UserTelegramSettings {
+  botUsername: string;
+  clearToken: boolean;
+  enabled: boolean;
+  forwardAdmins: boolean;
+  hasToken: boolean;
+  logDays: number;
+  messageDays: number;
+  publicSubUrl: string;
+  token?: string;
+}
+
+export interface UserTelegramStatus {
+  botUsername: string;
+  lastError: string;
+  running: boolean;
 }
 

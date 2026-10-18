@@ -197,6 +197,175 @@ const hwidStatusErrorResponses = {
 };
 
 export const sections: readonly Section[] = [
+  // FORK-BEGIN(telegram-user-bot)
+  {
+    id: 'telegram-user',
+    title: 'Telegram user Bot',
+    description:
+      'Separate user-facing Telegram Bot, one-to-one verified client bindings, durable conversations, administrator reply bridging, targeted notice delivery and retention controls. All endpoints require administrator scope.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/settings',
+        summary: 'Read user Bot settings without returning the token.',
+        responseSchema: 'UserTelegramSettings',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/settings',
+        summary: 'Save user Bot settings and reload its receiver.',
+        description:
+          'A blank token preserves the existing secret. clearToken removes it; enabled requires a token and the complete public subscription URL prefix. Bot tokens must differ. hasToken and botUsername are read-only. Retention is 1–3650 days. Proxy/API settings and administrator recipients are inherited from existing Telegram configuration.',
+        requestSchema: { $ref: '#/components/schemas/UserTelegramSettings' },
+        responseSchema: 'UserTelegramSettings',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/status',
+        summary: 'Read receiver status, Bot username and its last error.',
+        responseSchema: 'UserTelegramStatus',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/conversations',
+        summary: 'Page conversations and unread counts.',
+        params: [
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 20 },
+          { name: 'search', in: 'query', type: 'string', optional: true },
+        ],
+        responseSchema: 'ConversationPage',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/conversations/:tgId/read',
+        summary: 'Mark a conversation read through a displayed message.',
+        params: [
+          { name: 'tgId', in: 'path', type: 'integer' },
+          { name: 'throughId', in: 'body (json)', type: 'integer' },
+        ],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/messages',
+        summary: 'Page message history with delivery state, newest first.',
+        params: [
+          { name: 'tgId', in: 'query', type: 'integer' },
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 50 },
+        ],
+        responseSchema: 'TelegramMessagePage',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/messages/send',
+        summary: 'Queue a text message to one user conversation.',
+        params: [
+          { name: 'tgId', in: 'body (json)', type: 'integer' },
+          { name: 'text', in: 'body (json)', type: 'string', desc: '1–3500 characters.' },
+          { name: 'replyId', in: 'body (json)', type: 'integer', optional: true },
+        ],
+        responseSchema: 'TelegramMessage',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/messages/upload',
+        summary: 'Send an attachment and persist its delivery result.',
+        description:
+          'Maximum file size 20 MiB. Content is uploaded to Telegram, not retained as a panel binary. Photos, audio and video use the matching Telegram media method.',
+        params: [
+          { name: 'tgId', in: 'body (multipart)', type: 'integer' },
+          { name: 'file', in: 'body (multipart)', type: 'file' },
+          {
+            name: 'caption',
+            in: 'body (multipart)',
+            type: 'string',
+            optional: true,
+            desc: 'At most 900 characters.',
+          },
+          { name: 'replyId', in: 'body (multipart)', type: 'integer', optional: true },
+        ],
+        responseSchema: 'TelegramMessage',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/media/:id',
+        summary: 'Download a message attachment through authenticated Bot access.',
+        params: [{ name: 'id', in: 'path', type: 'integer' }],
+        responses: {
+          '200': {
+            description: 'Attachment bytes, max 20 MiB. No Bot token is exposed.',
+            content: {
+              'application/octet-stream': { schema: { type: 'string', format: 'binary' } },
+            },
+          },
+        },
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/bindings',
+        summary: 'Page verified one-to-one bindings.',
+        params: [
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 20 },
+        ],
+        responseSchema: 'TelegramBindingPage',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/clients',
+        summary: 'Search lightweight clients for binding-code generation.',
+        params: [
+          { name: 'search', in: 'query', type: 'string', optional: true },
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 50 },
+        ],
+        responseSchema: 'NotificationClient',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/bind-code',
+        summary: 'Generate a one-time binding code valid for 30 minutes.',
+        params: [{ name: 'clientId', in: 'body (json)', type: 'integer' }],
+        responseSchema: 'BindCode',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/bindings/:tgId/unbind',
+        summary: 'Remove a binding and cancel its queued notices.',
+        params: [{ name: 'tgId', in: 'path', type: 'integer' }],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/logs',
+        summary: 'Page message, delivery and operational logs.',
+        params: [
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 20 },
+          { name: 'event', in: 'query', type: 'string', optional: true },
+          { name: 'tgId', in: 'query', type: 'integer', optional: true },
+        ],
+        responseSchema: 'TelegramLogPage',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/clear',
+        summary:
+          'Permanently clean old logs or message history, preserving bindings and pending messages.',
+        params: [
+          { name: 'kind', in: 'body (json)', type: 'string', enum: ['logs', 'messages'] },
+          {
+            name: 'days',
+            in: 'body (json)',
+            type: 'integer',
+            desc: '0 deletes all completed history; 1–3650 deletes older records.',
+          },
+        ],
+      },
+    ],
+  },
+  // FORK-END(telegram-user-bot)
   // FORK-BEGIN(subscription-notifications)
   {
     id: 'notifications',

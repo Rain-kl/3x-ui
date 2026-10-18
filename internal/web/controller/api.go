@@ -201,6 +201,8 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	NewGroupController(clients)
 	// FORK(subscription-notifications): Notices share administrator authentication and CSRF protection.
 	newNotificationController(api.Group("/notifications"))
+	// FORK(telegram-user-bot): Chat, bindings, credentials and logs stay behind administrator scope and CSRF.
+	newTelegramUserController(api.Group("/telegram"))
 
 	// Server API
 	server := api.Group("/server")

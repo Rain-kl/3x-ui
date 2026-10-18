@@ -31,6 +31,8 @@ import {
   BarChartOutlined,
   SafetyOutlined,
   SearchOutlined,
+  // FORK(telegram-user-bot): Give Telegram support its familiar paper-plane navigation icon.
+  SendOutlined,
   SettingOutlined,
   SunOutlined,
   SwapOutlined,
@@ -66,6 +68,8 @@ type IconName =
   | 'groups'
   // FORK(subscription-notifications): Notices need a first-class sidebar entry.
   | 'notifications'
+  // FORK(telegram-user-bot): The user Bot has messages, logs and settings under one navigation entry.
+  | 'telegram'
   | 'setting'
   | 'tool'
   | 'cluster'
@@ -83,6 +87,8 @@ const iconByName: Record<IconName, ComponentType> = {
   groups: TagsOutlined,
   // FORK(subscription-notifications): Reuse the existing message icon for notices.
   notifications: MessageOutlined,
+  // FORK(telegram-user-bot): Separate chat management from subscription announcement editing.
+  telegram: SendOutlined,
   setting: SettingOutlined,
   tool: ToolOutlined,
   cluster: ClusterOutlined,
@@ -234,6 +240,8 @@ export default function AppSidebar() {
       { key: '/groups', icon: 'groups', title: t('menu.groups') },
       // FORK(subscription-notifications): Expose the announcement publishing workflow to administrators.
       { key: '/notifications', icon: 'notifications', title: t('menu.notifications') },
+      // FORK(telegram-user-bot): Expose user support without changing administrator Bot settings navigation.
+      { key: '/telegram', icon: 'telegram', title: t('menu.telegram') },
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
       { key: '/audit', icon: 'audit', title: t('menu.audit') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },

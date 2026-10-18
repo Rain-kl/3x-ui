@@ -42,6 +42,7 @@ func run(root, outDir string) error {
 				"Host",
 				"SubBalancer",
 				"SubscriptionNotification",
+				"TelegramMessage", "TelegramLog",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{
@@ -61,6 +62,10 @@ func run(root, outDir string) error {
 					{Field: "SockoptParams", Kind: KindAny},
 				},
 			},
+		},
+		{
+			Path:        resolveRel(root, "internal/telegramuser"),
+			StructAllow: setOf("UserTelegramSettings", "UserTelegramStatus", "BindCode", "ConversationView", "ConversationPage", "TelegramMessagePage", "TelegramLogPage", "TelegramBindingView", "TelegramBindingPage"),
 		},
 		{
 			Path:        resolveRel(root, "internal/routingsync"),

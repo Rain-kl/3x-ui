@@ -11,6 +11,9 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
+
+	// FORK(telegram-user-bot): Notification delivery must commit with its targeted publish event.
+	"github.com/mhsanaei/3x-ui/v3/internal/telegramuser"
 )
 
 type NotificationPage struct {
@@ -141,6 +144,17 @@ func (NotificationService) Save(input model.SubscriptionNotification) (model.Sub
 		if err := tx.Save(&input).Error; err != nil {
 			return fmt.Errorf("save notification %d: %w", input.Id, err)
 		}
+		// FORK-BEGIN(telegram-user-bot)
+		if input.UpdatedAt <= previous.UpdatedAt {
+			input.UpdatedAt = previous.UpdatedAt + 1
+			if err := tx.Model(&input).UpdateColumn("updated_at", input.UpdatedAt).Error; err != nil {
+				return fmt.Errorf("advance notification delivery version: %w", err)
+			}
+		}
+		if err := telegramuser.EnqueueNotification(tx, input); err != nil {
+			return err
+		}
+		// FORK-END(telegram-user-bot)
 		return nil
 	})
 	return input, err
