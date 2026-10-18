@@ -303,7 +303,14 @@ func (r *receiver) receive(incoming *telego.Message, updateID int, edited bool) 
 	}
 	client, boundErr := BoundClient(tgID)
 	isCommand := !edited && strings.HasPrefix(text, "/")
-	isProof := !edited && !isCommand && ((waiting && state.action == "bind") || strings.HasPrefix(text, "bind_") || (r.cfg.PublicSubURL != "" && strings.HasPrefix(text, r.cfg.PublicSubURL)) || (boundErr != nil && (strings.HasPrefix(text, "http://") || strings.HasPrefix(text, "https://"))))
+	isProof := !edited && !isCommand && (strings.HasPrefix(text, "bind_") || (waiting && state.action == "bind"))
+	if !isProof && !edited && !isCommand && boundErr != nil && text != "" {
+		matched, matchErr := hasSubID(text)
+		if matchErr != nil {
+			return fmt.Errorf("check Telegram binding credential: %w", matchErr)
+		}
+		isProof = matched
+	}
 	row := messageFromTelegram(incoming)
 	row.TgID, row.TargetChatID, row.SourceBot, row.DeliveryBot, row.Direction, row.Status = tgID, tgID, "user", "user", "incoming", "received"
 	row.Role = "chat"

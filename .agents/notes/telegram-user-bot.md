@@ -63,3 +63,7 @@ Telegram 不允许跨 Bot 复用 file_id，桥接先从源下载再向目标上�
 ## 2026-10-18：绑定尝试限流与黑名单
 
 按用户要求增加绑定风控：同一账号 10 分钟内最多 30 次绑定尝试，进程内滑动窗口（bindguard.go，维护任务每小时清理过期账号）；覆盖 /bind 带参、/start 带绑定码、直接发送绑定码或订阅链接及 /bind 后的待绑定输入，第 31 次即拉黑。黑名单落库为 TelegramBlockedUser（allModels 与 migrationModels 已注册），handle 层对拉黑账号静默丢弃全部消息与回调（查询失败时放行并记录 blacklist.check.failed），delivery 将发往该账号的队列消息置为 cancelled 并记录 message.cancelled；触发当次回复限制提示并记录 binding.blacklisted。尝试计数在接收器重载时保留、进程重启清零；黑名单跨重启保留，解除需删除黑名单记录。不新增、不运行测试（沿用用户要求）；go build ./...、go vet、gofmt 与数据库包测试通过。
+
+## 2026-10-18：绑定只按核心订阅标识匹配
+
+按用户要求放宽绑定：去掉订阅链接的 scheme/host/port/path 前缀校验，改为消息文本包含任意客户端的 sub_id 即视为该客户端的绑定凭据（sub_id 本身是 bearer 凭据，不访问用户 URL）；未绑定账号的非指令消息含 sub_id 时直接按凭据处理，无需先 /bind；命中多个客户端仍拒绝歧义。PublicSubURL 仅用于 /subscription 链接生成，不再参与绑定校验。临时测试覆盖任意域名链接、带前后文字、裸凭据、无凭据与歧义五种情况，验证后已删除（沿用不新增测试要求）；go build、go vet、gofmt 通过。

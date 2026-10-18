@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -73,15 +72,11 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 	if tgID <= 0 {
 		return binding, fmt.Errorf("binding requires a private Telegram account")
 	}
-	cfg, err := Config()
-	if err != nil {
-		return binding, err
-	}
 	proof = strings.TrimSpace(proof)
 	if len(proof) > 8192 {
 		return binding, fmt.Errorf("binding input exceeds 8192 bytes")
 	}
-	err = database.GetDB().Transaction(func(tx *gorm.DB) error {
+	err := database.GetDB().Transaction(func(tx *gorm.DB) error {
 		var clientID int
 		if strings.HasPrefix(proof, "bind_") {
 			var code model.TelegramBindCode
@@ -94,23 +89,18 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 				return fmt.Errorf("binding code has already been used")
 			}
 		} else {
-			provided, parseErr := url.Parse(proof)
-			base, baseErr := url.Parse(cfg.PublicSubURL)
-			if parseErr != nil || baseErr != nil || base.Host == "" || provided.User != nil || provided.Scheme != base.Scheme || !strings.EqualFold(provided.Host, base.Host) || !strings.HasPrefix(provided.Path, base.Path) {
-				return fmt.Errorf("send a valid subscription link or binding code")
-			}
-			subID := strings.TrimPrefix(provided.Path, base.Path)
-			if subID == "" || strings.Contains(subID, "/") {
-				return fmt.Errorf("send a valid subscription link or binding code")
-			}
-			var clients []model.ClientRecord
-			if err := tx.Select("id").Where("sub_id = ?", subID).Limit(2).Find(&clients).Error; err != nil {
+			ids, err := matchSubIDs(tx, proof)
+			if err != nil {
 				return fmt.Errorf("resolve Telegram subscription binding: %w", err)
 			}
-			if len(clients) != 1 {
-				return fmt.Errorf("subscription link is invalid or ambiguous; request a binding code from the administrator")
+			switch len(ids) {
+			case 0:
+				return fmt.Errorf("未在消息中找到订阅凭据，请发送完整订阅链接或绑定码")
+			case 1:
+				clientID = ids[0]
+			default:
+				return fmt.Errorf("消息匹配到多个客户端的订阅凭据，请只发送一个或改用绑定码")
 			}
-			clientID = clients[0].Id
 		}
 		var client model.ClientRecord
 		if err := tx.Select("id", "group_name").First(&client, clientID).Error; err != nil {
@@ -135,6 +125,30 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 		return err
 	})
 	return binding, err
+}
+
+// matchSubIDs returns clients whose subscription ID appears verbatim in text;
+// the sub ID itself is the bearer credential, so containment authorizes binding.
+func matchSubIDs(tx *gorm.DB, text string) ([]int, error) {
+	var clients []model.ClientRecord
+	if err := tx.Select("id", "sub_id").Where("sub_id <> ''").Find(&clients).Error; err != nil {
+		return nil, err
+	}
+	var ids []int
+	for _, client := range clients {
+		if client.SubID != "" && strings.Contains(text, client.SubID) {
+			ids = append(ids, client.Id)
+		}
+	}
+	return ids, nil
+}
+
+func hasSubID(text string) (bool, error) {
+	ids, err := matchSubIDs(database.GetDB(), text)
+	if err != nil {
+		return false, err
+	}
+	return len(ids) > 0, nil
 }
 
 func BoundClient(tgID int64) (*model.ClientRecord, error) {
