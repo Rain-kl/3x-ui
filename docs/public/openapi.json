@@ -2018,6 +2018,72 @@
         ],
         "type": "object"
       },
+      "AuditBandwidthCurrent": {
+        "properties": {
+          "download": {
+            "type": "number"
+          },
+          "fresh": {
+            "type": "boolean"
+          },
+          "staleNodes": {
+            "type": "integer"
+          },
+          "time": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "upload": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "download",
+          "fresh",
+          "staleNodes",
+          "time",
+          "upload"
+        ],
+        "type": "object"
+      },
+      "AuditBandwidthHistory": {
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/AuditBandwidthPoint"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "points"
+        ],
+        "type": "object"
+      },
+      "AuditBandwidthPoint": {
+        "properties": {
+          "coveredSeconds": {
+            "type": "number"
+          },
+          "download": {
+            "type": "number"
+          },
+          "time": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "upload": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "coveredSeconds",
+          "download",
+          "time",
+          "upload"
+        ],
+        "type": "object"
+      },
       "AuditRateAlert": {
         "properties": {
           "client": {
@@ -9388,12 +9454,139 @@
         }
       }
     },
+    "/panel/api/audit/bandwidth": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Current raw upload/download bytes per second from committed per-inbound counters. About 5 second sampling; excludes billing ratios. Fresh=false indicates missing data. Website and date filters do not apply.",
+        "operationId": "get_panel_api_audit_bandwidth",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AuditBandwidthCurrent"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "download": 0,
+                    "fresh": false,
+                    "staleNodes": 0,
+                    "time": 0,
+                    "upload": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/bandwidth/history": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "24 hours of minute average bandwidth in bytes/second, with coveredSeconds indicating actual sampling coverage. No coverage is unknown, not zero. Persisted every 30 seconds; nodeId/client filters apply.",
+        "operationId": "get_panel_api_audit_bandwidth_history",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AuditBandwidthHistory"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "points": [
+                      {
+                        "coveredSeconds": 0,
+                        "download": 0,
+                        "time": 0,
+                        "upload": 0
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/audit/export": {
       "get": {
         "tags": [
           "Audit"
         ],
-        "summary": "Download a ZIP of all retained website traffic, one client’s website traffic, or all four audit tables (JSONL). Administrator only; centralized child panels must export from the master. ZIP generation uses a bounded consistent snapshot and one concurrent export.",
+        "summary": "Download a ZIP of all retained website traffic, one client’s website traffic, or all audit tables including bandwidth minute history (JSONL). Administrator only; centralized child panels must export from the master. ZIP generation uses a bounded consistent snapshot and one concurrent export.",
         "operationId": "get_panel_api_audit_export",
         "parameters": [
           {

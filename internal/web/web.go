@@ -765,6 +765,8 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 	}
 	_, _ = s.cron.AddFunc("@every 1m", panelai.Default.Tick)
 	// FORK-END(panel-ai)
+	// FORK(audit-bandwidth): Batch compact bandwidth history independently of page visits.
+	_, _ = s.cron.AddFunc("@every 30s", service.FlushAuditBandwidth)
 	s.startTask(restartXray, loc)
 	// FORK-BEGIN(telegram-user-bot)
 	if err := telegramuser.Default.Start(s.ctx, service.UserTelegramHooks()); err != nil {
@@ -840,6 +842,8 @@ func (s *Server) stop(stopXray bool, stopTgBot bool) error {
 	}
 	// FORK(panel-ai): Finish cancelled AI work before the database and support bots close.
 	panelai.Default.Stop()
+	// FORK(audit-bandwidth): Flush the final compact samples before database shutdown.
+	service.FlushAuditBandwidth()
 	// FORK(telegram-user-bot): Cancel polling and wait for deliveries before closing the panel database.
 	telegramuser.Default.Stop()
 	if s.discordGateway != nil && s.discordGateway.IsRunning() {

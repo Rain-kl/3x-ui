@@ -198,7 +198,14 @@
       "exportClient": "指定客户端访问网站及流量（CSV）",
       "exportDatabase": "日志库全部数据（JSONL）",
       "exportClientPlaceholder": "客户端标识（与审计记录中完全一致）",
-      "exportDownload": "下载 ZIP"
+      "exportDownload": "下载 ZIP",
+      "bandwidthTitle": "实时带宽与持续占用趋势",
+      "bandwidthUpload": "上传速率",
+      "bandwidthDownload": "下载速率",
+      "bandwidthLive": "实时（5秒刷新）",
+      "bandwidthDay": "最近24小时（分钟均值）",
+      "bandwidthHelp": "使用持续更新的原始流量计数，长连接无需结束即可计量，不受计费倍率影响。跟随节点与客户端筛选，不按网站或访问日期筛选。实时曲线从打开页面起保留最多约1小时；分钟趋势保留24小时，仅记录功能启用后的采样数据。",
+      "bandwidthMissing": "部分采样尚未就绪或已中断；缺失时段不代表零流量，节点同步延迟也会影响观察时刻。"
     },
     "login": {
       "hello": "你好",

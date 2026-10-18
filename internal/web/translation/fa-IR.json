@@ -198,7 +198,14 @@
       "exportClient": "One client’s visited websites and traffic (CSV)",
       "exportDatabase": "All audit database data (JSONL)",
       "exportClientPlaceholder": "Exact client identifier from audit records",
-      "exportDownload": "Download ZIP"
+      "exportDownload": "Download ZIP",
+      "bandwidthTitle": "Live bandwidth and sustained usage",
+      "bandwidthUpload": "Upload rate",
+      "bandwidthDownload": "Download rate",
+      "bandwidthLive": "Live (5 second refresh)",
+      "bandwidthDay": "Last 24 hours (minute averages)",
+      "bandwidthHelp": "Uses continuously updated raw traffic counters, including open connections, independently of billing ratios. Follows node/client filters, not website or access date filters. Live history starts when this page opens and holds about one hour; minute history retains 24 hours of newly collected samples.",
+      "bandwidthMissing": "Some samples are not ready or have become stale. Missing periods do not mean zero traffic; node synchronization delays also affect observation times."
     },
     "login": {
       "hello": "سلام",

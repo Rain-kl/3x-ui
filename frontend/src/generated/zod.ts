@@ -529,6 +529,28 @@ export const AuditAggregateSchema = z.object({
 });
 export type AuditAggregate = z.infer<typeof AuditAggregateSchema>;
 
+export const AuditBandwidthCurrentSchema = z.object({
+  download: z.number(),
+  fresh: z.boolean(),
+  staleNodes: z.number().int(),
+  time: z.number().int(),
+  upload: z.number(),
+});
+export type AuditBandwidthCurrent = z.infer<typeof AuditBandwidthCurrentSchema>;
+
+export const AuditBandwidthHistorySchema = z.object({
+  points: z.array(z.lazy(() => AuditBandwidthPointSchema)),
+});
+export type AuditBandwidthHistory = z.infer<typeof AuditBandwidthHistorySchema>;
+
+export const AuditBandwidthPointSchema = z.object({
+  coveredSeconds: z.number(),
+  download: z.number(),
+  time: z.number().int(),
+  upload: z.number(),
+});
+export type AuditBandwidthPoint = z.infer<typeof AuditBandwidthPointSchema>;
+
 export const AuditRateAlertSchema = z.object({
   client: z.string(),
   connections: z.number().int(),

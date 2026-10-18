@@ -66,6 +66,8 @@ func BuildAuditExport(parent context.Context, kind, client string) (*os.File, er
 				{"audit_events", &model.AuditEvent{}},
 				{"audit_daily_stats", &model.AuditDailyStat{}},
 				{"audit_minute_stats", &model.AuditMinuteStat{}},
+				// FORK(audit-bandwidth): Complete audit archives include sampled bandwidth history.
+				{"audit_bandwidth_minutes", &model.AuditBandwidthMinute{}},
 				{"audit_receipts", &model.AuditReceipt{}},
 			} {
 				count, err := auditExportJSON(archive, table.name+".jsonl", tx.Model(table.model))

@@ -11,6 +11,18 @@ import (
 )
 
 func newAuditController(g *gin.RouterGroup) {
+	// FORK-BEGIN(audit-bandwidth)
+	g.GET("/bandwidth", func(c *gin.Context) {
+		node, _ := strconv.Atoi(c.Query("nodeId"))
+		value, err := (service.AuditService{}).QueryBandwidth(service.AuditFilter{NodeID: node, Client: c.Query("client")})
+		jsonObj(c, value, err)
+	})
+	g.GET("/bandwidth/history", func(c *gin.Context) {
+		node, _ := strconv.Atoi(c.Query("nodeId"))
+		value, err := (service.AuditService{}).QueryBandwidthHistory(service.AuditFilter{NodeID: node, Client: c.Query("client")})
+		jsonObj(c, value, err)
+	})
+	// FORK-END(audit-bandwidth)
 	// FORK(audit-export): Administrators need complete audit downloads beyond paginated rankings.
 	g.GET("/export", downloadAuditExport)
 	// FORK(audit-retention): Administrator-only configuration and cleanup routes.

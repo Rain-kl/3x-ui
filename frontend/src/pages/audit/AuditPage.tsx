@@ -42,6 +42,8 @@ import AuditExportModal from './AuditExportModal';
 import AuditSettingsModal from './AuditSettingsModal';
 import AuditSitesModal from './AuditSitesModal';
 import AuditRateChart from './AuditRateChart';
+// FORK(audit-bandwidth): Active long connections need raw traffic sampling rather than completed access records.
+import AuditBandwidthCard from './AuditBandwidthCard';
 import { formatAuditBytes as bytes } from './format';
 import { buildAuditInboundRemarks } from './inboundRemarks';
 import './AuditPage.css';
@@ -402,6 +404,8 @@ export default function AuditPage() {
                       ))}
                     />
                   )}
+                  {/* FORK(audit-bandwidth): Remount live history when identity filters change. */}
+                  <AuditBandwidthCard key={`${nodeId}:${client}`} nodeId={nodeId} client={client} />
                   {/* FORK(audit-workbench): A minute chart exposes recent bursts independently of cumulative totals. */}
                   <Card
                     size="small"

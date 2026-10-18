@@ -541,6 +541,29 @@ export const EXAMPLES: Record<string, unknown> = {
     "uniqueSites": 1,
     "uplink": 1024
   },
+  "AuditBandwidthCurrent": {
+    "download": 0,
+    "fresh": false,
+    "staleNodes": 0,
+    "time": 0,
+    "upload": 0
+  },
+  "AuditBandwidthHistory": {
+    "points": [
+      {
+        "coveredSeconds": 0,
+        "download": 0,
+        "time": 0,
+        "upload": 0
+      }
+    ]
+  },
+  "AuditBandwidthPoint": {
+    "coveredSeconds": 0,
+    "download": 0,
+    "time": 0,
+    "upload": 0
+  },
   "AuditRateAlert": {
     "client": "alice",
     "connections": 600,

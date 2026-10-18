@@ -114,6 +114,7 @@ func run(root, outDir string) error {
 				"AuditRateSnapshot",
 				"AuditRatePoint",
 				"AuditRateHistory",
+				"AuditBandwidthCurrent", "AuditBandwidthPoint", "AuditBandwidthHistory",
 				"HappLinkResult",
 				"ClientSlim",
 				"ClientRenewalPreviewRequest",

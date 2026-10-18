@@ -177,6 +177,10 @@ func clearAuditBefore(tx *gorm.DB, cutoff time.Time) error {
 	if cutoff.IsZero() {
 		return nil
 	}
+	// FORK(audit-bandwidth): Cleanup watermarks also prevent pending speed samples from returning.
+	if err := tx.Where("minute < ?", cutoff.Unix()).Delete(&model.AuditBandwidthMinute{}).Error; err != nil {
+		return fmt.Errorf("clear audit bandwidth: %w", err)
+	}
 	// FORK(audit-workbench): Rate history must disappear together with cleared connection logs.
 	if err := tx.Where("minute < ?", cutoff.Unix()).Delete(&model.AuditMinuteStat{}).Error; err != nil {
 		return fmt.Errorf("clear audit minute metrics: %w", err)

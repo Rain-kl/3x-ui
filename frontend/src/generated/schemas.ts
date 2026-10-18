@@ -1992,6 +1992,72 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "AuditBandwidthCurrent": {
+    "properties": {
+      "download": {
+        "type": "number"
+      },
+      "fresh": {
+        "type": "boolean"
+      },
+      "staleNodes": {
+        "type": "integer"
+      },
+      "time": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "upload": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "download",
+      "fresh",
+      "staleNodes",
+      "time",
+      "upload"
+    ],
+    "type": "object"
+  },
+  "AuditBandwidthHistory": {
+    "properties": {
+      "points": {
+        "items": {
+          "$ref": "#/components/schemas/AuditBandwidthPoint"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "points"
+    ],
+    "type": "object"
+  },
+  "AuditBandwidthPoint": {
+    "properties": {
+      "coveredSeconds": {
+        "type": "number"
+      },
+      "download": {
+        "type": "number"
+      },
+      "time": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "upload": {
+        "type": "number"
+      }
+    },
+    "required": [
+      "coveredSeconds",
+      "download",
+      "time",
+      "upload"
+    ],
+    "type": "object"
+  },
   "AuditRateAlert": {
     "properties": {
       "client": {

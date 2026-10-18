@@ -59,6 +59,11 @@ func (s *InboundService) addTrafficLocked(inboundTraffics []*xray.Traffic, clien
 		return false, false, nil, nil, nil, err
 	}
 
+	// FORK(audit-bandwidth): Sample committed raw counters before lifecycle resets and outside the transaction.
+	if len(clientTraffics) > 0 {
+		captureAuditBandwidth(0)
+	}
+
 	var (
 		needRestart          bool
 		clientsDisabled      bool

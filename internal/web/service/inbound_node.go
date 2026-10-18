@@ -1534,6 +1534,8 @@ func (s *InboundService) setRemoteTrafficLocked(nodeID int, snap *runtime.Traffi
 		return false, err
 	}
 	committed = true
+	// FORK(audit-bandwidth): Reuse successful node syncs; never add another node RPC for charts.
+	captureAuditBandwidth(nodeID)
 
 	if len(degradedInbounds) > 0 {
 		if mgr := runtime.GetManager(); mgr != nil {

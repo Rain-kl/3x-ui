@@ -30,6 +30,13 @@ func PanelAIHooks() panelai.Hooks {
 }
 
 func queryAIAudit(parent context.Context, q panelai.AuditQuery) (any, error) {
+	// FORK(audit-bandwidth): Let the existing assistant inspect sustained raw bandwidth as well as connection rates.
+	if q.Mode == "bandwidth" {
+		return (AuditService{}).QueryBandwidth(AuditFilter{NodeID: q.NodeID, Client: q.Client})
+	}
+	if q.Mode == "bandwidth_history" {
+		return (AuditService{}).QueryBandwidthHistory(AuditFilter{NodeID: q.NodeID, Client: q.Client})
+	}
 	filter := AuditFilter{Hours: q.Hours, Client: q.Client, Site: q.Site, NodeID: q.NodeID}
 	if q.Mode == "rates" {
 		return (AuditService{}).QueryRates(filter)

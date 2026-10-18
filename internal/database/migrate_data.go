@@ -71,6 +71,8 @@ func migrationModels() []any {
 		&model.AuditReceipt{},
 		// FORK(audit-workbench): Cross-database migration must preserve 24-hour rate history too.
 		&model.AuditMinuteStat{},
+		// FORK(audit-bandwidth): Keep sampled bandwidth across restarts and database migrations.
+		&model.AuditBandwidthMinute{},
 		// FORK(panel-ai): Preserve AI conversations, schedules and results across database engines.
 		&model.AIConversation{}, &model.AITask{}, &model.AIRun{},
 	}

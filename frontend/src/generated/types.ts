@@ -496,6 +496,25 @@ export interface AuditAggregate {
   uplink: number;
 }
 
+export interface AuditBandwidthCurrent {
+  download: number;
+  fresh: boolean;
+  staleNodes: number;
+  time: number;
+  upload: number;
+}
+
+export interface AuditBandwidthHistory {
+  points: AuditBandwidthPoint[];
+}
+
+export interface AuditBandwidthPoint {
+  coveredSeconds: number;
+  download: number;
+  time: number;
+  upload: number;
+}
+
 export interface AuditRateAlert {
   client: string;
   connections: number;

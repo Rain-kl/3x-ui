@@ -167,7 +167,7 @@
 ## 审计数据 ZIP 导出 (audit-export)
 
 - **需求背景**：分页页面无法方便地取得完整网站流量、指定客户端网站访问数据和日志库档案。
-- **修改内容**：审计页新增数据导出，支持全部网站、指定客户端和日志库全部数据，打包 ZIP 下载。网站采用 CSV，包含连接数及上传、下载、总字节；原始详细记录、每日汇总、分钟统计和去重记录采用 JSONL，并附 UTC 范围说明。导出全部保留日期和节点，不使用页面筛选；子节点从主节点导出。游标读取、一致性快照、单并发、超时取消、临时文件清理避免全量内存占用。
+- **修改内容**：审计页新增数据导出，支持全部网站、指定客户端和日志库全部数据，打包 ZIP 下载。网站采用 CSV，包含连接数及上传、下载、总字节；原始详细记录、每日汇总、分钟统计、带宽分钟数据和去重记录采用 JSONL，并附 UTC 范围说明。导出全部保留日期和节点，不使用页面筛选；子节点从主节点导出。游标读取、一致性快照、单并发、超时取消、临时文件清理避免全量内存占用。
 - **修改文件**：`internal/web/service/audit_export.go`、`audit_query_snapshot.go`、审计控制器、`frontend/src/pages/audit/AuditExportModal.tsx`、接口文档和语言词条。
 - **上游改动标记**：`FORK(audit-export)`。
 - **设计与实现**：[功能规格](docs/specs/audit-export.md)、[Agent Note](.agents/notes/audit-export.md)。
@@ -179,3 +179,12 @@
 - **修改文件**：`internal/panelai/`、数据库模型/迁移注册、`internal/web/service/panel_ai.go`、控制器和生命周期、`internal/telegramuser/report.go`、`frontend/src/pages/ai/`、导航、生成接口文档及语言词条。
 - **上游改动标记**：`FORK(panel-ai)`。
 - **设计与实现**：[功能规格](docs/specs/panel-ai.md)、[Agent Note](.agents/notes/panel-ai.md)。
+
+## 审计实时带宽曲线 (audit-bandwidth)
+
+- **需求背景**：连接结束才入库的访问日志无法判断长连接是否持续占用带宽，需要观察客户端的实际上传、下载速率。
+- **修改内容**：日志审计新增带宽图表，每5秒刷新当前速率，支持按节点、客户端筛选；可切换实时曲线和24小时分钟趋势。使用原始流量计数及实际采样间隔，不受计费倍率影响。清零、重启或同步中断时重新采样，缺失画为断点。卡片明确说明网站和访问日期筛选不影响带宽。
+- **性能与维护**：复用既有本地及子节点流量同步，不新增节点请求；每节点至多4秒批量读取一次，不逐用户查询。分钟数据每30秒批量持久化，固定保留24小时，完整 ZIP 导出和日志清理覆盖新表；AI 审计工具也可查询当前带宽与历史趋势。
+- **修改文件**：新增 `internal/web/service/audit_bandwidth*.go`、`internal/database/model/audit_bandwidth.go`、`frontend/src/pages/audit/AuditBandwidth*.tsx`；接入流量同步、模型注册及跨库迁移、审计 API/导出/清理、Web 生命周期、AI 工具、接口文档与13种语言词条。
+- **上游改动标记**：`FORK(audit-bandwidth)`。
+- **设计与实现**：[功能规格](docs/specs/audit-bandwidth.md)、[Agent Note](.agents/notes/audit-bandwidth.md)。

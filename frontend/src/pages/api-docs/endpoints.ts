@@ -774,6 +774,31 @@ export const sections: readonly Section[] = [
     title: 'Audit',
     description: 'Connection audit batches and the master dashboard.',
     endpoints: [
+      // FORK-BEGIN(audit-bandwidth)
+      {
+        method: 'GET',
+        path: '/panel/api/audit/bandwidth',
+        summary:
+          'Current raw upload/download bytes per second from committed per-inbound counters. About 5 second sampling; excludes billing ratios. Fresh=false indicates missing data. Website and date filters do not apply.',
+        responseSchema: 'AuditBandwidthCurrent',
+        params: [
+          { name: 'nodeId', in: 'query', type: 'integer', optional: true },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+        ],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/audit/bandwidth/history',
+        summary:
+          '24 hours of minute average bandwidth in bytes/second, with coveredSeconds indicating actual sampling coverage. No coverage is unknown, not zero. Persisted every 30 seconds; nodeId/client filters apply.',
+        responseSchema: 'AuditBandwidthHistory',
+        params: [
+          { name: 'nodeId', in: 'query', type: 'integer', optional: true },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+        ],
+      },
+      // FORK-END(audit-bandwidth)
+
       // FORK(audit-export): Complete audit downloads are distinct from node synchronization exports.
       {
         method: 'GET',
@@ -785,7 +810,7 @@ export const sections: readonly Section[] = [
           },
         },
         summary:
-          'Download a ZIP of all retained website traffic, one client’s website traffic, or all four audit tables (JSONL). Administrator only; centralized child panels must export from the master. ZIP generation uses a bounded consistent snapshot and one concurrent export.',
+          'Download a ZIP of all retained website traffic, one client’s website traffic, or all audit tables including bandwidth minute history (JSONL). Administrator only; centralized child panels must export from the master. ZIP generation uses a bounded consistent snapshot and one concurrent export.',
         params: [
           { name: 'kind', in: 'query', type: 'string', enum: ['sites', 'client', 'database'] },
           {
