@@ -33,6 +33,22 @@ func reserveTelegramAttachment(c *gin.Context) bool {
 }
 
 func newTelegramUserController(g *gin.RouterGroup) {
+	// FORK-BEGIN(telegram-custom-commands)
+	g.GET("/commands", func(c *gin.Context) {
+		result, err := telegramuser.ReadCustomCommands()
+		jsonObj(c, result, err)
+	})
+	g.POST("/commands", func(c *gin.Context) {
+		var body telegramuser.CustomCommands
+		if err := c.ShouldBindJSON(&body); err != nil {
+			jsonObj(c, nil, fmt.Errorf("decode Telegram custom commands: %w", err))
+			return
+		}
+		result, err := telegramuser.SaveCustomCommands(body)
+		jsonObj(c, result, err)
+	})
+	// FORK-END(telegram-custom-commands)
+
 	g.GET("/settings", func(c *gin.Context) {
 		result, err := telegramuser.ReadSettings()
 		c.Header("Cache-Control", "no-store")

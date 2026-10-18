@@ -894,6 +894,17 @@ export const EXAMPLES: Record<string, unknown> = {
     "unread": 0,
     "username": ""
   },
+  "CustomCommands": {
+    "commands": [
+      {
+        "command": "",
+        "description": "",
+        "enabled": false,
+        "reply": "",
+        "sortOrder": 0
+      }
+    ]
+  },
   "FallbackParentInfo": {
     "masterId": 0,
     "path": ""
@@ -1472,6 +1483,13 @@ export const EXAMPLES: Record<string, unknown> = {
     "id": 0,
     "tgId": 0,
     "username": ""
+  },
+  "TelegramCustomCommand": {
+    "command": "",
+    "description": "",
+    "enabled": false,
+    "reply": "",
+    "sortOrder": 0
   },
   "TelegramLog": {
     "createdAt": 0,

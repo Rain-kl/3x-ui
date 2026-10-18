@@ -3269,6 +3269,20 @@
         ],
         "type": "object"
       },
+      "CustomCommands": {
+        "properties": {
+          "commands": {
+            "items": {
+              "$ref": "#/components/schemas/TelegramCustomCommand"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "commands"
+        ],
+        "type": "object"
+      },
       "FallbackParentInfo": {
         "description": "FallbackParentInfo carries everything the frontend needs to rewrite a\nchild inbound's client link: where to connect (the master's address\nand port) and which path matched on the master's fallbacks array.\nThe frontend already has the master inbound in its dbInbounds list,\nso we only ship identifiers + the match path here.",
         "properties": {
@@ -5569,6 +5583,33 @@
         ],
         "type": "object"
       },
+      "TelegramCustomCommand": {
+        "properties": {
+          "command": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "reply": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "command",
+          "description",
+          "enabled",
+          "reply",
+          "sortOrder"
+        ],
+        "type": "object"
+      },
       "TelegramLog": {
         "properties": {
           "createdAt": {
@@ -6134,6 +6175,107 @@
                     "messageDays": 0,
                     "publicSubUrl": "",
                     "token": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/commands": {
+      "get": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "List user Bot custom commands in menu order.",
+        "operationId": "get_panel_api_telegram_commands",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/CustomCommands"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "commands": [
+                      {
+                        "command": "",
+                        "description": "",
+                        "enabled": false,
+                        "reply": "",
+                        "sortOrder": 0
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Atomically replace custom commands and update the native slash menu on the next poll.",
+        "operationId": "post_panel_api_telegram_commands",
+        "description": "Up to 94 commands. Names are normalized to lowercase without a leading slash; 1–32 ASCII letters, digits or underscores. Built-in names and duplicates are rejected. Descriptions are 1–256 characters; plain-text replies are 1–4096 characters. Replies are available to unbound users. Disabled commands are excluded from matching and menus. List order defines menu order.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomCommands"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/CustomCommands"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "commands": [
+                      {
+                        "command": "",
+                        "description": "",
+                        "enabled": false,
+                        "reply": "",
+                        "sortOrder": 0
+                      }
+                    ]
                   }
                 }
               }

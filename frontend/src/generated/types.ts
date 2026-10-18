@@ -779,6 +779,10 @@ export interface ConversationView {
   username: string;
 }
 
+export interface CustomCommands {
+  commands: TelegramCustomCommand[];
+}
+
 export interface FallbackParentInfo {
   masterId: number;
   path?: string;
@@ -1290,6 +1294,14 @@ export interface TelegramBindingView {
   id: number;
   tgId: number;
   username: string;
+}
+
+export interface TelegramCustomCommand {
+  command: string;
+  description: string;
+  enabled: boolean;
+  reply: string;
+  sortOrder: number;
 }
 
 export interface TelegramLog {

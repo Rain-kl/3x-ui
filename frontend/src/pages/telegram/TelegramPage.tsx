@@ -9,6 +9,8 @@ import { telegramApi } from './api';
 import TelegramMessages from './TelegramMessages';
 import TelegramLogs from './TelegramLogs';
 import TelegramSettings from './TelegramSettings';
+// FORK(telegram-custom-commands): Give administrator-defined slash replies a dedicated tab.
+import TelegramCommands from './TelegramCommands';
 
 export default function TelegramPage() {
   usePageTitle();
@@ -71,6 +73,12 @@ export default function TelegramPage() {
                     key: 'logs',
                     label: t('pages.telegram.logs'),
                     children: <TelegramLogs onChat={openChat} />,
+                  },
+                  // FORK(telegram-custom-commands): Keep custom replies separate from credentials and messaging.
+                  {
+                    key: 'commands',
+                    label: t('pages.telegram.customCommands'),
+                    children: <TelegramCommands />,
                   },
                   {
                     key: 'settings',

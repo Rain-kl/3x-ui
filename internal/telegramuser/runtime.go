@@ -52,6 +52,9 @@ type receiver struct {
 	user    *botAPI
 	admin   *botAPI
 	await   map[int64]awaiting
+
+	// FORK(telegram-custom-commands): Keep the native slash menu current without restarting polling.
+	commandMenu string
 }
 
 var Default = &Manager{}
@@ -219,13 +222,11 @@ func (r *receiver) poll() {
 			r.failure("bot.state.failed", err)
 		}
 	}
-	commands := []map[string]string{{"command": "notifications", "description": "获取全部通知"}, {"command": "subscription", "description": "获取订阅链接"}, {"command": "reset", "description": "重置订阅链接"}, {"command": "usage", "description": "查询剩余流量和天数"}, {"command": "bind", "description": "绑定客户端"}, {"command": "unbind", "description": "解绑客户端"}}
-	if err := r.user.call(r.ctx, "setMyCommands", map[string]any{"commands": commands}, nil); err != nil {
-		r.failure("bot.commands.failed", err)
-	}
 	offset := r.cfg.PollOffset
 	backoff := 5 * time.Second
 	for r.ctx.Err() == nil {
+		// FORK(telegram-custom-commands): Retry changed slash menus after long polls.
+		r.syncCommands()
 		var updates []telego.Update
 		err := r.user.call(r.ctx, "getUpdates", map[string]any{"offset": offset, "timeout": 25, "allowed_updates": []string{"message", "edited_message", "callback_query"}}, &updates)
 		if err != nil {
@@ -434,6 +435,10 @@ func (r *receiver) command(tgID int64, text string) {
 			r.reply(tgID, label+"？", map[string]any{"inline_keyboard": [][]map[string]string{{{"text": "确认", "callback_data": action}, {"text": "取消", "callback_data": "cancel"}}}})
 		}
 	default:
+		// FORK(telegram-custom-commands): Static custom replies share built-in command logging.
+		if r.customCommand(tgID, command) {
+			return
+		}
 		r.reply(tgID, "支持 /subscription、/reset、/usage、/notifications、/bind、/unbind。管理员允许匿名聊天时，或完成绑定后，可发送文字或附件联系管理员。", nil)
 	}
 }

@@ -837,6 +837,11 @@ export const ConversationViewSchema = z.object({
 });
 export type ConversationView = z.infer<typeof ConversationViewSchema>;
 
+export const CustomCommandsSchema = z.object({
+  commands: z.array(z.lazy(() => TelegramCustomCommandSchema)),
+});
+export type CustomCommands = z.infer<typeof CustomCommandsSchema>;
+
 export const FallbackParentInfoSchema = z.object({
   masterId: z.number().int(),
   path: z.string().optional(),
@@ -1387,6 +1392,15 @@ export const TelegramBindingViewSchema = z.object({
   username: z.string(),
 });
 export type TelegramBindingView = z.infer<typeof TelegramBindingViewSchema>;
+
+export const TelegramCustomCommandSchema = z.object({
+  command: z.string(),
+  description: z.string(),
+  enabled: z.boolean(),
+  reply: z.string(),
+  sortOrder: z.number().int(),
+});
+export type TelegramCustomCommand = z.infer<typeof TelegramCustomCommandSchema>;
 
 export const TelegramLogSchema = z.object({
   createdAt: z.number().int(),

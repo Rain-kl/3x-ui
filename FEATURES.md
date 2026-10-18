@@ -171,6 +171,15 @@
 - **上游改动标记**：`FORK(telegram-user-bot)`。
 - **设计文档**：[用户 Telegram Bot 规范](docs/specs/telegram-user-bot.md)；**实现文档**：[Agent Note](.agents/notes/telegram-user-bot.md)。
 
+### 用户 Bot 自定义指令（telegram-custom-commands）
+
+- **需求背景**：管理员希望配置常见问题和服务说明，让用户通过 Telegram 原生 `/` 菜单直接获取固定内容。
+- **修改内容**：Telegram 新增「自定义指令」Tab，支持新增、编辑、启停、删除；配置名称、菜单说明、纯文本回复。保存后回复立即生效；启用项与6个内置项一起通过 `setMyCommands` 显示在用户 `/` 菜单，停用或删除同步移除。菜单通常在下一轮轮询更新，Telegram 客户端可能有缓存。
+- **边界**：最多94项，名称规范化并禁止重复和覆盖内置项；所有用户均可使用，沿用黑名单和完整消息日志。事务保存独立数据表，跨库迁移保留；不重启 Bot。
+- **修改文件**：`internal/telegramuser/custom_commands.go`、接收器/控制器、`internal/database/model/telegram_custom_command.go`、两处模型注册、`frontend/src/pages/telegram/TelegramCommands.tsx`、Telegram 页签/API、生成模型/接口文档和13种语言词条。
+- **上游改动标记**：`FORK(telegram-custom-commands)`。
+- **设计与实现**：[功能规格](docs/specs/telegram-custom-commands.md)、[Agent Note](.agents/notes/telegram-custom-commands.md)。
+
 ## 审计数据 ZIP 导出 (audit-export)
 
 - **需求背景**：分页页面无法方便地取得完整网站流量、指定客户端网站访问数据和日志库档案。

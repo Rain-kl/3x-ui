@@ -2651,7 +2651,22 @@
         "cancelled": "Cancelled"
       },
       "allowAnonymousChat": "Allow anonymous chat",
-      "anonymousChatHelp": "Off by default. Only users with a valid client binding can relay chat. Unbound users can use commands, but their text and attachments are not forwarded to administrators."
+      "anonymousChatHelp": "Off by default. Only users with a valid client binding can relay chat. Unbound users can use commands, but their text and attachments are not forwarded to administrators.",
+      "customCommands": "Custom commands",
+      "commandName": "Command",
+      "commandDescription": "Menu description",
+      "commandReply": "Reply text",
+      "commandEnabled": "Enabled",
+      "commandActions": "Actions",
+      "commandAdd": "Add command",
+      "commandEdit": "Edit",
+      "commandDelete": "Delete",
+      "commandDeleteConfirm": "Delete this command?",
+      "commandsSaved": "Saved. The Telegram command menu updates on the next poll.",
+      "commandsHelp": "Enabled custom commands appear in the native Telegram menu when users type /. Replies update immediately; menu updates usually take about 25 seconds, subject to Telegram client caching. Replies are plain text and available to unbound users. Maximum 94 commands; built-in names are reserved.",
+      "commandNameInvalid": "Use 1–32 ASCII letters, digits or underscores, with an optional leading /.",
+      "commandDescriptionInvalid": "Menu descriptions must contain 1–256 characters.",
+      "commandReplyInvalid": "Replies must contain 1–4096 characters."
     },
     "ai": {
       "chat": "Chat",

@@ -82,7 +82,9 @@ func allModels() []any {
 		// FORK(subscription-notifications): Persist targeted notices independently of proxy configuration.
 		&model.SubscriptionNotification{},
 		// FORK-BEGIN(telegram-user-bot)
-		&model.TelegramUserConfig{}, &model.TelegramBinding{}, &model.TelegramBindCode{},
+		&model.TelegramUserConfig{},
+		// FORK(telegram-custom-commands): Preserve administrator-defined replies across migrations.
+		&model.TelegramCustomCommand{}, &model.TelegramBinding{}, &model.TelegramBindCode{},
 		&model.TelegramConversation{}, &model.TelegramMessage{}, &model.TelegramLog{}, &model.TelegramAdminRelay{}, &model.TelegramBlockedUser{},
 		// FORK-END(telegram-user-bot)
 		&model.InboundFallback{},

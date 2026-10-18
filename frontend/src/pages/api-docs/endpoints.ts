@@ -219,6 +219,23 @@ export const sections: readonly Section[] = [
         requestSchema: { $ref: '#/components/schemas/UserTelegramSettings' },
         responseSchema: 'UserTelegramSettings',
       },
+      // FORK(telegram-custom-commands): Document persistent custom replies and native slash menu synchronization.
+      {
+        method: 'GET',
+        path: '/panel/api/telegram/commands',
+        summary: 'List user Bot custom commands in menu order.',
+        responseSchema: 'CustomCommands',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/commands',
+        summary:
+          'Atomically replace custom commands and update the native slash menu on the next poll.',
+        description:
+          'Up to 94 commands. Names are normalized to lowercase without a leading slash; 1–32 ASCII letters, digits or underscores. Built-in names and duplicates are rejected. Descriptions are 1–256 characters; plain-text replies are 1–4096 characters. Replies are available to unbound users. Disabled commands are excluded from matching and menus. List order defines menu order.',
+        requestSchema: { $ref: '#/components/schemas/CustomCommands' },
+        responseSchema: 'CustomCommands',
+      },
       {
         method: 'GET',
         path: '/panel/api/telegram/status',

@@ -2651,7 +2651,22 @@
         "cancelled": "已取消"
       },
       "allowAnonymousChat": "开启匿名聊天",
-      "anonymousChatHelp": "默认关闭。关闭后，仅已绑定客户端的用户可转发消息；未绑定用户仅响应指令，普通文字和附件不转发给管理员。"
+      "anonymousChatHelp": "默认关闭。关闭后，仅已绑定客户端的用户可转发消息；未绑定用户仅响应指令，普通文字和附件不转发给管理员。",
+      "customCommands": "自定义指令",
+      "commandName": "指令名称",
+      "commandDescription": "菜单说明",
+      "commandReply": "回复内容",
+      "commandEnabled": "启用",
+      "commandActions": "操作",
+      "commandAdd": "新增指令",
+      "commandEdit": "编辑",
+      "commandDelete": "删除",
+      "commandDeleteConfirm": "确定删除此指令？",
+      "commandsSaved": "已保存，Telegram 指令菜单将在下一次轮询时更新",
+      "commandsHelp": "用户输入 / 即可在 Telegram 原生指令菜单中看到启用的自定义指令。保存后回复立即生效，菜单通常在约25秒内更新；Telegram 客户端可能有缓存。回复为纯文本，未绑定用户也可使用。最多94项，不能覆盖内置指令。",
+      "commandNameInvalid": "请输入1–32个英文字母、数字或下划线，可带前导 /",
+      "commandDescriptionInvalid": "菜单说明须为1–256个字符",
+      "commandReplyInvalid": "回复内容须为1–4096个字符"
     },
     "ai": {
       "chat": "对话",

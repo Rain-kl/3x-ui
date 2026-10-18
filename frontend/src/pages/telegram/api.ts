@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { HttpUtil } from '@/utils';
 import {
   BindCodeSchema,
+  CustomCommandsSchema,
+  TelegramCustomCommandSchema,
   ConversationPageSchema,
   NotificationClientSchema,
   TelegramBindingPageSchema,
@@ -37,7 +39,26 @@ export async function postTelegram<T extends z.ZodType>(
   return schema.parse(result.obj);
 }
 
+// FORK(telegram-custom-commands): Reuse authenticated Telegram API and generated command contracts.
+export type TelegramCustomCommand = z.infer<typeof TelegramCustomCommandSchema>;
+export const TelegramCommandFormSchema = TelegramCustomCommandSchema.extend({
+  command: z.string().regex(/^\/?[a-zA-Z0-9_]{1,32}$/, 'pages.telegram.commandNameInvalid'),
+  description: z
+    .string()
+    .trim()
+    .min(1, 'pages.telegram.commandDescriptionInvalid')
+    .max(256, 'pages.telegram.commandDescriptionInvalid'),
+  reply: z
+    .string()
+    .refine(
+      (value) => value.trim().length > 0 && Array.from(value).length <= 4096,
+      'pages.telegram.commandReplyInvalid',
+    ),
+});
 export const telegramApi = {
+  commands: () => getTelegram('/commands', CustomCommandsSchema),
+  saveCommands: (body: z.infer<typeof CustomCommandsSchema>) =>
+    postTelegram('/commands', body, CustomCommandsSchema),
   status: () => getTelegram('/status', UserTelegramStatusSchema),
   settings: () => getTelegram('/settings', UserTelegramSettingsSchema),
   saveSettings: (body: TelegramSettings) =>

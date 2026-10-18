@@ -15,6 +15,13 @@ _openapi:
       title: Save user Bot settings and reload its receiver.
       url: '#save-user-bot-settings-and-reload-its-receiver'
     - depth: 2
+      title: List user Bot custom commands in menu order.
+      url: '#list-user-bot-custom-commands-in-menu-order'
+    - depth: 2
+      title: Atomically replace custom commands and update the native slash menu on
+        the next poll.
+      url: '#atomically-replace-custom-commands-and-update-the-native-slash-menu-on-the-next-poll'
+    - depth: 2
       title: Read receiver status, Bot username and its last error.
       url: '#read-receiver-status-bot-username-and-its-last-error'
     - depth: 2
@@ -60,6 +67,11 @@ _openapi:
         id: read-user-bot-settings-without-returning-the-token
       - content: Save user Bot settings and reload its receiver.
         id: save-user-bot-settings-and-reload-its-receiver
+      - content: List user Bot custom commands in menu order.
+        id: list-user-bot-custom-commands-in-menu-order
+      - content: Atomically replace custom commands and update the native slash menu on
+          the next poll.
+        id: atomically-replace-custom-commands-and-update-the-native-slash-menu-on-the-next-poll
       - content: Read receiver status, Bot username and its last error.
         id: read-receiver-status-bot-username-and-its-last-error
       - content: Page conversations and unread counts.
@@ -97,6 +109,13 @@ _openapi:
           Proxy/API settings and administrator recipients are inherited from
           existing Telegram configuration.'
         heading: save-user-bot-settings-and-reload-its-receiver
+      - content: Up to 94 commands. Names are normalized to lowercase without a leading
+          slash; 1–32 ASCII letters, digits or underscores. Built-in names and
+          duplicates are rejected. Descriptions are 1–256 characters; plain-text
+          replies are 1–4096 characters. Replies are available to unbound users.
+          Disabled commands are excluded from matching and menus. List order
+          defines menu order.
+        heading: atomically-replace-custom-commands-and-update-the-native-slash-menu-on-the-next-poll
       - content: Maximum file size 20 MiB. Content is uploaded to Telegram, not retained
           as a panel binary. Photos, audio and video use the matching Telegram
           media method.
@@ -110,7 +129,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/commands","method":"get"},{"path":"/panel/api/telegram/commands","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
     </>
   );
 }
