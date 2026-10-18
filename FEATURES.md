@@ -144,7 +144,7 @@
 ## 定向订阅通知 (subscription-notifications)
 
 - **需求背景**：管理员需要向指定客户端或用户分组发布通知，并可让代理客户端在节点列表中看到通知。
-- **修改内容**：侧边栏新增通知管理，支持标题、纯文本正文、接收对象、排序、保存草稿、发布、编辑、撤回和删除。客户端与用户组可同时选择，按并集匹配且去重；两类选择器提供全选和清空，客户端全选覆盖所有页面、保存点击时的目标快照。分组按当前成员动态匹配；同一订阅命中多次只显示一次。通知使用独立数据表，批量匹配受众，不创建真实入站或下发代理配置。
+- **修改内容**：侧边栏新增通知管理，支持可选标题（留空只发正文，网页、占位节点名称与 Telegram 投递不再出现标题行、分隔符或空行）、纯文本正文、接收对象、排序、保存草稿、发布、编辑、撤回和删除。客户端与用户组可同时选择，按并集匹配且去重；两类选择器提供全选和清空，客户端全选覆盖所有页面、保存点击时的目标快照。分组按当前成员动态匹配；同一订阅命中多次只显示一次。通知使用独立数据表，批量匹配受众，不创建真实入站或下发代理配置。
 - **订阅行为**：网页在普通配置之前显示完整通知；可选在 raw/base64、Xray JSON、Clash/Mihomo 中添加按顺序排列的标准 VLESS 通知占位节点，地址统一为 `127.0.0.1:1`。不提供真实代理服务，JSON 用 blackhole 路由阻断转发，Clash 通知不进入实际代理选择组。撤回、编辑和删除在下次订阅请求生效。
 - **修改文件**：`internal/database/model/subscription_notification.go`、模型及跨库迁移注册、`internal/web/service/subscription_notification.go`、`internal/web/controller/subscription_notification.go`、`internal/sub/notifications.go`、订阅输出、前端侧边栏与 `pages/notifications`、订阅网页、接口文档与语言词条。
 - **上游改动标记**：`FORK(subscription-notifications)`。

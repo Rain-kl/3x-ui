@@ -54,7 +54,7 @@ export default function NotificationsPage() {
       width: 260,
       render: (title: string, row) => (
         <Space orientation="vertical" size={0}>
-          <Typography.Text strong>{title}</Typography.Text>
+          {title !== '' && <Typography.Text strong>{title}</Typography.Text>}
           <Typography.Paragraph
             ellipsis={{ rows: 2, expandable: true }}
             style={{ margin: 0, whiteSpace: 'pre-wrap' }}

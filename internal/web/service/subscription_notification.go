@@ -63,8 +63,8 @@ func (NotificationService) Clients(search string, ids []int, page, size int) ([]
 func (NotificationService) Save(input model.SubscriptionNotification) (model.SubscriptionNotification, error) {
 	input.Title = strings.TrimSpace(input.Title)
 	input.Body = strings.TrimSpace(input.Body)
-	if input.Id < 0 || input.Title == "" || utf8.RuneCountInString(input.Title) > 120 || input.Body == "" || utf8.RuneCountInString(input.Body) > 4000 {
-		return input, fmt.Errorf("notification requires title (1–120 characters) and body (1–4000 characters)")
+	if input.Id < 0 || utf8.RuneCountInString(input.Title) > 120 || input.Body == "" || utf8.RuneCountInString(input.Body) > 4000 {
+		return input, fmt.Errorf("notification requires a body (1–4000 characters) and an optional title of up to 120 characters")
 	}
 	if input.SortIndex < 0 || input.SortIndex > 1000000 {
 		return input, fmt.Errorf("notification order must be between 0 and 1000000")
