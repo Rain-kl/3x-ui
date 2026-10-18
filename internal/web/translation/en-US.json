@@ -153,7 +153,7 @@
       "reviewHighFrequency": "Client rate reached a threshold in the last minute (a hint does not confirm abuse)",
       "sites": "Sites",
       "topSites": "Top sites by traffic",
-      "hourlyTrend": "Hourly connection trend and top clients",
+      "clientRanking": "Client ranking",
       "client": "Client",
       "traffic": "Traffic",
       "recentEvents": "Recent connections",

@@ -951,6 +951,42 @@ export const sections: readonly Section[] = [
           },
         ],
       },
+      // FORK(audit-workbench): Document complete client pagination alongside website pagination.
+      {
+        method: 'GET',
+        path: '/panel/api/audit/clients',
+        summary:
+          'Paginate all clients by connection count using the dashboard filters. Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100. Equal connection counts are ordered by client name.',
+        responseSchema: 'AuditSitesPage',
+        params: [
+          { name: 'hours', in: 'query', type: 'integer', optional: true },
+          {
+            name: 'day',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'UTC date YYYY-MM-DD, matching the dashboard date filter.',
+          },
+          {
+            name: 'nodeId',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            desc: '0 for all nodes; -1 for local; positive for one child.',
+          },
+          { name: 'client', in: 'query', type: 'string', optional: true },
+          { name: 'site', in: 'query', type: 'string', optional: true },
+          { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
+          {
+            name: 'pageSize',
+            in: 'query',
+            type: 'integer',
+            optional: true,
+            defaultValue: 20,
+            enum: [20, 50, 100],
+          },
+        ],
+      },
       {
         method: 'GET',
         path: '/panel/api/audit/summary',

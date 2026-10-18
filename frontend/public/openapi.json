@@ -10331,6 +10331,129 @@
         }
       }
     },
+    "/panel/api/audit/clients": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Paginate all clients by connection count using the dashboard filters. Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100. Equal connection counts are ordered by client name.",
+        "operationId": "get_panel_api_audit_clients",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "description": "UTC date YYYY-MM-DD, matching the dashboard date filter.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "nodeId",
+            "in": "query",
+            "required": false,
+            "description": "0 for all nodes; -1 for local; positive for one child.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "site",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "enum": [
+                20,
+                50,
+                100
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AuditSitesPage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "centralized": false,
+                    "items": [
+                      {
+                        "connections": 12,
+                        "downlink": 8192,
+                        "measured": 12,
+                        "name": "example.com",
+                        "uniqueSites": 1,
+                        "uplink": 1024
+                      }
+                    ],
+                    "page": 1,
+                    "pageSize": 20,
+                    "total": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/audit/summary": {
       "get": {
         "tags": [

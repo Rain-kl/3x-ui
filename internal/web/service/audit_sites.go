@@ -22,6 +22,15 @@ func auditSiteRanking(base *gorm.DB) *gorm.DB {
 }
 
 func (AuditService) QuerySites(f AuditFilter, page, pageSize int) (*AuditSitesPage, error) {
+	return queryAuditRanking(f, page, pageSize, "site")
+}
+
+// FORK(audit-workbench): Complete client rankings need bounded database pages, not a top-20 slice.
+func (AuditService) QueryClients(f AuditFilter, page, pageSize int) (*AuditSitesPage, error) {
+	return queryAuditRanking(f, page, pageSize, "client")
+}
+
+func queryAuditRanking(f AuditFilter, page, pageSize int, dimension string) (*AuditSitesPage, error) {
 	if pageSize != 20 && pageSize != 50 && pageSize != 100 {
 		return nil, fmt.Errorf("audit pageSize must be 20, 50 or 100")
 	}
@@ -48,12 +57,17 @@ func (AuditService) QuerySites(f AuditFilter, page, pageSize int) (*AuditSitesPa
 		}
 		policy, now := retentionFromControl(state), time.Now().UTC()
 		base := func() *gorm.DB { return auditMetricsQuery(db, f, policy, now) }
-		grouped := base().Select("site").Group("site")
+		grouped := base().Select(dimension).Group(dimension)
 		if err := db.Table("(?) AS audit_site_groups", grouped).Count(&result.Total).Error; err != nil {
-			return fmt.Errorf("count audit sites: %w", err)
+			return fmt.Errorf("count audit %s ranking: %w", dimension, err)
 		}
-		if err := auditSiteRanking(base()).Limit(pageSize).Offset((page - 1) * pageSize).Scan(&result.Items).Error; err != nil {
-			return fmt.Errorf("query audit sites page: %w", err)
+		// FORK(audit-workbench): Stable ordering keeps equal-count clients on deterministic pages.
+		ranking := auditSiteRanking(base())
+		if dimension == "client" {
+			ranking = base().Select("client AS name, SUM(connections) AS connections, COALESCE(SUM(uplink),0) AS uplink, COALESCE(SUM(downlink),0) AS downlink, SUM(measured) AS measured, COUNT(DISTINCT site) AS unique_sites").Group("client").Order("SUM(connections) DESC, client ASC")
+		}
+		if err := ranking.Limit(pageSize).Offset((page - 1) * pageSize).Scan(&result.Items).Error; err != nil {
+			return fmt.Errorf("query audit %s page: %w", dimension, err)
 		}
 		return nil
 	})

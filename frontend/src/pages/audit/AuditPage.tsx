@@ -44,40 +44,11 @@ import AuditSitesModal from './AuditSitesModal';
 import AuditRateChart from './AuditRateChart';
 // FORK(audit-bandwidth): Active long connections need raw traffic sampling rather than completed access records.
 import AuditBandwidthCard from './AuditBandwidthCard';
+// FORK(audit-workbench): All clients need independently paged rankings instead of the hourly graph.
+import AuditClientsCard from './AuditClientsCard';
 import { formatAuditBytes as bytes } from './format';
 import { buildAuditInboundRemarks } from './inboundRemarks';
 import './AuditPage.css';
-
-function Trend({ points }: { points: AuditSummary['hours'] }) {
-  const max = Math.max(1, ...points.map((p) => p.connections));
-  const coords = points
-    .map(
-      (p, i) => `${(i / Math.max(points.length - 1, 1)) * 100},${100 - (p.connections / max) * 90}`,
-    )
-    .join(' ');
-  return (
-    <div className="audit-trend">
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        role="img"
-        aria-label="Connections by hour"
-      >
-        <polyline
-          points={coords}
-          fill="none"
-          stroke="var(--ant-color-primary)"
-          strokeWidth="2"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <div>
-        <span>{points[0]?.name?.slice(11, 16) ?? ''}</span>
-        <span>{points.at(-1)?.name?.slice(11, 16) ?? ''}</span>
-      </div>
-    </div>
-  );
-}
 
 export default function AuditPage() {
   const { t } = useTranslation();
@@ -471,41 +442,10 @@ export default function AuditPage() {
                       </Card>
                     </Col>
                     <Col xs={24} xl={12}>
-                      <Card
-                        size="small"
-                        className="audit-overview-card"
-                        title={detailed ? t('pages.audit.hourlyTrend') : t('menu.clients')}
-                      >
-                        {detailed && <Trend points={data.hours} />}
-                        <div
-                          className="audit-client-ranking"
-                          role="region"
-                          aria-label={t('pages.audit.client')}
-                        >
-                          <Table
-                            size="small"
-                            pagination={false}
-                            rowKey="name"
-                            dataSource={data.clients}
-                            columns={[
-                              {
-                                title: t('pages.audit.client'),
-                                dataIndex: 'name',
-                                render: (value: string) => (
-                                  <Button type="link" onClick={() => chooseClient(value)}>
-                                    {value || '—'}
-                                  </Button>
-                                ),
-                              },
-                              { title: t('pages.audit.connections'), dataIndex: 'connections' },
-                              {
-                                title: t('pages.audit.traffic'),
-                                render: (_, row) => bytes(row.uplink + row.downlink),
-                              },
-                            ]}
-                          />
-                        </div>
-                      </Card>
+                      <AuditClientsCard
+                        filters={{ hours, day, nodeId, client, site }}
+                        onChooseClient={chooseClient}
+                      />
                     </Col>
                   </Row>
                   {!detailed && (

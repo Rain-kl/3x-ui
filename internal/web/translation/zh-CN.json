@@ -153,7 +153,7 @@
       "reviewHighFrequency": "最近1分钟客户端速率达到阈值（提示不代表确认滥用）",
       "sites": "网站",
       "topSites": "网站流量排行",
-      "hourlyTrend": "每小时连接趋势与客户端排行",
+      "clientRanking": "客户端排行",
       "client": "客户端",
       "traffic": "流量",
       "recentEvents": "最近连接",

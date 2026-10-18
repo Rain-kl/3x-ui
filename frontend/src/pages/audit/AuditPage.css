@@ -43,18 +43,3 @@
 .audit-rank .ant-progress {
   grid-column: 1 / -1;
 }
-.audit-trend {
-  flex-shrink: 0;
-  height: 170px;
-  margin-bottom: 20px;
-}
-.audit-trend svg {
-  display: block;
-  width: 100%;
-  height: 145px;
-}
-.audit-trend > div {
-  display: flex;
-  justify-content: space-between;
-  color: var(--ant-color-text-secondary);
-}

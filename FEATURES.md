@@ -78,7 +78,7 @@
 
 - **网站排行增强**：网站流量排行标题提供「更多」，弹窗沿用主页面筛选并查询完整网站排行，支持每页 20/50/100 条（默认 20）。后端仅返回当前页，流量相同按网站名稳定排序，复用有界读快照。
 
-- **排行布局优化**：网站排行与小时趋势/客户端排行卡片等高，客户端在趋势图下方独立上下滚动，展示接口返回的全部排行（最多 20 个），保留点击客户端筛选。修改 `frontend/src/pages/audit/AuditPage.tsx`、`AuditPage.css`，标记 `FORK(audit-workbench)`。
+- **排行布局优化**：网站排行与客户端排行卡片等高，移除小时连接趋势图；客户端排行按连接数排序，通过分页查看全部客户端，支持每页 20/50/100 条并独立上下滚动，遵循主页面全部筛选、保留点击客户端筛选。新增 `/audit/clients` 分组分页查询，复用排行快照与响应结构。修改 `frontend/src/pages/audit/AuditClientsCard.tsx`、`AuditPage.tsx`、`AuditPage.css`、审计服务/控制器、语言与 API 文档，标记 `FORK(audit-workbench)`，设计与实现沿用本条目的文档链接。
 
 - **设置布局优化**：审计设置弹窗在桌面按两列排列留存时间与速率阈值，清理操作横向排列；窄屏转为单列，弹窗内容超出视口时可滚动。修改 `frontend/src/pages/audit/AuditSettingsModal.tsx`、`AuditSettingsModal.css`，标记 `FORK(audit-workbench)`。
 
