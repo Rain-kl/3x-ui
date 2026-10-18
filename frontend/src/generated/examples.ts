@@ -477,6 +477,11 @@ export const EXAMPLES: Record<string, unknown> = {
     "pageSize": 20,
     "total": 1
   },
+  "BindCode": {
+    "code": "",
+    "expiresAt": 0,
+    "url": ""
+  },
   "Client": {
     "adTag": "0123456789abcdef0123456789abcdef",
     "allowedIPs": [
@@ -713,6 +718,29 @@ export const EXAMPLES: Record<string, unknown> = {
       {}
     ],
     "source": ""
+  },
+  "ConversationPage": {
+    "items": [
+      {
+        "clientEmail": "",
+        "clientId": 0,
+        "lastMessageAt": 0,
+        "name": "",
+        "tgId": 0,
+        "unread": 0,
+        "username": ""
+      }
+    ],
+    "total": 0
+  },
+  "ConversationView": {
+    "clientEmail": "",
+    "clientId": 0,
+    "lastMessageAt": 0,
+    "name": "",
+    "tgId": 0,
+    "unread": 0,
+    "username": ""
   },
   "FallbackParentInfo": {
     "masterId": 0,
@@ -1106,6 +1134,34 @@ export const EXAMPLES: Record<string, unknown> = {
     "xrayState": "running",
     "xrayVersion": "25.10.31"
   },
+  "NotificationClient": {
+    "email": "",
+    "group": "",
+    "id": 0
+  },
+  "NotificationPage": {
+    "items": [
+      {
+        "body": "Scheduled maintenance at 02:00.",
+        "clientIds": [
+          0
+        ],
+        "createdAt": 0,
+        "groups": [
+          ""
+        ],
+        "id": 0,
+        "publishToNodes": false,
+        "published": false,
+        "publishedAt": 0,
+        "sortIndex": 0,
+        "targetType": "clients",
+        "title": "Maintenance",
+        "updatedAt": 0
+      }
+    ],
+    "total": 0
+  },
   "OutboundTraffics": {
     "down": 0,
     "id": 0,
@@ -1226,6 +1282,117 @@ export const EXAMPLES: Record<string, unknown> = {
     "strategy": "random",
     "updatedAt": 1710000000000
   },
+  "SubscriptionNotification": {
+    "body": "Scheduled maintenance at 02:00.",
+    "clientIds": [
+      0
+    ],
+    "createdAt": 0,
+    "groups": [
+      ""
+    ],
+    "id": 0,
+    "publishToNodes": false,
+    "published": false,
+    "publishedAt": 0,
+    "sortIndex": 0,
+    "targetType": "clients",
+    "title": "Maintenance",
+    "updatedAt": 0
+  },
+  "TelegramBindingPage": {
+    "items": [
+      {
+        "clientId": 0,
+        "createdAt": 0,
+        "email": "",
+        "id": 0,
+        "tgId": 0,
+        "username": ""
+      }
+    ],
+    "total": 0
+  },
+  "TelegramBindingView": {
+    "clientId": 0,
+    "createdAt": 0,
+    "email": "",
+    "id": 0,
+    "tgId": 0,
+    "username": ""
+  },
+  "TelegramLog": {
+    "createdAt": 0,
+    "detail": "",
+    "event": "",
+    "id": 0,
+    "messageId": 0,
+    "tgId": 0
+  },
+  "TelegramLogPage": {
+    "items": [
+      {
+        "createdAt": 0,
+        "detail": "",
+        "event": "",
+        "id": 0,
+        "messageId": 0,
+        "tgId": 0
+      }
+    ],
+    "total": 0
+  },
+  "TelegramMessage": {
+    "attempts": 0,
+    "clientId": 0,
+    "createdAt": 0,
+    "deliveryBot": "",
+    "direction": "",
+    "error": "",
+    "externalId": 0,
+    "fileName": "",
+    "fileSize": 0,
+    "id": 0,
+    "kind": "",
+    "mime": "",
+    "nextAttemptAt": 0,
+    "noticeId": 0,
+    "replyId": 0,
+    "role": "",
+    "sourceBot": "",
+    "status": "",
+    "text": "",
+    "tgId": 0,
+    "updatedAt": 0
+  },
+  "TelegramMessagePage": {
+    "items": [
+      {
+        "attempts": 0,
+        "clientId": 0,
+        "createdAt": 0,
+        "deliveryBot": "",
+        "direction": "",
+        "error": "",
+        "externalId": 0,
+        "fileName": "",
+        "fileSize": 0,
+        "id": 0,
+        "kind": "",
+        "mime": "",
+        "nextAttemptAt": 0,
+        "noticeId": 0,
+        "replyId": 0,
+        "role": "",
+        "sourceBot": "",
+        "status": "",
+        "text": "",
+        "tgId": 0,
+        "updatedAt": 0
+      }
+    ],
+    "total": 0
+  },
   "Traffic": {
     "Down": 2097152,
     "IsInbound": true,
@@ -1257,5 +1424,21 @@ export const EXAMPLES: Record<string, unknown> = {
     "id": 0,
     "password": "",
     "username": ""
+  },
+  "UserTelegramSettings": {
+    "allowAnonymousChat": false,
+    "botUsername": "",
+    "enabled": false,
+    "forwardAdmins": false,
+    "hasToken": false,
+    "logDays": 0,
+    "messageDays": 0,
+    "publicSubUrl": "",
+    "token": ""
+  },
+  "UserTelegramStatus": {
+    "botUsername": "",
+    "lastError": "",
+    "running": false
   }
 };

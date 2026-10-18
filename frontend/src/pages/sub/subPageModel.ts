@@ -32,6 +32,14 @@ export interface SubPageData {
   emails?: string[];
   datepicker?: 'gregorian' | 'jalalian';
   announce?: string;
+  // FORK(subscription-notifications): Public payload excludes targeting and administrator metadata.
+  notifications?: {
+    id: number;
+    title: string;
+    body: string;
+    publishedAt: number;
+    publishToNodes: boolean;
+  }[];
   downloadByte?: string | number;
   uploadByte?: string | number;
   usedByte?: string | number;

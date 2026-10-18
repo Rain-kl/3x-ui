@@ -1,5 +1,7 @@
 # mixed 统一客户端
 
+控制端客户端二维码弹窗的普通链接接口刻意排除 mixed，因此不能直接依赖 subLinks 列表展示。弹窗现使用已有的客户端凭据和 inboundIds/inboundsById 构建独立手动节点项，复用 SubMixedNodes 与 resolveShareHost，兼容子节点地址、自定义地址和 IPv6，无新增接口或逐节点请求。管理员可查看已配置凭据，公开订阅页继续按可用状态过滤；自动订阅仍排除 mixed。
+
 mixed 使用独立账号表会绕开客户端关联、计费和撤销。新增客户端 username 字段区分外部登录名与入站隔离的内部统计 email，password 沿用现有字段。配置统一使用 clients；旧 accounts 仅在保存/导入时按入站生成稳定身份并转换到关联表。当前没有生产 mixed 数据，因此不在启动时自动改写历史账号。
 
 HTTP/SOCKS 必须在核心内共享动态用户表；仅改面板无法可靠支持改密、计费和最后用户删除后的强制认证。核心依赖和运行二进制均需 v26.10.10-feat.4。面板在启动、热更新和子节点部署时检查版本。真实主子节点验证发现 client_inbound_apply 的底层 AddUser map 也必须传 username，否则改密后认证名会回退为 email；此处已补齐。

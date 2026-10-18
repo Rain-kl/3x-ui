@@ -159,6 +159,21 @@ export default function SubPage() {
               onLangChange={onLangChange}
             />
             {announce && <Alert type="info" showIcon title={announce} className="sub-announce" />}
+            {/* FORK(subscription-notifications): React escapes plain-text notices before the real node list. */}
+            {(subData.notifications ?? []).map((notice) => (
+              <Alert
+                key={notice.id}
+                type="info"
+                showIcon
+                title={notice.title}
+                description={
+                  <div style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                    {notice.body}
+                  </div>
+                }
+                className="sub-announce"
+              />
+            ))}
             <SubHero {...heroData} lang={lang} />
             <SubLimitedNodes limitedNodes={limitedNodes} />
             {tabs.length > 0 && <Tabs className="sub-tabs" tabBarGutter={24} items={tabs} />}

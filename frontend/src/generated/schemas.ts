@@ -1890,6 +1890,26 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "BindCode": {
+    "properties": {
+      "code": {
+        "type": "string"
+      },
+      "expiresAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "url": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "code",
+      "expiresAt",
+      "url"
+    ],
+    "type": "object"
+  },
   "Client": {
     "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
     "properties": {
@@ -2795,6 +2815,63 @@ export const SCHEMAS: Record<string, unknown> = {
       "revision",
       "rules",
       "source"
+    ],
+    "type": "object"
+  },
+  "ConversationPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/ConversationView"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total"
+    ],
+    "type": "object"
+  },
+  "ConversationView": {
+    "properties": {
+      "clientEmail": {
+        "type": "string"
+      },
+      "clientId": {
+        "type": "integer"
+      },
+      "lastMessageAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "name": {
+        "type": "string"
+      },
+      "tgId": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "unread": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "username": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "clientEmail",
+      "clientId",
+      "lastMessageAt",
+      "name",
+      "tgId",
+      "unread",
+      "username"
     ],
     "type": "object"
   },
@@ -4411,6 +4488,44 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "NotificationClient": {
+    "properties": {
+      "email": {
+        "type": "string"
+      },
+      "group": {
+        "type": "string"
+      },
+      "id": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "email",
+      "group",
+      "id"
+    ],
+    "type": "object"
+  },
+  "NotificationPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/SubscriptionNotification"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total"
+    ],
+    "type": "object"
+  },
   "OutboundTraffics": {
     "description": "OutboundTraffics tracks traffic statistics for Xray outbound connections.",
     "properties": {
@@ -4941,6 +5056,296 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "SubscriptionNotification": {
+    "properties": {
+      "body": {
+        "example": "Scheduled maintenance at 02:00.",
+        "type": "string"
+      },
+      "clientIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "groups": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "publishToNodes": {
+        "type": "boolean"
+      },
+      "published": {
+        "type": "boolean"
+      },
+      "publishedAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "sortIndex": {
+        "type": "integer"
+      },
+      "targetType": {
+        "example": "clients",
+        "type": "string"
+      },
+      "title": {
+        "example": "Maintenance",
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "body",
+      "clientIds",
+      "createdAt",
+      "groups",
+      "id",
+      "publishToNodes",
+      "published",
+      "publishedAt",
+      "sortIndex",
+      "targetType",
+      "title",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "TelegramBindingPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/TelegramBindingView"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total"
+    ],
+    "type": "object"
+  },
+  "TelegramBindingView": {
+    "properties": {
+      "clientId": {
+        "type": "integer"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "email": {
+        "type": "string"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "tgId": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "username": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "clientId",
+      "createdAt",
+      "email",
+      "id",
+      "tgId",
+      "username"
+    ],
+    "type": "object"
+  },
+  "TelegramLog": {
+    "properties": {
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "detail": {
+        "type": "string"
+      },
+      "event": {
+        "type": "string"
+      },
+      "id": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "messageId": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "tgId": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "createdAt",
+      "detail",
+      "event",
+      "id",
+      "messageId",
+      "tgId"
+    ],
+    "type": "object"
+  },
+  "TelegramLogPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/TelegramLog"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total"
+    ],
+    "type": "object"
+  },
+  "TelegramMessage": {
+    "properties": {
+      "attempts": {
+        "type": "integer"
+      },
+      "clientId": {
+        "type": "integer"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "deliveryBot": {
+        "type": "string"
+      },
+      "direction": {
+        "type": "string"
+      },
+      "error": {
+        "type": "string"
+      },
+      "externalId": {
+        "type": "integer"
+      },
+      "fileName": {
+        "type": "string"
+      },
+      "fileSize": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "id": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "mime": {
+        "type": "string"
+      },
+      "nextAttemptAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "noticeId": {
+        "type": "integer"
+      },
+      "replyId": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "role": {
+        "type": "string"
+      },
+      "sourceBot": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      },
+      "text": {
+        "type": "string"
+      },
+      "tgId": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "attempts",
+      "clientId",
+      "createdAt",
+      "deliveryBot",
+      "direction",
+      "error",
+      "externalId",
+      "fileName",
+      "fileSize",
+      "id",
+      "kind",
+      "mime",
+      "nextAttemptAt",
+      "noticeId",
+      "replyId",
+      "role",
+      "sourceBot",
+      "status",
+      "text",
+      "tgId",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
+  "TelegramMessagePage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/TelegramMessage"
+        },
+        "type": "array"
+      },
+      "total": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total"
+    ],
+    "type": "object"
+  },
   "Traffic": {
     "description": "Traffic represents network traffic statistics for Xray connections.\nIt tracks upload and download bytes for inbound or outbound traffic.",
     "properties": {
@@ -5065,6 +5470,67 @@ export const SCHEMAS: Record<string, unknown> = {
       "id",
       "password",
       "username"
+    ],
+    "type": "object"
+  },
+  "UserTelegramSettings": {
+    "properties": {
+      "allowAnonymousChat": {
+        "type": "boolean"
+      },
+      "botUsername": {
+        "type": "string"
+      },
+      "enabled": {
+        "type": "boolean"
+      },
+      "forwardAdmins": {
+        "type": "boolean"
+      },
+      "hasToken": {
+        "type": "boolean"
+      },
+      "logDays": {
+        "type": "integer"
+      },
+      "messageDays": {
+        "type": "integer"
+      },
+      "publicSubUrl": {
+        "type": "string"
+      },
+      "token": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "allowAnonymousChat",
+      "botUsername",
+      "enabled",
+      "forwardAdmins",
+      "hasToken",
+      "logDays",
+      "messageDays",
+      "publicSubUrl"
+    ],
+    "type": "object"
+  },
+  "UserTelegramStatus": {
+    "properties": {
+      "botUsername": {
+        "type": "string"
+      },
+      "lastError": {
+        "type": "string"
+      },
+      "running": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "botUsername",
+      "lastError",
+      "running"
     ],
     "type": "object"
   }

@@ -141,11 +141,30 @@
 - **发布验证**：核心发布前验证审计、嗅探域名、原生限速及竞态行为；面板发布前验证实际打包核心的版本、校验和、网站审计、限速及 gRPC，并执行前端检查。验证失败则停止发布。
 - **设计与实现**：[行为规格](docs/specs/custom-core-only.md)、[实现说明](.agents/notes/custom-core-only.md)。上游相关改动使用 `FORK(custom-core-only)` 标记。
 
+## 定向订阅通知 (subscription-notifications)
+
+- **需求背景**：管理员需要向指定客户端或用户分组发布通知，并可让代理客户端在节点列表中看到通知。
+- **修改内容**：侧边栏新增通知管理，支持标题、纯文本正文、接收对象、排序、保存草稿、发布、编辑、撤回和删除。客户端与用户组可同时选择，按并集匹配且去重；两类选择器提供全选和清空，客户端全选覆盖所有页面、保存点击时的目标快照。分组按当前成员动态匹配；同一订阅命中多次只显示一次。通知使用独立数据表，批量匹配受众，不创建真实入站或下发代理配置。
+- **订阅行为**：网页在普通配置之前显示完整通知；可选在 raw/base64、Xray JSON、Clash/Mihomo 中添加按顺序排列的标准 VLESS 通知占位节点，地址统一为 `127.0.0.1:1`。不提供真实代理服务，JSON 用 blackhole 路由阻断转发，Clash 通知不进入实际代理选择组。撤回、编辑和删除在下次订阅请求生效。
+- **修改文件**：`internal/database/model/subscription_notification.go`、模型及跨库迁移注册、`internal/web/service/subscription_notification.go`、`internal/web/controller/subscription_notification.go`、`internal/sub/notifications.go`、订阅输出、前端侧边栏与 `pages/notifications`、订阅网页、接口文档与语言词条。
+- **上游改动标记**：`FORK(subscription-notifications)`。
+- **设计文档**：[定向订阅通知规范](docs/specs/subscription-notifications.md)；**实现文档**：[Agent Note](.agents/notes/subscription-notifications.md)。
+
 ## mixed 统一客户端管理（mixed-clients）
 
 - **需求背景**：主控无法向子节点部署 mixed，独立静态账号无法复用客户端的计费、限速、到期和撤销流程。
 - **修改内容**：mixed 接入本机及子节点部署、编辑和克隆；统一使用客户端关联及 username/password 凭据。HTTP/SOCKS5 共用动态身份，支持实时改密及撤销，最后一个账号删除后仍强制认证。旧 accounts 保存/导入时幂等转换；匿名模式保留但不可关联客户端。核心最低版本为 `v26.10.10-feat.4`。
-- **订阅行为**：自动链接、JSON、Clash 排除 mixed；订阅展示页独立提供该用户可用 mixed 节点及 HTTP/SOCKS5 地址、用户名和密码的复制入口，凭据与 IPv6 正确编码。
+- **订阅行为**：自动链接、JSON、Clash 排除 mixed；订阅展示页独立提供该用户可用 mixed 节点及 HTTP/SOCKS5 地址、用户名和密码的复制入口，凭据与 IPv6 正确编码。控制端客户端二维码弹窗同样提供 mixed 手动配置折叠项，复用已有数据和分享地址策略，支持仅关联 mixed 的客户端。
 - **修改文件**：数据库 Client/ClientRecord 与迁移、`internal/web/service/inbound_mixed.go`、客户端及 Runtime 分发、`internal/xray` 配置/API/版本检查、`internal/sub/mixed_manual.go`、前端入站及客户端表单、订阅页、生成接口模型和 13 种语言词条。
 - **上游改动标记**：`FORK(mixed-clients)`；定制核心的对应改动见 Rain-kl/Xray-core 同名条目。
 - **设计文档**：[mixed 客户端规范](docs/specs/mixed-clients.md)；**实现文档**：[Agent Note](.agents/notes/mixed-clients.md)。
+
+## 用户 Telegram Bot（telegram-user-bot）
+
+- **需求背景**：用户需要通过 Telegram 绑定购买的客户端、查询订阅和用量、接收定向通知并联系管理员；管理员需要持久化的双向聊天及排障日志。
+- **修改内容**：新增独立用户 Bot，订阅链接或 30 分钟一次性绑定码绑定，账号与客户端双向唯一。支持获取/确认重置订阅、查询剩余流量与天数、绑定/确认解绑。独立绑定表保持旧管理 Bot 兼容。仅使用 Telegram 原生 `/` 指令提示，移除底部快捷键盘，并在普通指令响应时收起旧键盘。移除清除 Token 开关，留空保留、填写新值替换。新增默认关闭的「开启匿名聊天」：关闭时未绑定账号只处理指令及绑定，普通消息和附件不转发、不计待回复未读；待发转发同样重新检查。
+- **管理与聊天**：侧边栏 Telegram 含消息、日志、设置三个页签；分页会话、未读、文字/附件、指定消息回复、网页主动发送。非指令咨询通过既有管理员 Bot 转发，管理员回复原转发消息即可定向答复。跨 Bot 附件下载后上传，不暴露 Token。
+- **通知与维护**：发布订阅通知时仅向命中客户端或分组的绑定账户排队；新绑定成功后按通知顺序补发该客户端当前可见的历史已发布通知，重复提交已有绑定不重发；支持 `/notifications` 指令主动重新收取全部当前可见的已发布通知；发送前重查版本和绑定，咨询优先，支持限速和有界重试。收发消息和运行错误入库，独立保留周期及手动清理；不删除绑定或待发送/发送中消息。Token 与绑定凭据脱敏，管理接口沿用管理员权限及 CSRF。
+- **修改文件**：`internal/telegramuser/`、`internal/database/model/telegram_user.go`、两处模型注册、Web 生命周期/控制器、Service 适配、管理员 Bot 回复路由、通知发布事务、`frontend/src/pages/telegram/`、侧边栏/路由、13 种语言词条与生成接口文档。
+- **上游改动标记**：`FORK(telegram-user-bot)`。
+- **设计文档**：[用户 Telegram Bot 规范](docs/specs/telegram-user-bot.md)；**实现文档**：[Agent Note](.agents/notes/telegram-user-bot.md)。
