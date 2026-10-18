@@ -262,10 +262,16 @@ func (r *receiver) handle(update telego.Update) error {
 			r.log(message.Chat.ID, 0, "message.ignored", "user Bot accepts private chats only")
 			return nil
 		}
+		if r.dropBlocked(message.From.ID) {
+			return nil
+		}
 		return r.receive(message, update.UpdateID, update.EditedMessage != nil)
 	}
 	if query := update.CallbackQuery; query != nil {
 		if query.Message == nil || query.Message.GetChat().Type != "private" || query.Message.GetChat().ID != query.From.ID {
+			return nil
+		}
+		if r.dropBlocked(query.From.ID) {
 			return nil
 		}
 		if err := r.user.call(r.ctx, "answerCallbackQuery", map[string]any{"callback_query_id": query.ID}, nil); err != nil {
@@ -275,6 +281,16 @@ func (r *receiver) handle(update telego.Update) error {
 		r.confirm(query.From.ID, query.Data)
 	}
 	return nil
+}
+
+// dropBlocked silently discards updates from blacklisted accounts; errors fail open.
+func (r *receiver) dropBlocked(tgID int64) bool {
+	blocked, err := userBlocked(tgID)
+	if err != nil {
+		r.log(tgID, 0, "blacklist.check.failed", err.Error())
+		return false
+	}
+	return blocked
 }
 
 func (r *receiver) receive(incoming *telego.Message, updateID int, edited bool) error {
@@ -416,6 +432,17 @@ func (r *receiver) command(tgID int64, text string) {
 }
 
 func (r *receiver) bind(tgID int64, proof string) {
+	allowed, attempts := allowBindAttempt(tgID)
+	if !allowed {
+		reason := fmt.Sprintf("bind attempts exceeded: %d in %s", attempts, bindAttemptWindow)
+		if err := blockUser(tgID, attempts, reason); err != nil {
+			r.log(tgID, 0, "binding.blacklist.failed", err.Error())
+		} else {
+			r.log(tgID, 0, "binding.blacklisted", reason)
+		}
+		r.reply(tgID, "绑定尝试次数过多，已限制使用。请联系管理员解除。", nil)
+		return
+	}
 	binding, err := Bind(tgID, proof)
 	if err != nil {
 		r.reply(tgID, "绑定失败："+err.Error(), nil)
@@ -491,6 +518,7 @@ func (r *receiver) maintain() {
 		if err := database.GetDB().Where("expires_at < ?", time.Now().UnixMilli()).Delete(&model.TelegramBindCode{}).Error; err != nil {
 			r.failure("cleanup.failed", err)
 		}
+		sweepBindAttempts()
 		if !pause(r.ctx, time.Hour) {
 			return
 		}

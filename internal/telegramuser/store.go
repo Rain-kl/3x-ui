@@ -112,6 +112,19 @@ func RecordLog(tgID, messageID int64, event, detail string) error {
 	return database.GetDB().Create(&model.TelegramLog{TgID: tgID, MessageID: messageID, Event: event, Detail: detail}).Error
 }
 
+func userBlocked(tgID int64) (bool, error) {
+	var count int64
+	if err := database.GetDB().Model(&model.TelegramBlockedUser{}).Where("tg_id = ?", tgID).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("check Telegram blocked user: %w", err)
+	}
+	return count > 0, nil
+}
+
+func blockUser(tgID int64, attempts int, reason string) error {
+	row := model.TelegramBlockedUser{TgID: tgID, Attempts: attempts, Reason: reason}
+	return database.GetDB().Clauses(clause.OnConflict{DoNothing: true}).Create(&row).Error
+}
+
 func recordMessage(message *model.TelegramMessage, username, name string) (bool, error) {
 	inserted := false
 	err := database.GetDB().Transaction(func(tx *gorm.DB) error {

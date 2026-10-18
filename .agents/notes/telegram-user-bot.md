@@ -59,3 +59,7 @@ Telegram 不允许跨 Bot 复用 file_id，桥接先从源下载再向目标上�
 ## 2026-10-18：消息与日志保留绑定凭据原文
 
 按用户要求移除消息/日志中的凭据占位替换：用户发送的订阅链接、绑定码（含编辑版本）按原文入库并保留 command 角色分类；/subscription 与 /reset 返回的订阅链接同样按原文入库，reply 移除 secret 参数并同步全部调用点。api.go 对接口错误中 Bot Token 与代理凭据的 redactText 脱敏保留，避免 Token 泄露进日志。不新增、不运行测试；编译、vet、gofmt 通过。本地 golangci-lint 二进制与 go1.27.2 工具链导出数据版本不匹配，对未改动包同样报 typecheck，属环境问题。
+
+## 2026-10-18：绑定尝试限流与黑名单
+
+按用户要求增加绑定风控：同一账号 10 分钟内最多 30 次绑定尝试，进程内滑动窗口（bindguard.go，维护任务每小时清理过期账号）；覆盖 /bind 带参、/start 带绑定码、直接发送绑定码或订阅链接及 /bind 后的待绑定输入，第 31 次即拉黑。黑名单落库为 TelegramBlockedUser（allModels 与 migrationModels 已注册），handle 层对拉黑账号静默丢弃全部消息与回调（查询失败时放行并记录 blacklist.check.failed），delivery 将发往该账号的队列消息置为 cancelled 并记录 message.cancelled；触发当次回复限制提示并记录 binding.blacklisted。尝试计数在接收器重载时保留、进程重启清零；黑名单跨重启保留，解除需删除黑名单记录。不新增、不运行测试（沿用用户要求）；go build ./...、go vet、gofmt 与数据库包测试通过。
