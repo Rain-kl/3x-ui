@@ -304,6 +304,9 @@ type bulkAdjustEntry struct {
 	newExpiry   int64
 	applyTotal  bool
 	newTotal    int64
+	// FORK(client-rate-and-traffic-ratio): Carry the requested global client cap through inbound fanout.
+	applyDownLimit bool
+	newDownLimit   int
 }
 
 // bulkFlowClear is the directive that strips the XTLS flow from every selected
@@ -332,7 +335,8 @@ var bulkFlowAllowed = map[string]struct{}{
 // Like BulkDelete, the work is grouped by inbound so each inbound's
 // settings JSON is parsed and written exactly once regardless of how
 // many target emails it contains.
-func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, addDays int, addBytes int64, flow string, limitHwid *int, adTag string) (BulkAdjustResult, bool, error) {
+// FORK(client-rate-and-traffic-ratio): Carry a global client cap through the existing inbound-grouped batch update.
+func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, addDays int, addBytes int64, flow string, limitHwid *int, adTag string, downLimit *int) (BulkAdjustResult, bool, error) {
 	result := BulkAdjustResult{}
 	if len(emails) == 0 {
 		return result, false, nil
@@ -349,10 +353,14 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 		zero := 0
 		limitHwid = &zero
 	}
+	if downLimit != nil && *downLimit < 0 {
+		return result, false, common.NewError("client bandwidth limit cannot be negative")
+	}
 	adjustFlow := flow != ""
 	adjustHwid := limitHwid != nil
 	adjustAdTag := adTag != ""
-	if addDays == 0 && addBytes == 0 && !adjustFlow && !adjustHwid && !adjustAdTag {
+	adjustDownLimit := downLimit != nil
+	if addDays == 0 && addBytes == 0 && !adjustFlow && !adjustHwid && !adjustAdTag && !adjustDownLimit {
 		return result, false, common.NewError("no adjustment specified")
 	}
 
@@ -379,7 +387,10 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 
 	plan := map[string]*bulkAdjustEntry{}
 	for email, rec := range recordsByEmail {
-		entry := &bulkAdjustEntry{record: rec}
+		entry := &bulkAdjustEntry{record: rec, applyDownLimit: adjustDownLimit}
+		if adjustDownLimit {
+			entry.newDownLimit = *downLimit
+		}
 		if addDays != 0 {
 			switch {
 			case rec.ExpiryTime == 0:
@@ -425,7 +436,7 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 				}
 			}
 		}
-		if entry.applyExpiry || entry.applyTotal || adjustFlow || adjustHwid || adjustAdTag {
+		if entry.applyExpiry || entry.applyTotal || adjustFlow || adjustHwid || adjustAdTag || entry.applyDownLimit {
 			plan[email] = entry
 		}
 	}
@@ -440,7 +451,7 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 	plannedIds := make([]int, 0, len(plan))
 	recordIdToEmail := make(map[int]string, len(plan))
 	for email, entry := range plan {
-		if entry.applyExpiry || entry.applyTotal || adjustFlow || adjustAdTag {
+		if entry.applyExpiry || entry.applyTotal || adjustFlow || adjustAdTag || entry.applyDownLimit {
 			plannedIds = append(plannedIds, entry.record.Id)
 			recordIdToEmail[entry.record.Id] = email
 		}
@@ -455,12 +466,42 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 		mappings = append(mappings, rows...)
 	}
 	emailsByInbound := map[int][]string{}
+	downLimitsByInbound := map[int]map[string]int{}
 	for _, m := range mappings {
 		email, ok := recordIdToEmail[m.ClientId]
 		if !ok {
 			continue
 		}
 		emailsByInbound[m.InboundId] = append(emailsByInbound[m.InboundId], email)
+		if m.DownLimit > 0 {
+			if downLimitsByInbound[m.InboundId] == nil {
+				downLimitsByInbound[m.InboundId] = map[string]int{}
+			}
+			downLimitsByInbound[m.InboundId][email] = m.DownLimit
+		}
+	}
+	// Validate every selected client's effective cap before writing any inbound.
+	// FORK(client-rate-and-traffic-ratio): Keep bulk validation aligned with single-client native-limit rules.
+	if adjustDownLimit {
+		for inboundId, inboundEmails := range emailsByInbound {
+			ib, getErr := inboundSvc.GetInbound(inboundId)
+			if getErr != nil {
+				return result, false, fmt.Errorf("load inbound %d for rate-limit validation: %w", inboundId, getErr)
+			}
+			for _, email := range inboundEmails {
+				entry := plan[email]
+				client := *entry.record.ToClient()
+				client.DownLimit = entry.newDownLimit
+				if override := downLimitsByInbound[inboundId][email]; override > 0 {
+					client.DownLimit = override
+				} else if client.DownLimit == 0 && ib.ClientDownLimit > 0 {
+					client.DownLimit = ib.ClientDownLimit
+				}
+				if err := validateNativeRateLimits(ib, client); err != nil {
+					return result, false, fmt.Errorf("client %q on inbound %d: %w", email, inboundId, err)
+				}
+			}
+		}
 	}
 
 	needRestart := false
@@ -468,10 +509,11 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 	flowIneligible := map[string]bool{}
 	adTagHonored := map[string]bool{}
 	adTagIneligible := map[string]bool{}
+	downLimitHonored := map[string]bool{}
 	execFailed := map[string]bool{}
 	adjustIds := sortedInboundIds(emailsByInbound)
 	adjustResults, adjustPanics := fanoutInboundResults(adjustIds, inboundFanoutConcurrency, func(i int) bulkInboundAdjustResult {
-		return s.bulkAdjustInboundClients(inboundSvc, adjustIds[i], emailsByInbound[adjustIds[i]], plan, flow, adTag)
+		return s.bulkAdjustInboundClients(inboundSvc, adjustIds[i], emailsByInbound[adjustIds[i]], plan, flow, adTag, downLimit, downLimitsByInbound[adjustIds[i]])
 	})
 	for i, ibRes := range adjustResults {
 		if adjustPanics[i] != nil {
@@ -498,6 +540,9 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 		}
 		for email := range ibRes.adTagIneligible {
 			adTagIneligible[email] = true
+		}
+		for email := range ibRes.downLimitHonored {
+			downLimitHonored[email] = true
 		}
 		for email, reason := range ibRes.perEmailSkipped {
 			execFailed[email] = true
@@ -568,8 +613,17 @@ func (s *ClientService) BulkAdjust(inboundSvc *InboundService, emails []string, 
 				continue
 			}
 		}
-		// Counted when expiry/total changed, flow was honored, adTag was honored, or limitHwid was adjusted.
-		if len(updates) > 0 || flowHonored[email] || adTagHonored[email] || adjustHwid {
+		if entry.applyDownLimit {
+			if err := db.Model(&model.ClientRecord{}).Where("id = ?", entry.record.Id).UpdateColumn("down_limit", entry.newDownLimit).Error; err != nil {
+				if _, already := skippedReasons[email]; !already {
+					skippedReasons[email] = err.Error()
+				}
+				continue
+			}
+			downLimitHonored[email] = true
+		}
+		// FORK(client-rate-and-traffic-ratio): Count setting the global cap as a successful bulk adjustment.
+		if len(updates) > 0 || flowHonored[email] || adTagHonored[email] || downLimitHonored[email] || adjustHwid {
 			adjusted[email] = struct{}{}
 		}
 	}
@@ -647,7 +701,9 @@ type bulkInboundAdjustResult struct {
 	flowIneligible  map[string]bool
 	adTagHonored    map[string]bool
 	adTagIneligible map[string]bool
-	needRestart     bool
+	// FORK(client-rate-and-traffic-ratio): Report which clients received the requested cap in this inbound.
+	downLimitHonored map[string]bool
+	needRestart      bool
 }
 
 // bulkAdjustInboundClients applies expiry/total deltas to multiple clients
@@ -663,13 +719,16 @@ func (s *ClientService) bulkAdjustInboundClients(
 	plan map[string]*bulkAdjustEntry,
 	flow string,
 	adTag string,
+	downLimit *int,
+	downLimitOverrides map[string]int,
 ) bulkInboundAdjustResult {
 	res := bulkInboundAdjustResult{
-		perEmailSkipped: map[string]string{},
-		flowHonored:     map[string]bool{},
-		flowIneligible:  map[string]bool{},
-		adTagHonored:    map[string]bool{},
-		adTagIneligible: map[string]bool{},
+		perEmailSkipped:  map[string]string{},
+		flowHonored:      map[string]bool{},
+		flowIneligible:   map[string]bool{},
+		adTagHonored:     map[string]bool{},
+		adTagIneligible:  map[string]bool{},
+		downLimitHonored: map[string]bool{},
 	}
 
 	defer lockInbound(inboundId).Unlock()
@@ -718,6 +777,7 @@ func (s *ClientService) bulkAdjustInboundClients(
 	foundEmails := map[string]bool{}
 	flowChanged := false
 	adTagChanged := false
+	downLimitChanged := false
 	hasInboundChanges := false
 	nowMs := time.Now().Unix() * 1000
 	for i, client := range interfaceClients {
@@ -769,6 +829,22 @@ func (s *ClientService) bulkAdjustInboundClients(
 				res.adTagIneligible[targetEmail] = true
 			}
 		}
+		if downLimit != nil {
+			effective := *downLimit
+			if override := downLimitOverrides[targetEmail]; override > 0 {
+				effective = override
+			}
+			if effective == 0 && oldInbound.ClientDownLimit > 0 {
+				effective = oldInbound.ClientDownLimit
+			}
+			current, _ := c["downLimit"].(float64)
+			if int(current) != effective {
+				c["downLimit"] = effective
+				downLimitChanged = true
+				clientChanged = true
+			}
+			res.downLimitHonored[targetEmail] = true
+		}
 		if clientChanged {
 			c["updated_at"] = nowMs
 			hasInboundChanges = true
@@ -802,6 +878,9 @@ func (s *ClientService) bulkAdjustInboundClients(
 	// UpdateUser push below does not carry. Local nodes reload via restart;
 	// remote nodes get a full reconcile (MarkNodeDirty) instead of a per-user push.
 	if flowChanged && oldInbound.NodeID == nil {
+		res.needRestart = true
+	}
+	if downLimitChanged && oldInbound.NodeID == nil {
 		res.needRestart = true
 	}
 
@@ -849,6 +928,14 @@ func (s *ClientService) bulkAdjustInboundClients(
 					}
 					if adTag != "" && oldInbound.Protocol == model.MTProto {
 						updated.AdTag = wantAdTag
+					}
+					if downLimit != nil {
+						updated.DownLimit = *downLimit
+						if override := downLimitOverrides[email]; override > 0 {
+							updated.DownLimit = override
+						} else if updated.DownLimit == 0 && oldInbound.ClientDownLimit > 0 {
+							updated.DownLimit = oldInbound.ClientDownLimit
+						}
 					}
 					updated.UpdatedAt = nowMs
 					ctx, cancel := nodePushContext()

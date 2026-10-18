@@ -1083,7 +1083,7 @@
       "tabRateLimit": "Límite de velocidad",
       "nativeRateLimitHint": "Requiere Xray core v26.10.10-feat.2 o posterior. Cambiar los límites reinicia las conexiones activas.",
       "downLimit": "Límite de bajada (Mbps)",
-      "downLimitDesc": "Límite de ancho de banda predeterminado del cliente, 0 significa sin límite",
+      "downLimitDesc": "Límite global de descarga del cliente; 0 lo elimina. Aún pueden aplicarse límites o valores predeterminados por entrada.",
       "inboundRateLimitOverrides": "Sobrescritura de límite por nodo",
       "inheritGlobalLimit": "Heredar límite predeterminado ({limit} Mbps)",
       "tabTraffic": "Tráfico",

@@ -1083,7 +1083,7 @@
       "tabRateLimit": "Batas Kecepatan",
       "nativeRateLimitHint": "Memerlukan Xray core v26.10.10-feat.2 atau yang lebih baru. Perubahan batas akan memulai ulang koneksi aktif.",
       "downLimit": "Batas Unduhan (Mbps)",
-      "downLimitDesc": "Batas bandwidth unduhan default klien, 0 berarti tanpa batas",
+      "downLimitDesc": "Batas unduhan global klien; 0 menghapusnya. Batas atau nilai default per inbound masih dapat berlaku.",
       "inboundRateLimitOverrides": "Pengabaian Batas Kecepatan Node Terhubung",
       "inheritGlobalLimit": "Warisi batas default ({limit} Mbps)",
       "tabTraffic": "Lalu Lintas",
