@@ -13,6 +13,8 @@ const NotificationsPage = lazy(() => import('@/pages/notifications/Notifications
 // FORK(telegram-user-bot): User support, binding and delivery settings share a dedicated panel route.
 const TelegramPage = lazy(() => import('@/pages/telegram/TelegramPage'));
 const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
+// FORK(panel-ai): Keep the assistant within the administrator panel shell.
+const AIPage = lazy(() => import('@/pages/ai/AIPage'));
 const AuditPage = lazy(() => import('@/pages/audit/AuditPage'));
 const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
 const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
@@ -54,6 +56,8 @@ const routes: RouteObject[] = [
       // FORK(telegram-user-bot): Keep the user Bot management page in the authenticated shell.
       { path: 'telegram', element: withSuspense(<TelegramPage />) },
       { path: 'nodes', element: withSuspense(<NodesPage />) },
+      // FORK(panel-ai): Provide the OpenCode conversation, tasks and settings route.
+      { path: 'ai', element: withSuspense(<AIPage />) },
       { path: 'audit', element: withSuspense(<AuditPage />) },
       { path: 'hosts', element: withSuspense(<HostsPage />) },
       { path: 'settings', element: withSuspense(<SettingsPage />) },

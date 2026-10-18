@@ -11,6 +11,8 @@ import (
 )
 
 func newAuditController(g *gin.RouterGroup) {
+	// FORK(audit-export): Administrators need complete audit downloads beyond paginated rankings.
+	g.GET("/export", downloadAuditExport)
 	// FORK(audit-retention): Administrator-only configuration and cleanup routes.
 	g.GET("/settings", func(c *gin.Context) { policy, err := (service.AuditService{}).Retention(); jsonObj(c, policy, err) })
 	g.POST("/settings", func(c *gin.Context) {

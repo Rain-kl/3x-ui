@@ -7,6 +7,12 @@ _openapi:
     - ./public/openapi.json
   toc:
     - depth: 2
+      title: Download a ZIP of all retained website traffic, one client’s website
+        traffic, or all four audit tables (JSONL). Administrator only;
+        centralized child panels must export from the master. ZIP generation
+        uses a bounded consistent snapshot and one concurrent export.
+      url: '#download-a-zip-of-all-retained-website-traffic-one-clients-website-traffic-or-all-four-audit-tables-jsonl-administrator-only-centralized-child-panels-must-export-from-the-master-zip-generation-uses-a-bounded-consistent-snapshot-and-one-concurrent-export'
+    - depth: 2
       title: Fetch up to 1000 pending node audit events. Node-sync token permitted.
       url: '#fetch-up-to-1000-pending-node-audit-events-node-sync-token-permitted'
     - depth: 2
@@ -57,6 +63,11 @@ _openapi:
       url: '#query-connection-counts-exact-measured-bytes-top-sites-and-clients-hourly-trends-daily-summaries-and-recent-events'
   structuredData:
     headings:
+      - content: Download a ZIP of all retained website traffic, one client’s website
+          traffic, or all four audit tables (JSONL). Administrator only;
+          centralized child panels must export from the master. ZIP generation
+          uses a bounded consistent snapshot and one concurrent export.
+        id: download-a-zip-of-all-retained-website-traffic-one-clients-website-traffic-or-all-four-audit-tables-jsonl-administrator-only-centralized-child-panels-must-export-from-the-master-zip-generation-uses-a-bounded-consistent-snapshot-and-one-concurrent-export
       - content: Fetch up to 1000 pending node audit events. Node-sync token permitted.
         id: fetch-up-to-1000-pending-node-audit-events-node-sync-token-permitted
       - content: Acknowledge durable audit events by ID. Node-sync token permitted.
@@ -106,7 +117,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/rates","method":"get"},{"path":"/panel/api/audit/rates/history","method":"get"},{"path":"/panel/api/audit/sites","method":"get"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/audit/export","method":"get"},{"path":"/panel/api/audit/pending","method":"get"},{"path":"/panel/api/audit/ack","method":"post"},{"path":"/panel/api/audit/sync","method":"post"},{"path":"/panel/api/audit/settings","method":"get"},{"path":"/panel/api/audit/settings","method":"post"},{"path":"/panel/api/audit/clear","method":"post"},{"path":"/panel/api/audit/rates","method":"get"},{"path":"/panel/api/audit/rates/history","method":"get"},{"path":"/panel/api/audit/sites","method":"get"},{"path":"/panel/api/audit/summary","method":"get"}]} showTitle />
     </>
   );
 }

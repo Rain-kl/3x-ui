@@ -208,6 +208,8 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	server := api.Group("/server")
 	a.serverController = NewServerController(server)
 	newAuditController(api.Group("/audit"))
+	// FORK(panel-ai): Only administrator channels may control AI sessions and tasks.
+	newPanelAIController(api.Group("/ai"))
 
 	// Nodes API — multi-panel management
 	nodes := api.Group("/nodes")

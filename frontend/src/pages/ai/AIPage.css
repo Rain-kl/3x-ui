@@ -1,0 +1,32 @@
+.ai-page {
+  min-height: 100vh;
+}
+.ai-chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 2px;
+}
+.ai-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.ai-prompt {
+  border-inline-start: 3px solid var(--ant-color-primary);
+  padding-inline-start: 12px;
+}
+.ai-session-list {
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.ai-session-list .ant-btn {
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.ai-run .ant-alert {
+  margin-block: 8px;
+}

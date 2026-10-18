@@ -24,6 +24,102 @@ export type trafficLocalApplyAction = z.infer<typeof trafficLocalApplyActionSche
 export const transportBitsSchema = z.number().int();
 export type transportBits = z.infer<typeof transportBitsSchema>;
 
+export const AIConversationSchema = z.object({
+  createdAt: z.string(),
+  id: z.string(),
+  title: z.string(),
+});
+export type AIConversation = z.infer<typeof AIConversationSchema>;
+
+export const AIConversationPageSchema = z.object({
+  items: z.array(z.lazy(() => AIConversationSchema)),
+  total: z.number().int(),
+});
+export type AIConversationPage = z.infer<typeof AIConversationPageSchema>;
+
+export const AIConversationViewSchema = z.object({
+  conversation: z.lazy(() => AIConversationSchema),
+  runs: z.lazy(() => AIRunPageSchema),
+});
+export type AIConversationView = z.infer<typeof AIConversationViewSchema>;
+
+export const AIModelOptionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  provider: z.string(),
+});
+export type AIModelOption = z.infer<typeof AIModelOptionSchema>;
+
+export const AIRunSchema = z.object({
+  conversationId: z.string(),
+  error: z.string(),
+  finishedAt: z.string().nullable().optional(),
+  id: z.string(),
+  model: z.string(),
+  notifyError: z.string(),
+  prompt: z.string(),
+  result: z.string(),
+  startedAt: z.string(),
+  state: z.string(),
+  taskId: z.string(),
+  tools: z.string(),
+});
+export type AIRun = z.infer<typeof AIRunSchema>;
+
+export const AIRunPageSchema = z.object({
+  items: z.array(z.lazy(() => AIRunSchema)),
+  total: z.number().int(),
+});
+export type AIRunPage = z.infer<typeof AIRunPageSchema>;
+
+export const AISettingsSchema = z.object({
+  enabled: z.boolean(),
+  model: z.string(),
+  retentionDays: z.number().int(),
+  url: z.string(),
+});
+export type AISettings = z.infer<typeof AISettingsSchema>;
+
+export const AIStatusSchema = z.object({
+  binary: z.string(),
+  connected: z.boolean(),
+  directory: z.string(),
+  error: z.string(),
+  url: z.string(),
+  version: z.string(),
+});
+export type AIStatus = z.infer<typeof AIStatusSchema>;
+
+export const AITaskSchema = z.object({
+  createdAt: z.string(),
+  enabled: z.boolean(),
+  id: z.string(),
+  intervalHours: z.number().int(),
+  model: z.string(),
+  name: z.string(),
+  nextRun: z.string(),
+  prompt: z.string(),
+  telegram: z.boolean(),
+});
+export type AITask = z.infer<typeof AITaskSchema>;
+
+export const AITaskInputSchema = z.object({
+  enabled: z.boolean(),
+  id: z.string(),
+  intervalHours: z.number().int(),
+  model: z.string(),
+  name: z.string(),
+  prompt: z.string(),
+  telegram: z.boolean(),
+});
+export type AITaskInput = z.infer<typeof AITaskInputSchema>;
+
+export const AITaskPageSchema = z.object({
+  items: z.array(z.lazy(() => AITaskSchema)),
+  total: z.number().int(),
+});
+export type AITaskPage = z.infer<typeof AITaskPageSchema>;
+
 export const AllSettingSchema = z.object({
   datepicker: z.string(),
   discordAdminIds: z.string(),

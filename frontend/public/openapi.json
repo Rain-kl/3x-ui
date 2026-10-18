@@ -26,6 +26,308 @@
       }
     },
     "schemas": {
+      "AIConversation": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "id",
+          "title"
+        ],
+        "type": "object"
+      },
+      "AIConversationPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AIConversation"
+            },
+            "type": "array"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "AIConversationView": {
+        "properties": {
+          "conversation": {
+            "$ref": "#/components/schemas/AIConversation"
+          },
+          "runs": {
+            "$ref": "#/components/schemas/AIRunPage"
+          }
+        },
+        "required": [
+          "conversation",
+          "runs"
+        ],
+        "type": "object"
+      },
+      "AIModelOption": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "provider"
+        ],
+        "type": "object"
+      },
+      "AIRun": {
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "notifyError": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "taskId": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversationId",
+          "error",
+          "id",
+          "model",
+          "notifyError",
+          "prompt",
+          "result",
+          "startedAt",
+          "state",
+          "taskId",
+          "tools"
+        ],
+        "type": "object"
+      },
+      "AIRunPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AIRun"
+            },
+            "type": "array"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
+      "AISettings": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "string"
+          },
+          "retentionDays": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "model",
+          "retentionDays",
+          "url"
+        ],
+        "type": "object"
+      },
+      "AIStatus": {
+        "properties": {
+          "binary": {
+            "type": "string"
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "directory": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "binary",
+          "connected",
+          "directory",
+          "error",
+          "url",
+          "version"
+        ],
+        "type": "object"
+      },
+      "AITask": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "intervalHours": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nextRun": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "telegram": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "createdAt",
+          "enabled",
+          "id",
+          "intervalHours",
+          "model",
+          "name",
+          "nextRun",
+          "prompt",
+          "telegram"
+        ],
+        "type": "object"
+      },
+      "AITaskInput": {
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "intervalHours": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "telegram": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "id",
+          "intervalHours",
+          "model",
+          "name",
+          "prompt",
+          "telegram"
+        ],
+        "type": "object"
+      },
+      "AITaskPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AITask"
+            },
+            "type": "array"
+          },
+          "total": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "type": "object"
+      },
       "AllSetting": {
         "properties": {
           "datepicker": {
@@ -5620,6 +5922,10 @@
       "description": "Manage inbound configurations and their clients. All endpoints live under /panel/api/inbounds and require a logged-in session or Bearer token. Link-generating endpoints honour forwarded headers only when the request comes from a configured trusted proxy."
     },
     {
+      "name": "Panel AI",
+      "description": "Administrator assistant backed by local OpenCode Server API and bounded audit MCP tools."
+    },
+    {
       "name": "Audit",
       "description": "Connection audit batches and the master dashboard."
     },
@@ -8149,6 +8455,979 @@
                 "example": {
                   "success": true,
                   "msg": "Inbound updated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/settings": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Read panel AI connection, default model and retention settings.",
+        "operationId": "get_panel_api_ai_settings",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AISettings"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "enabled": false,
+                    "model": "",
+                    "retentionDays": 0,
+                    "url": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Save panel AI settings. Enabling connects to or starts local OpenCode; no provider credentials are stored in the panel.",
+        "operationId": "post_panel_api_ai_settings",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "enabled": true,
+                "url": "",
+                "model": "opencode/big-pickle",
+                "retentionDays": 90
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AISettings"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "enabled": false,
+                    "model": "",
+                    "retentionDays": 0,
+                    "url": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/status": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Discover local OpenCode and report its real health, version, executable and workspace.",
+        "operationId": "get_panel_api_ai_status",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIStatus"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "binary": "",
+                    "connected": false,
+                    "directory": "",
+                    "error": "",
+                    "url": "",
+                    "version": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/reconnect": {
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Cancel active AI runs and reconnect local OpenCode, refreshing its audit MCP registration.",
+        "operationId": "post_panel_api_ai_reconnect",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIStatus"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "binary": "",
+                    "connected": false,
+                    "directory": "",
+                    "error": "",
+                    "url": "",
+                    "version": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/models": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Read the models of connected providers directly from OpenCode.",
+        "operationId": "get_panel_api_ai_models",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AIModelOption"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": [
+                    {
+                      "id": "",
+                      "name": "",
+                      "provider": ""
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/sessions": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Paginate panel-owned AI conversations, 20 per page.",
+        "operationId": "get_panel_api_ai_sessions",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIConversationPage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "createdAt": "2025-01-01T00:00:00Z",
+                        "id": "",
+                        "title": ""
+                      }
+                    ],
+                    "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Create a panel-owned conversation.",
+        "operationId": "post_panel_api_ai_sessions",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "title": "Audit review"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIConversation"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": "2025-01-01T00:00:00Z",
+                    "id": "",
+                    "title": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/sessions/{id}": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Read a panel conversation and its paginated turns.",
+        "operationId": "get_panel_api_ai_sessions_id",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIConversationView"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "conversation": {
+                      "createdAt": "2025-01-01T00:00:00Z",
+                      "id": "",
+                      "title": ""
+                    },
+                    "runs": {
+                      "items": [
+                        {
+                          "conversationId": "",
+                          "error": "",
+                          "finishedAt": null,
+                          "id": "",
+                          "model": "",
+                          "notifyError": "",
+                          "prompt": "",
+                          "result": "",
+                          "startedAt": "2025-01-01T00:00:00Z",
+                          "state": "",
+                          "taskId": "",
+                          "tools": ""
+                        }
+                      ],
+                      "total": 0
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/sessions/{id}/delete": {
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Delete an inactive conversation and its OpenCode session.",
+        "operationId": "post_panel_api_ai_sessions_id_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/sessions/{id}/messages": {
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Start an asynchronous OpenCode turn with bounded audit tools.",
+        "operationId": "post_panel_api_ai_sessions_id_messages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "prompt": "Review recent audit data for possible abuse",
+                "model": ""
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIRun"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "conversationId": "",
+                    "error": "",
+                    "finishedAt": null,
+                    "id": "",
+                    "model": "",
+                    "notifyError": "",
+                    "prompt": "",
+                    "result": "",
+                    "startedAt": "2025-01-01T00:00:00Z",
+                    "state": "",
+                    "taskId": "",
+                    "tools": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/runs": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Paginate task execution history; optional taskId filter.",
+        "operationId": "get_panel_api_ai_runs",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIRunPage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "conversationId": "",
+                        "error": "",
+                        "finishedAt": null,
+                        "id": "",
+                        "model": "",
+                        "notifyError": "",
+                        "prompt": "",
+                        "result": "",
+                        "startedAt": "2025-01-01T00:00:00Z",
+                        "state": "",
+                        "taskId": "",
+                        "tools": ""
+                      }
+                    ],
+                    "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/runs/{id}": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Read execution result, tool trace and separate Telegram delivery errors.",
+        "operationId": "get_panel_api_ai_runs_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIRun"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "conversationId": "",
+                    "error": "",
+                    "finishedAt": null,
+                    "id": "",
+                    "model": "",
+                    "notifyError": "",
+                    "prompt": "",
+                    "result": "",
+                    "startedAt": "2025-01-01T00:00:00Z",
+                    "state": "",
+                    "taskId": "",
+                    "tools": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/runs/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Cancel an active run and abort its OpenCode turn.",
+        "operationId": "post_panel_api_ai_runs_id_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/tasks": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Paginate recurring AI tasks, 20 per page.",
+        "operationId": "get_panel_api_ai_tasks",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AITaskPage"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "items": [
+                      {
+                        "createdAt": "2025-01-01T00:00:00Z",
+                        "enabled": false,
+                        "id": "",
+                        "intervalHours": 0,
+                        "model": "",
+                        "name": "",
+                        "nextRun": "2025-01-01T00:00:00Z",
+                        "prompt": "",
+                        "telegram": false
+                      }
+                    ],
+                    "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Create or update a natural-language recurring task with intervalHours, model, telegram and enabled.",
+        "operationId": "post_panel_api_ai_tasks",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              },
+              "example": {
+                "id": "",
+                "name": "Audit review",
+                "prompt": "Review recent audit data for possible abuse",
+                "model": "",
+                "intervalHours": 12,
+                "enabled": true,
+                "telegram": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AITask"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "createdAt": "2025-01-01T00:00:00Z",
+                    "enabled": false,
+                    "id": "",
+                    "intervalHours": 0,
+                    "model": "",
+                    "name": "",
+                    "nextRun": "2025-01-01T00:00:00Z",
+                    "prompt": "",
+                    "telegram": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/tasks/{id}/delete": {
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Delete an inactive recurring task.",
+        "operationId": "post_panel_api_ai_tasks_id_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/tasks/{id}/run": {
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Execute a task now without waiting for the next scheduled run.",
+        "operationId": "post_panel_api_ai_tasks_id_run",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIRun"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "conversationId": "",
+                    "error": "",
+                    "finishedAt": null,
+                    "id": "",
+                    "model": "",
+                    "notifyError": "",
+                    "prompt": "",
+                    "result": "",
+                    "startedAt": "2025-01-01T00:00:00Z",
+                    "state": "",
+                    "taskId": "",
+                    "tools": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/audit/export": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Download a ZIP of all retained website traffic, one client’s website traffic, or all four audit tables (JSONL). Administrator only; centralized child panels must export from the master. ZIP generation uses a bounded consistent snapshot and one concurrent export.",
+        "operationId": "get_panel_api_audit_export",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sites",
+                "client",
+                "database"
+              ]
+            }
+          },
+          {
+            "name": "client",
+            "in": "query",
+            "required": false,
+            "description": "Required for kind=client; exact audit client identifier.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Completed audit ZIP archive",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }

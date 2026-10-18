@@ -12,6 +12,8 @@ const TITLE_KEYS: Record<string, string> = {
   // FORK(telegram-user-bot): The browser title follows the Telegram support page.
   '/telegram': 'menu.telegram',
   '/nodes': 'menu.nodes',
+  // FORK(panel-ai): Keep the assistant browser title aligned with its navigation entry.
+  '/ai': 'menu.ai',
   '/audit': 'menu.audit',
   '/hosts': 'menu.hosts',
   '/settings': 'menu.settings',

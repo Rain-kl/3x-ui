@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Drawer, Layout, Menu, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import {
+  // FORK(panel-ai): Give the administrator assistant a recognizable navigation icon.
+  RobotOutlined,
   ApiOutlined,
   ApartmentOutlined,
   CloseOutlined,
@@ -78,6 +80,8 @@ type IconName =
   | 'apidocs'
   | 'outbound'
   | 'routing'
+  // FORK(panel-ai): Expose the assistant beside audit and support.
+  | 'ai'
   | 'audit';
 
 const iconByName: Record<IconName, ComponentType> = {
@@ -97,6 +101,8 @@ const iconByName: Record<IconName, ComponentType> = {
   apidocs: ApiOutlined,
   outbound: ExportOutlined,
   routing: SwapOutlined,
+  // FORK(panel-ai): Keep AI navigation consistent with existing sidebar icons.
+  ai: RobotOutlined,
   audit: BarChartOutlined,
 };
 
@@ -243,6 +249,8 @@ export default function AppSidebar() {
       // FORK(telegram-user-bot): Expose user support without changing administrator Bot settings navigation.
       { key: '/telegram', icon: 'telegram', title: t('menu.telegram') },
       { key: '/nodes', icon: 'cluster', title: t('menu.nodes') },
+      // FORK(panel-ai): Let administrators open AI without leaving the panel.
+      { key: '/ai', icon: 'ai', title: t('menu.ai') },
       { key: '/audit', icon: 'audit', title: t('menu.audit') },
       { key: '/hosts', icon: 'hosts', title: t('menu.hosts') },
       { key: '/outbound', icon: 'outbound', title: t('menu.outbounds') },

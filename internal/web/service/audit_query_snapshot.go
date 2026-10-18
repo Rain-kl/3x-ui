@@ -19,6 +19,11 @@ var auditQuerySlots = make(chan struct{}, 2)
 func auditReadSnapshot(read func(*gorm.DB) error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+	return auditReadSnapshotContext(ctx, read)
+}
+
+// FORK(audit-export): Export requests need cancellation and a longer bounded snapshot.
+func auditReadSnapshotContext(ctx context.Context, read func(*gorm.DB) error) error {
 	select {
 	case auditQuerySlots <- struct{}{}:
 		defer func() { <-auditQuerySlots }()

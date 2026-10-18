@@ -1,0 +1,119 @@
+---
+title: Panel AI
+description: Administrator assistant backed by local OpenCode Server API and
+  bounded audit MCP tools.
+full: true
+_openapi:
+  preload:
+    - ./public/openapi.json
+  toc:
+    - depth: 2
+      title: Read panel AI connection, default model and retention settings.
+      url: '#read-panel-ai-connection-default-model-and-retention-settings'
+    - depth: 2
+      title: Save panel AI settings. Enabling connects to or starts local OpenCode; no
+        provider credentials are stored in the panel.
+      url: '#save-panel-ai-settings-enabling-connects-to-or-starts-local-opencode-no-provider-credentials-are-stored-in-the-panel'
+    - depth: 2
+      title: Discover local OpenCode and report its real health, version, executable
+        and workspace.
+      url: '#discover-local-opencode-and-report-its-real-health-version-executable-and-workspace'
+    - depth: 2
+      title: Cancel active AI runs and reconnect local OpenCode, refreshing its audit
+        MCP registration.
+      url: '#cancel-active-ai-runs-and-reconnect-local-opencode-refreshing-its-audit-mcp-registration'
+    - depth: 2
+      title: Read the models of connected providers directly from OpenCode.
+      url: '#read-the-models-of-connected-providers-directly-from-opencode'
+    - depth: 2
+      title: Paginate panel-owned AI conversations, 20 per page.
+      url: '#paginate-panel-owned-ai-conversations-20-per-page'
+    - depth: 2
+      title: Create a panel-owned conversation.
+      url: '#create-a-panel-owned-conversation'
+    - depth: 2
+      title: Read a panel conversation and its paginated turns.
+      url: '#read-a-panel-conversation-and-its-paginated-turns'
+    - depth: 2
+      title: Delete an inactive conversation and its OpenCode session.
+      url: '#delete-an-inactive-conversation-and-its-opencode-session'
+    - depth: 2
+      title: Start an asynchronous OpenCode turn with bounded audit tools.
+      url: '#start-an-asynchronous-opencode-turn-with-bounded-audit-tools'
+    - depth: 2
+      title: Paginate task execution history; optional taskId filter.
+      url: '#paginate-task-execution-history-optional-taskid-filter'
+    - depth: 2
+      title: Read execution result, tool trace and separate Telegram delivery errors.
+      url: '#read-execution-result-tool-trace-and-separate-telegram-delivery-errors'
+    - depth: 2
+      title: Cancel an active run and abort its OpenCode turn.
+      url: '#cancel-an-active-run-and-abort-its-opencode-turn'
+    - depth: 2
+      title: Paginate recurring AI tasks, 20 per page.
+      url: '#paginate-recurring-ai-tasks-20-per-page'
+    - depth: 2
+      title: Create or update a natural-language recurring task with intervalHours,
+        model, telegram and enabled.
+      url: '#create-or-update-a-natural-language-recurring-task-with-intervalhours-model-telegram-and-enabled'
+    - depth: 2
+      title: Delete an inactive recurring task.
+      url: '#delete-an-inactive-recurring-task'
+    - depth: 2
+      title: Execute a task now without waiting for the next scheduled run.
+      url: '#execute-a-task-now-without-waiting-for-the-next-scheduled-run'
+  structuredData:
+    headings:
+      - content: Read panel AI connection, default model and retention settings.
+        id: read-panel-ai-connection-default-model-and-retention-settings
+      - content: Save panel AI settings. Enabling connects to or starts local OpenCode;
+          no provider credentials are stored in the panel.
+        id: save-panel-ai-settings-enabling-connects-to-or-starts-local-opencode-no-provider-credentials-are-stored-in-the-panel
+      - content: Discover local OpenCode and report its real health, version, executable
+          and workspace.
+        id: discover-local-opencode-and-report-its-real-health-version-executable-and-workspace
+      - content: Cancel active AI runs and reconnect local OpenCode, refreshing its
+          audit MCP registration.
+        id: cancel-active-ai-runs-and-reconnect-local-opencode-refreshing-its-audit-mcp-registration
+      - content: Read the models of connected providers directly from OpenCode.
+        id: read-the-models-of-connected-providers-directly-from-opencode
+      - content: Paginate panel-owned AI conversations, 20 per page.
+        id: paginate-panel-owned-ai-conversations-20-per-page
+      - content: Create a panel-owned conversation.
+        id: create-a-panel-owned-conversation
+      - content: Read a panel conversation and its paginated turns.
+        id: read-a-panel-conversation-and-its-paginated-turns
+      - content: Delete an inactive conversation and its OpenCode session.
+        id: delete-an-inactive-conversation-and-its-opencode-session
+      - content: Start an asynchronous OpenCode turn with bounded audit tools.
+        id: start-an-asynchronous-opencode-turn-with-bounded-audit-tools
+      - content: Paginate task execution history; optional taskId filter.
+        id: paginate-task-execution-history-optional-taskid-filter
+      - content: Read execution result, tool trace and separate Telegram delivery
+          errors.
+        id: read-execution-result-tool-trace-and-separate-telegram-delivery-errors
+      - content: Cancel an active run and abort its OpenCode turn.
+        id: cancel-an-active-run-and-abort-its-opencode-turn
+      - content: Paginate recurring AI tasks, 20 per page.
+        id: paginate-recurring-ai-tasks-20-per-page
+      - content: Create or update a natural-language recurring task with intervalHours,
+          model, telegram and enabled.
+        id: create-or-update-a-natural-language-recurring-task-with-intervalhours-model-telegram-and-enabled
+      - content: Delete an inactive recurring task.
+        id: delete-an-inactive-recurring-task
+      - content: Execute a task now without waiting for the next scheduled run.
+        id: execute-a-task-now-without-waiting-for-the-next-scheduled-run
+    contents: []
+---
+
+{/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
+
+export default function Layout(props) {
+  const { OpenAPIPage } = props.components ?? {};
+  return (
+    <>
+      {props.children}
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/ai/settings","method":"get"},{"path":"/panel/api/ai/settings","method":"post"},{"path":"/panel/api/ai/status","method":"get"},{"path":"/panel/api/ai/reconnect","method":"post"},{"path":"/panel/api/ai/models","method":"get"},{"path":"/panel/api/ai/sessions","method":"get"},{"path":"/panel/api/ai/sessions","method":"post"},{"path":"/panel/api/ai/sessions/{id}","method":"get"},{"path":"/panel/api/ai/sessions/{id}/delete","method":"post"},{"path":"/panel/api/ai/sessions/{id}/messages","method":"post"},{"path":"/panel/api/ai/runs","method":"get"},{"path":"/panel/api/ai/runs/{id}","method":"get"},{"path":"/panel/api/ai/runs/{id}/cancel","method":"post"},{"path":"/panel/api/ai/tasks","method":"get"},{"path":"/panel/api/ai/tasks","method":"post"},{"path":"/panel/api/ai/tasks/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks/{id}/run","method":"post"}]} showTitle />
+    </>
+  );
+}

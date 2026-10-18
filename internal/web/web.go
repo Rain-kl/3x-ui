@@ -23,6 +23,9 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
 	"github.com/mhsanaei/3x-ui/v3/internal/mtproto"
 
+	// FORK(panel-ai): OpenCode and its MCP tools follow panel startup and shutdown.
+	"github.com/mhsanaei/3x-ui/v3/internal/panelai"
+
 	// FORK(telegram-user-bot): The independent user receiver follows the panel lifecycle.
 	"github.com/mhsanaei/3x-ui/v3/internal/telegramuser"
 	"github.com/mhsanaei/3x-ui/v3/internal/tuic"
@@ -756,6 +759,12 @@ func (s *Server) start(restartXray bool, startTgBot bool) (err error) {
 		}
 	})
 
+	// FORK-BEGIN(panel-ai)
+	if err := panelai.Default.Start(s.ctx, service.PanelAIHooks()); err != nil {
+		return fmt.Errorf("start panel AI: %w", err)
+	}
+	_, _ = s.cron.AddFunc("@every 1m", panelai.Default.Tick)
+	// FORK-END(panel-ai)
 	s.startTask(restartXray, loc)
 	// FORK-BEGIN(telegram-user-bot)
 	if err := telegramuser.Default.Start(s.ctx, service.UserTelegramHooks()); err != nil {
@@ -829,6 +838,8 @@ func (s *Server) stop(stopXray bool, stopTgBot bool) error {
 	if stopTgBot && s.tgbotService.IsRunning() {
 		s.tgbotService.Stop()
 	}
+	// FORK(panel-ai): Finish cancelled AI work before the database and support bots close.
+	panelai.Default.Stop()
 	// FORK(telegram-user-bot): Cancel polling and wait for deliveries before closing the panel database.
 	telegramuser.Default.Stop()
 	if s.discordGateway != nil && s.discordGateway.IsRunning() {

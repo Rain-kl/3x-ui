@@ -99,6 +99,8 @@ func allModels() []any {
 		&model.AuditReceipt{},
 		// FORK(audit-workbench): Preserve 24-hour rate history independently of detailed retention.
 		&model.AuditMinuteStat{},
+		// FORK(panel-ai): Preserve AI conversations, schedules and results across database engines.
+		&model.AIConversation{}, &model.AITask{}, &model.AIRun{},
 	}
 }
 

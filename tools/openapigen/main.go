@@ -21,6 +21,7 @@ func main() {
 
 func run(root, outDir string) error {
 	requests := []packageRequest{
+		{Path: resolveRel(root, "internal/panelai"), StructAllow: setOf("AISettings", "AIStatus", "AIModelOption", "AITaskInput", "AIConversationPage", "AITaskPage", "AIRunPage", "AIConversationView")},
 		{
 			Path: resolveRel(root, "internal/database/model"),
 			StructAllow: setOf(
@@ -43,6 +44,7 @@ func run(root, outDir string) error {
 				"SubBalancer",
 				"SubscriptionNotification",
 				"TelegramMessage", "TelegramLog",
+				"AIConversation", "AITask", "AIRun",
 			),
 			AliasAllow: setOf("Protocol"),
 			Overrides: map[string][]walkOverride{

@@ -647,11 +647,156 @@ export const sections: readonly Section[] = [
     ],
   },
 
+  // FORK-BEGIN(panel-ai)
+  {
+    id: 'panel-ai',
+    title: 'Panel AI',
+    description:
+      'Administrator assistant backed by local OpenCode Server API and bounded audit MCP tools.',
+    endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/ai/settings',
+        summary: 'Read panel AI connection, default model and retention settings.',
+        responseSchema: 'AISettings',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/settings',
+        summary:
+          'Save panel AI settings. Enabling connects to or starts local OpenCode; no provider credentials are stored in the panel.',
+        responseSchema: 'AISettings',
+        body: '{"enabled":true,"url":"","model":"opencode/big-pickle","retentionDays":90}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/status',
+        summary:
+          'Discover local OpenCode and report its real health, version, executable and workspace.',
+        responseSchema: 'AIStatus',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/reconnect',
+        summary:
+          'Cancel active AI runs and reconnect local OpenCode, refreshing its audit MCP registration.',
+        responseSchema: 'AIStatus',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/models',
+        summary: 'Read the models of connected providers directly from OpenCode.',
+        responseSchema: 'AIModelOption',
+        responseSchemaArray: true,
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/sessions',
+        summary: 'Paginate panel-owned AI conversations, 20 per page.',
+        responseSchema: 'AIConversationPage',
+        params: [{ name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/sessions',
+        summary: 'Create a panel-owned conversation.',
+        responseSchema: 'AIConversation',
+        body: '{"title":"Audit review"}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/sessions/:id',
+        summary: 'Read a panel conversation and its paginated turns.',
+        responseSchema: 'AIConversationView',
+        params: [{ name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/sessions/:id/delete',
+        summary: 'Delete an inactive conversation and its OpenCode session.',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/sessions/:id/messages',
+        summary: 'Start an asynchronous OpenCode turn with bounded audit tools.',
+        responseSchema: 'AIRun',
+        body: '{"prompt":"Review recent audit data for possible abuse","model":""}',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/runs',
+        summary: 'Paginate task execution history; optional taskId filter.',
+        responseSchema: 'AIRunPage',
+        params: [{ name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 }],
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/runs/:id',
+        summary: 'Read execution result, tool trace and separate Telegram delivery errors.',
+        responseSchema: 'AIRun',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/runs/:id/cancel',
+        summary: 'Cancel an active run and abort its OpenCode turn.',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/tasks',
+        summary: 'Paginate recurring AI tasks, 20 per page.',
+        responseSchema: 'AITaskPage',
+        params: [{ name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 }],
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/tasks',
+        summary:
+          'Create or update a natural-language recurring task with intervalHours, model, telegram and enabled.',
+        responseSchema: 'AITask',
+        body: '{"id":"","name":"Audit review","prompt":"Review recent audit data for possible abuse","model":"","intervalHours":12,"enabled":true,"telegram":true}',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/tasks/:id/delete',
+        summary: 'Delete an inactive recurring task.',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/tasks/:id/run',
+        summary: 'Execute a task now without waiting for the next scheduled run.',
+        responseSchema: 'AIRun',
+      },
+    ],
+  },
+  // FORK-END(panel-ai)
   {
     id: 'audit',
     title: 'Audit',
     description: 'Connection audit batches and the master dashboard.',
     endpoints: [
+      // FORK(audit-export): Complete audit downloads are distinct from node synchronization exports.
+      {
+        method: 'GET',
+        path: '/panel/api/audit/export',
+        responses: {
+          '200': {
+            description: 'Completed audit ZIP archive',
+            content: { 'application/zip': { schema: { type: 'string', format: 'binary' } } },
+          },
+        },
+        summary:
+          'Download a ZIP of all retained website traffic, one client’s website traffic, or all four audit tables (JSONL). Administrator only; centralized child panels must export from the master. ZIP generation uses a bounded consistent snapshot and one concurrent export.',
+        params: [
+          { name: 'kind', in: 'query', type: 'string', enum: ['sites', 'client', 'database'] },
+          {
+            name: 'client',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'Required for kind=client; exact audit client identifier.',
+          },
+        ],
+      },
       {
         method: 'GET',
         path: '/panel/api/audit/pending',

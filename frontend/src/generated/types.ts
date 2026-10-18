@@ -8,6 +8,91 @@ export type staticEgressResolver = string;
 export type trafficLocalApplyAction = number;
 export type transportBits = number;
 
+export interface AIConversation {
+  createdAt: string;
+  id: string;
+  title: string;
+}
+
+export interface AIConversationPage {
+  items: AIConversation[];
+  total: number;
+}
+
+export interface AIConversationView {
+  conversation: AIConversation;
+  runs: AIRunPage;
+}
+
+export interface AIModelOption {
+  id: string;
+  name: string;
+  provider: string;
+}
+
+export interface AIRun {
+  conversationId: string;
+  error: string;
+  finishedAt?: string | null;
+  id: string;
+  model: string;
+  notifyError: string;
+  prompt: string;
+  result: string;
+  startedAt: string;
+  state: string;
+  taskId: string;
+  tools: string;
+}
+
+export interface AIRunPage {
+  items: AIRun[];
+  total: number;
+}
+
+export interface AISettings {
+  enabled: boolean;
+  model: string;
+  retentionDays: number;
+  url: string;
+}
+
+export interface AIStatus {
+  binary: string;
+  connected: boolean;
+  directory: string;
+  error: string;
+  url: string;
+  version: string;
+}
+
+export interface AITask {
+  createdAt: string;
+  enabled: boolean;
+  id: string;
+  intervalHours: number;
+  model: string;
+  name: string;
+  nextRun: string;
+  prompt: string;
+  telegram: boolean;
+}
+
+export interface AITaskInput {
+  enabled: boolean;
+  id: string;
+  intervalHours: number;
+  model: string;
+  name: string;
+  prompt: string;
+  telegram: boolean;
+}
+
+export interface AITaskPage {
+  items: AITask[];
+  total: number;
+}
+
 export interface AllSetting {
   datepicker: string;
   discordAdminIds: string;

@@ -163,3 +163,19 @@
 - **修改文件**：`internal/telegramuser/`、`internal/database/model/telegram_user.go`、两处模型注册、Web 生命周期/控制器、Service 适配、管理员 Bot 回复路由、通知发布事务、`frontend/src/pages/telegram/`、侧边栏/路由、13 种语言词条与生成接口文档。
 - **上游改动标记**：`FORK(telegram-user-bot)`。
 - **设计文档**：[用户 Telegram Bot 规范](docs/specs/telegram-user-bot.md)；**实现文档**：[Agent Note](.agents/notes/telegram-user-bot.md)。
+
+## 审计数据 ZIP 导出 (audit-export)
+
+- **需求背景**：分页页面无法方便地取得完整网站流量、指定客户端网站访问数据和日志库档案。
+- **修改内容**：审计页新增数据导出，支持全部网站、指定客户端和日志库全部数据，打包 ZIP 下载。网站采用 CSV，包含连接数及上传、下载、总字节；原始详细记录、每日汇总、分钟统计和去重记录采用 JSONL，并附 UTC 范围说明。导出全部保留日期和节点，不使用页面筛选；子节点从主节点导出。游标读取、一致性快照、单并发、超时取消、临时文件清理避免全量内存占用。
+- **修改文件**：`internal/web/service/audit_export.go`、`audit_query_snapshot.go`、审计控制器、`frontend/src/pages/audit/AuditExportModal.tsx`、接口文档和语言词条。
+- **上游改动标记**：`FORK(audit-export)`。
+- **设计与实现**：[功能规格](docs/specs/audit-export.md)、[Agent Note](.agents/notes/audit-export.md)。
+
+## 本地 OpenCode AI 助手 (panel-ai)
+
+- **需求背景**：管理员希望使用自然语言分析日志和疑似滥用，并安排定时分析后推送 Telegram；复用已有 OpenCode 的模型与 agent 能力。
+- **修改内容**：侧边栏新增 AI，包含对话、任务、设置。自动发现本地 OpenCode 地址、目录和二进制，使用其原生 Server API 读取模型及执行对话。提供有界分页只读审计 MCP 工具，支持 AI 按管理员要求创建自然语言定时任务；任务可编辑、暂停、删除和立即运行，默认间隔12小时，可选择向管理员 Telegram 推送结果。会话与任务运行持久化，支持取消、工具轨迹、独立保留时间及清楚的分析/通知错误；不新增模型提供商或自研 agent 循环。
+- **修改文件**：`internal/panelai/`、数据库模型/迁移注册、`internal/web/service/panel_ai.go`、控制器和生命周期、`internal/telegramuser/report.go`、`frontend/src/pages/ai/`、导航、生成接口文档及语言词条。
+- **上游改动标记**：`FORK(panel-ai)`。
+- **设计与实现**：[功能规格](docs/specs/panel-ai.md)、[Agent Note](.agents/notes/panel-ai.md)。
