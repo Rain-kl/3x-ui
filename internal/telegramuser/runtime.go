@@ -397,7 +397,7 @@ func (r *receiver) command(tgID int64, text string) {
 				r.reply(tgID, "获取订阅失败，请联系管理员。", false, nil)
 				r.log(tgID, 0, "subscription.failed", err.Error())
 			} else {
-				r.reply(tgID, link, true, nil)
+				r.reply(tgID, subscriptionLinkMessage(link), true, nil)
 			}
 		case "/usage":
 			usage, err := r.hooks.Usage(client.Id)
@@ -464,8 +464,13 @@ func (r *receiver) confirm(tgID int64, action string) {
 			return
 		}
 		r.log(tgID, 0, "subscription.reset", fmt.Sprintf("client=%d", client.Id))
-		r.reply(tgID, "新订阅链接：\n"+link, true, nil)
+		r.reply(tgID, "新订阅链接：\n"+subscriptionLinkMessage(link), true, nil)
 	}
+}
+
+// FORK(telegram-user-bot): Explain that Clash needs a subscription converter.
+func subscriptionLinkMessage(link string) string {
+	return link + "\n\nClash 用户需搭配订阅转换工具使用：\nhttps://sublink.osur.eu/"
 }
 
 func (r *receiver) reply(tgID int64, text string, secret bool, keyboard map[string]any) {
