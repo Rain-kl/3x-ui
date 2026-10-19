@@ -17,7 +17,7 @@
 - 官方 Web 源码固定 v2.0.32，仅适配动态面板路径、官方 Router base、同源 API/附件地址、CSRF 请求头和禁用 service worker；保留官方聊天、会话、模型与工具界面，不再展示面板 AIChat。构建产物随面板提供，记录来源、许可证和重建脚本。
 - OpenCode 服务只绑定 127.0.0.1 随机端口，使用每次启动随机密码；代理剥离浏览器 Cookie/Authorization 后注入服务认证，密码不下发浏览器、不放 URL、不记日志。停止、禁用或修改连接/供应商配置时关闭进程；异常退出后允许重新启动，启动失败返回具体错误。
 - 官方界面和所有资源/API/事件流/WS 必须逐请求验证面板管理员会话，不允许监控 Token、节点 Token 或仅知道 URL 的匿名访问。代理请求严格限定固定本地服务，拒绝跨源 Origin；所有写请求校验现有 CSRF token，WS 握手要求同源 Origin。不能代理认证/配对入口导出独立服务凭据。响应 no-store、禁止跨站嵌入；仅允许面板同源 iframe，不注册 service worker、不缓存审计数据。
-- 代理支持 SSE 即时刷新和 WebSocket，不受普通 30 秒写超时/压缩缓冲限制；面板 base path 可非根路径。官方模型配置采用 providers/package/settings，兼容读取旧 provider/npm/options 后显式迁移保存，不猜测 ID 大小写。
+- 代理支持 SSE 即时刷新和 WebSocket，实时 API 不受普通 30 秒写超时/压缩缓冲限制；官方静态脚本和 WASM 保留 gzip 压缩，避免传输完整未压缩资源；面板 base path 可非根路径。官方模型配置采用 providers/package/settings，兼容读取旧 provider/npm/options 后显式迁移保存，不猜测 ID 大小写。
 - 审计 MCP 仍由面板提供随机 bearer、只读有界查询和创建任务工具；官方对话和定时任务使用同一专用工作区与供应商配置。自然语言任务、任务运行记录、Telegram 推送保留面板实现，执行复用官方 ACP。
 - 验收：无登录、登录失效、低权限 Token、跨域写请求不能访问服务；随机服务密码不出现在页面/API；官方 UI 在随机面板路径正常加载；模型/流式文字/工具可使用；修改设置/关闭面板释放本机进程；新装 v2 与旧配置迁移可用。
 

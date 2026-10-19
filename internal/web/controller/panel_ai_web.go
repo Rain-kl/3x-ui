@@ -115,9 +115,9 @@ func newPanelAIWebController(g *gin.RouterGroup) {
 		c.Header("Content-Security-Policy", "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'")
 		if name == "index.html" {
 			data = openCodeThemeScript.ReplaceAll(data, nil)
-			data = bytes.Replace(data, []byte("<head>"), []byte(`<head><base href="`+html.EscapeString(base)+`/"><meta name="panel-opencode-base" content="`+html.EscapeString(base)+`">`), 1)
 			data = bytes.ReplaceAll(data, []byte(`href="/`), []byte(`href="`+html.EscapeString(base)+`/`))
 			data = bytes.ReplaceAll(data, []byte(`src="/`), []byte(`src="`+html.EscapeString(base)+`/`))
+			data = bytes.Replace(data, []byte("<head>"), []byte(`<head><base href="`+html.EscapeString(base)+`/"><meta name="panel-opencode-base" content="`+html.EscapeString(base)+`">`), 1)
 		}
 		http.ServeContent(c.Writer, c.Request, name, time.Time{}, bytes.NewReader(data))
 	})

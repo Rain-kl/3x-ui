@@ -208,7 +208,7 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 		return nil, err
 	}
 	// FORK(panel-ai): ACP streams must bypass compression wrappers so deadlines and flushes reach the socket.
-	engine.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPathsRegexs([]string{`/panel/api/ai/runs/[^/]+/events$`, `/panel/ai/opencode/`})))
+	engine.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPathsRegexs([]string{`/panel/api/ai/runs/[^/]+/events$`, `/panel/ai/opencode/api/`})))
 	assetsBasePath := basePath + "assets/"
 
 	store := cookie.NewStore(secret)

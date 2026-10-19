@@ -198,6 +198,10 @@ func builtinSQLName(value any) (string, error) {
 func walkSQLTree(value any, visit func(string, map[string]any) error) error {
 	switch current := value.(type) {
 	case map[string]any:
+		// EXPLAIN child plans are untagged objects inside arrays.
+		if err := visit("", current); err != nil {
+			return err
+		}
 		for key, value := range current {
 			if node, ok := value.(map[string]any); ok {
 				if err := visit(key, node); err != nil {
