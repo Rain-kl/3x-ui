@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"golang.org/x/net/proxy"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/telegramformat"
 )
 
 const MaxAttachment = 20 << 20
@@ -100,7 +102,29 @@ func (a *botAPI) redact(err error) error {
 	return fmt.Errorf("%s", a.redactText(err.Error()))
 }
 
+func markdownParams(method string, params any) any {
+	values, ok := params.(map[string]any)
+	if !ok || values["parse_mode"] != nil {
+		return params
+	}
+	if method != "sendMessage" && method != "editMessageText" && !strings.HasPrefix(method, "send") && method != "editMessageCaption" {
+		return params
+	}
+	copy := make(map[string]any, len(values)+1)
+	for key, value := range values {
+		copy[key] = value
+	}
+	for _, field := range []string{"text", "caption"} {
+		if text, ok := copy[field].(string); ok && text != "" {
+			copy[field] = telegramformat.Markdown(text)
+			copy["parse_mode"] = "HTML"
+		}
+	}
+	return copy
+}
+
 func (a *botAPI) call(ctx context.Context, method string, params any, result any) error {
+	params = markdownParams(method, params)
 	body, err := json.Marshal(params)
 	if err != nil {
 		return fmt.Errorf("encode Telegram %s: %w", method, err)
@@ -149,6 +173,7 @@ func (a *botAPI) request(ctx context.Context, method, contentType string, body i
 }
 
 func (a *botAPI) upload(ctx context.Context, method, field, filename string, data []byte, params map[string]any, result any) error {
+	params = markdownParams(method, params).(map[string]any)
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
 	for key, value := range params {

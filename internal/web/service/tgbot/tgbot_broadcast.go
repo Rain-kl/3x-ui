@@ -12,6 +12,7 @@ import (
 	telegoapi "github.com/mymmrac/telego/telegoapi"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/telegramformat" // FORK(telegram-user-bot): Share Markdown rendering across Bot transports.
 	"github.com/mhsanaei/3x-ui/v3/internal/util/common"
 
 	"github.com/mymmrac/telego"
@@ -397,9 +398,10 @@ func (t *Tgbot) broadcastSummaryText(result broadcastResult) string {
 // the card is gone and the summary needs its own message to be seen at all.
 func (t *Tgbot) finalizeBroadcastCard(runner *broadcastRunner, summary string) bool {
 	params := telego.EditMessageTextParams{
-		ChatID:      tu.ID(runner.chatID),
-		MessageID:   runner.messageID,
-		Text:        summary,
+		ChatID:    tu.ID(runner.chatID),
+		MessageID: runner.messageID,
+		// FORK(telegram-user-bot): Broadcast summaries share the Markdown rendering boundary.
+		Text:        telegramformat.Legacy(summary),
 		ParseMode:   "HTML",
 		ReplyMarkup: &telego.InlineKeyboardMarkup{InlineKeyboard: [][]telego.InlineKeyboardButton{}},
 	}

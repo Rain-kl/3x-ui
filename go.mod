@@ -30,6 +30,7 @@ require (
 	github.com/valyala/fasthttp v1.75.0
 	github.com/xlzd/gotp v0.1.0
 	github.com/xtls/xray-core v1.260327.1-0.20261010092107-701af60772cd
+	github.com/yuin/goldmark v1.7.13 // FORK(telegram-user-bot): Parse standard Markdown before Telegram rendering.
 	go.uber.org/atomic v1.12.0
 	golang.org/x/crypto v0.58.0
 	golang.org/x/net v0.61.0

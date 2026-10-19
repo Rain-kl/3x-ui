@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/logger"
+	"github.com/mhsanaei/3x-ui/v3/internal/telegramformat" // FORK(telegram-user-bot): Share Markdown rendering across Bot transports.
 
 	"github.com/mymmrac/telego"
 	tu "github.com/mymmrac/telego/telegoutil"
@@ -130,7 +131,8 @@ func (t *Tgbot) SendMsgToTgbot(chatId int64, msg string, replyMarkup ...telego.R
 		return
 	}
 
-	allMessages := pageMessage(msg, telegramPageLimit)
+	// FORK(telegram-user-bot): Parse Markdown before paging so rich-text spans survive message boundaries.
+	allMessages := telegramformat.Chunks(telegramformat.Legacy(msg), telegramPageLimit)
 	for n, message := range allMessages {
 		params := telego.SendMessageParams{
 			ChatID:    tu.ID(chatId),
@@ -224,7 +226,8 @@ func (t *Tgbot) editMessageTgBot(chatId int64, messageID int, text string, inlin
 	params := telego.EditMessageTextParams{
 		ChatID:    tu.ID(chatId),
 		MessageID: messageID,
-		Text:      text,
+		// FORK(telegram-user-bot): Use the same rendering for message edits.
+		Text:      telegramformat.Legacy(text),
 		ParseMode: "HTML",
 	}
 	if len(inlineKeyboard) > 0 {
@@ -260,8 +263,10 @@ func (t *Tgbot) SendMsgToTgbotDeleteAfter(chatId int64, msg string, delayInSecon
 
 	// Send the message
 	sentMsg, err := bot.SendMessage(context.Background(), &telego.SendMessageParams{
-		ChatID:      tu.ID(chatId),
-		Text:        msg,
+		ChatID: tu.ID(chatId),
+		// FORK(telegram-user-bot): Temporary replies also accept Markdown.
+		Text:        telegramformat.Legacy(msg),
+		ParseMode:   "HTML",
 		ReplyMarkup: replyMarkupParam, // Use the correct replyMarkup value
 	})
 	if err != nil {

@@ -256,3 +256,5 @@
 - 2026-10-19：定时 AI 任务改用 OpenCode v2 的 session/set_config_option 选择模型，修复 session/set_model 不存在导致任务失败；保留模型选择错误，不回退其他模型。（internal/panelai/acp.go；docs/specs/panel-ai.md）
 
 - 2026-10-19：AI 任务执行记录支持逐条确认删除，运行中需先取消并等待完成；删除记录不影响任务及后续调度，末页删空自动退页。（internal/panelai/store.go、internal/web/controller/panel_ai.go、frontend/src/pages/ai/；docs/specs/panel-ai.md）
+
+- 2026-10-19：Telegram 用户 Bot、管理员文本和 AI 报告支持 Markdown 富文本；统一转换为 Telegram HTML，长报告按解析后的字符数分段并保持标签闭合，既有管理员 HTML 模板继续正常显示。（internal/telegramformat/、internal/telegramuser/api.go、internal/telegramuser/report.go、internal/web/service/tgbot/；FORK(telegram-user-bot)；docs/specs/telegram-user-bot.md）

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,10 +29,10 @@ func TestAdminReportUnicodeAndDeliveryErrors(t *testing.T) {
 			fmt.Fprint(w, `{"ok":false,"error_code":403,"description":"fixture blocked recipient"}`)
 			return
 		}
-		if body.ChatID != 1 || body.ParseMode != "" {
+		if body.ChatID != 1 || body.ParseMode != "HTML" {
 			t.Errorf("unexpected destination or formatting: %+v", body)
 		}
-		if len([]rune(body.Text)) > 3500 {
+		if len([]rune(html.UnescapeString(body.Text))) > 3500 {
 			t.Errorf("oversized Telegram chunk")
 		}
 		mu.Lock()
@@ -47,7 +48,7 @@ func TestAdminReportUnicodeAndDeliveryErrors(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(chunks) != 2 || strings.Join(chunks, "") != text {
+	if len(chunks) != 2 || html.UnescapeString(strings.Join(chunks, "")) != text {
 		t.Fatalf("Unicode report was changed: chunks=%d", len(chunks))
 	}
 }

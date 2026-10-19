@@ -73,3 +73,19 @@ Telegram 不允许跨 Bot 复用 file_id，桥接先从源下载再向目标上�
 截图中的 context deadline exceeded 是 getUpdates 的实际网络超时，并非收到空数组时的正常长轮询结束。原代码虽会退避重试，却只设置 lastErr，从不在轮询恢复后清除，导致 Bot 继续工作而页面长期显示旧红框。新增内存 lastEvent，只有当前 receiver 且事件匹配 bot.poll.failed 时，下一次成功轮询才清除该故障并留下一条恢复日志；其他类型错误保持原状态，不以轮询成功掩盖存储等问题。
 
 服务端长轮询25秒不变；getUpdates 使用共享 transport 的独立 client 副本，总超时60秒，发送和附件请求保持40秒，避免并发修改 http.Client。失败与退避仍保留，没有忽略真实网络故障。
+
+## Markdown delivery
+
+Render at transport boundaries using goldmark CommonMark/GFM, then rebuild a
+strict Telegram HTML subset through x/net/html. Send parse_mode=HTML rather
+than Telegram Markdown/MarkdownV2: their dialects reject common AI **bold**,
+headings, lists and punctuation. Filter scripts/styles/unsupported elements
+and allow only http/https/tg/mailto link schemes. Stored message text remains
+original, and both JSON and multipart media-caption delivery use the renderer.
+AI reports parse once before splitting into 3500 UTF-16-unit chunks; closing
+and reopening formatting tags preserves long bold spans, links and code fences.
+Existing admin HTML templates retain their explicit formatting; plaintext
+admin messages and edits accept Markdown. Update the existing report fixture
+expectation to HTML and compare decoded content so Unicode coverage remains.
+No real Telegram messages were sent. Checks/tests and hooks are skipped per
+the user's prior instruction; dependency maintenance/formatting only.

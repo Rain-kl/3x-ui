@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/telegramformat"
 )
 
 // SendAdminReport reuses the administrator transport without a second update receiver.
@@ -16,17 +18,16 @@ func SendAdminReport(ctx context.Context, network Network, text string) error {
 	if err != nil {
 		return err
 	}
-	runes := []rune(text)
+	chunks := telegramformat.Chunks(telegramformat.Markdown(text), 3500)
 	var failures []error
 	for _, chatID := range network.AdminIDs {
-		for offset := 0; offset < len(runes); offset += 3500 {
-			end := min(offset+3500, len(runes))
-			err = api.call(ctx, "sendMessage", map[string]any{"chat_id": chatID, "text": string(runes[offset:end])}, nil)
+		for index, chunk := range chunks {
+			err = api.call(ctx, "sendMessage", map[string]any{"chat_id": chatID, "text": chunk, "parse_mode": "HTML"}, nil)
 			if err != nil {
 				failures = append(failures, fmt.Errorf("send AI report to administrator chat %d: %w", chatID, err))
 				break
 			}
-			if end < len(runes) {
+			if index < len(chunks)-1 {
 				timer := time.NewTimer(350 * time.Millisecond)
 				select {
 				case <-ctx.Done():
