@@ -2716,8 +2716,6 @@
       "tasks": "Tasks",
       "settings": "Settings",
       "enabled": "Enabled",
-      "connected": "OpenCode CLI ready",
-      "disconnected": "Disconnected",
       "disabledHint": "Deploy or enable OpenCode CLI and configure a model provider in Settings first.",
       "newChat": "New conversation",
       "selectChat": "Create or select a conversation",

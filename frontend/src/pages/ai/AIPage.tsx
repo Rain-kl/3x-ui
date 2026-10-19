@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Alert, Card, ConfigProvider, Layout, Space, Tabs, Tag, Typography } from 'antd';
+import { Alert, ConfigProvider, Layout, Tabs, Typography } from 'antd';
 import AppSidebar from '@/layouts/AppSidebar';
 import { useTheme } from '@/hooks/useTheme';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -35,70 +35,62 @@ export default function AIPage() {
         <AppSidebar />
         <Layout className="content-shell">
           <Layout.Content id="content-layout" className="content-area">
-            <Card title={t('menu.ai')}>
-              <Space wrap style={{ marginBottom: 12 }}>
-                <Tag color={status.data?.connected ? 'success' : 'default'}>
-                  {t(status.data?.connected ? 'pages.ai.connected' : 'pages.ai.disconnected')}
-                </Tag>
-                <Typography.Text type="secondary">{status.data?.version}</Typography.Text>
-              </Space>
-              {(error || status.data?.error) && (
-                <Alert
-                  type="error"
-                  title={error?.message || status.data?.error}
-                  style={{ marginBottom: 16 }}
-                />
-              )}
-              {!enabled && (
-                <Alert
-                  type="info"
-                  title={t('pages.ai.disabledHint')}
-                  style={{ marginBottom: 16 }}
-                />
-              )}
-              <Tabs
-                destroyOnHidden
-                items={[
-                  {
-                    key: 'chat',
-                    label: t('pages.ai.chat'),
-                    children: enabled ? (
-                      <iframe
-                        title="OpenCode"
-                        src={withBasePath('/panel/ai/opencode/')}
-                        style={{
-                          width: '100%',
-                          height: 'calc(100dvh - 260px)',
-                          minHeight: 520,
-                          border: 0,
-                        }}
-                      />
-                    ) : null,
-                  },
-                  {
-                    key: 'tasks',
-                    label: t('pages.ai.tasks'),
-                    children: <AITasks models={models.data ?? []} enabled={enabled} />,
-                  },
-                  {
-                    key: 'settings',
-                    label: t('pages.ai.settings'),
-                    children: settings.data && (
-                      <>
-                        <AISettings
-                          key={JSON.stringify(settings.data)}
-                          value={settings.data}
-                          models={models.data ?? []}
-                        />
-                        <Typography.Paragraph type="secondary" className="ai-text">
-                          {status.data?.binary} {status.data?.directory}
-                        </Typography.Paragraph>
-                      </>
-                    ),
-                  },
-                ]}
+            {(error || status.data?.error) && (
+              <Alert
+                type="error"
+                title={error?.message || status.data?.error}
+                className="ai-banner"
               />
-            </Card>
+            )}
+            {!enabled && (
+              <Alert type="info" title={t('pages.ai.disabledHint')} className="ai-banner" />
+            )}
+            <Tabs
+              destroyOnHidden
+              className="ai-tabs"
+              items={[
+                {
+                  key: 'chat',
+                  label: t('pages.ai.chat'),
+                  children: enabled ? (
+                    <iframe
+                      title="OpenCode"
+                      src={withBasePath('/panel/ai/opencode/')}
+                      className="ai-chat-frame"
+                    />
+                  ) : null,
+                },
+                {
+                  key: 'tasks',
+                  label: t('pages.ai.tasks'),
+                  children: (
+                    <div className="ai-tab-body">
+                      <AITasks models={models.data ?? []} enabled={enabled} />
+                    </div>
+                  ),
+                },
+                {
+                  key: 'settings',
+                  label: t('pages.ai.settings'),
+                  children: (
+                    <div className="ai-tab-body">
+                      {settings.data && (
+                        <>
+                          <AISettings
+                            key={JSON.stringify(settings.data)}
+                            value={settings.data}
+                            models={models.data ?? []}
+                          />
+                          <Typography.Paragraph type="secondary" className="ai-text">
+                            {status.data?.binary} {status.data?.directory}
+                          </Typography.Paragraph>
+                        </>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </Layout.Content>
         </Layout>
       </Layout>

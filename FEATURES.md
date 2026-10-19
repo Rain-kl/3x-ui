@@ -246,3 +246,7 @@
 - **安全与维护**：只信任显式配置代理的 IP 头，规范化 IPv4/IPv6；IP 窗口与风险事务化写入、重启保留；访问日志保留 30 天，清理不解除风控。管理员通过客户端管理恢复启用后，下次访问开始新窗口。完整审计 ZIP 包含访问与风控数据。
 - **文件与标记**：新增访问/窗口/风险/通知模型及双迁移登记、服务/子服务器中间件/审计接口、Telegram 安全通知、维护任务、审计弹窗、语言/API；使用 `FORK(subscription-access-guard)`。
 - **设计与实现**：[规格](docs/specs/subscription-access-guard.md)、[说明](.agents/notes/subscription-access-guard.md)。
+
+## 其他更新
+
+- 2026-10-19：AI 页移除页面标题和 OpenCode 状态行，对话页签占满整个页面高度，任务/设置页签改为内边距滚动容器；错误与未启用提示保留在页签上方。（frontend/src/pages/ai/AIPage.tsx、frontend/src/pages/ai/AIPage.css、internal/web/translation/*.json）
