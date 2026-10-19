@@ -21,7 +21,7 @@ func main() {
 
 func run(root, outDir string) error {
 	requests := []packageRequest{
-		{Path: resolveRel(root, "internal/panelai"), StructAllow: setOf("AISettings", "AIStatus", "AIModelOption", "AITaskInput", "AIConversationPage", "AITaskPage", "AIRunPage", "AIConversationView")},
+		{Path: resolveRel(root, "internal/panelai"), StructAllow: setOf("AISettings", "AIStatus", "AIDeployment", "AIProviderConfig", "AIStream", "AIModelOption", "AITaskInput", "AIConversationPage", "AITaskPage", "AIRunPage", "AIConversationView")},
 		{
 			Path: resolveRel(root, "internal/database/model"),
 			StructAllow: setOf(

@@ -1,27 +1,44 @@
 ---
 title: Panel AI
-description: Administrator assistant backed by local OpenCode Server API and
-  bounded audit MCP tools.
+description: Administrator assistant backed by local OpenCode CLI / ACP stdio
+  and bounded audit MCP tools.
 full: true
 _openapi:
   preload:
     - ./public/openapi.json
   toc:
     - depth: 2
+      title: Read managed OpenCode deployment state and phase.
+      url: '#read-managed-opencode-deployment-state-and-phase'
+    - depth: 2
+      title: Install checksum-verified official OpenCode CLI and configure the panel
+        automatically.
+      url: '#install-checksum-verified-official-opencode-cli-and-configure-the-panel-automatically'
+    - depth: 2
+      title: Read complete native OpenCode provider/model JSON, including
+        administrator credentials.
+      url: '#read-complete-native-opencode-providermodel-json-including-administrator-credentials'
+    - depth: 2
+      title: Save the complete native provider/model JSON atomically.
+      url: '#save-the-complete-native-providermodel-json-atomically'
+    - depth: 2
+      title: Stream current text, reasoning and tool snapshots as Server-Sent Events;
+        reconnect replays the current snapshot.
+      url: '#stream-current-text-reasoning-and-tool-snapshots-as-server-sent-events-reconnect-replays-the-current-snapshot'
+    - depth: 2
       title: Read panel AI connection, default model and retention settings.
       url: '#read-panel-ai-connection-default-model-and-retention-settings'
     - depth: 2
-      title: Save panel AI settings. Enabling connects to or starts local OpenCode; no
-        provider credentials are stored in the panel.
-      url: '#save-panel-ai-settings-enabling-connects-to-or-starts-local-opencode-no-provider-credentials-are-stored-in-the-panel'
+      title: Save panel AI CLI executable, workspace, default model and history
+        retention.
+      url: '#save-panel-ai-cli-executable-workspace-default-model-and-history-retention'
     - depth: 2
-      title: Connect to the configured local OpenCode and report its health, version,
-        executable and workspace.
-      url: '#connect-to-the-configured-local-opencode-and-report-its-health-version-executable-and-workspace'
+      title: Check the configured local OpenCode CLI version, executable and
+        workspace.
+      url: '#check-the-configured-local-opencode-cli-version-executable-and-workspace'
     - depth: 2
-      title: Cancel active AI runs and reconnect local OpenCode, refreshing its audit
-        MCP registration.
-      url: '#cancel-active-ai-runs-and-reconnect-local-opencode-refreshing-its-audit-mcp-registration'
+      title: Cancel active AI runs and reload the OpenCode CLI configuration.
+      url: '#cancel-active-ai-runs-and-reload-the-opencode-cli-configuration'
     - depth: 2
       title: Read the models of connected providers directly from OpenCode.
       url: '#read-the-models-of-connected-providers-directly-from-opencode'
@@ -64,17 +81,29 @@ _openapi:
       url: '#execute-a-task-now-without-waiting-for-the-next-scheduled-run'
   structuredData:
     headings:
+      - content: Read managed OpenCode deployment state and phase.
+        id: read-managed-opencode-deployment-state-and-phase
+      - content: Install checksum-verified official OpenCode CLI and configure the panel
+          automatically.
+        id: install-checksum-verified-official-opencode-cli-and-configure-the-panel-automatically
+      - content: Read complete native OpenCode provider/model JSON, including
+          administrator credentials.
+        id: read-complete-native-opencode-providermodel-json-including-administrator-credentials
+      - content: Save the complete native provider/model JSON atomically.
+        id: save-the-complete-native-providermodel-json-atomically
+      - content: Stream current text, reasoning and tool snapshots as Server-Sent
+          Events; reconnect replays the current snapshot.
+        id: stream-current-text-reasoning-and-tool-snapshots-as-server-sent-events-reconnect-replays-the-current-snapshot
       - content: Read panel AI connection, default model and retention settings.
         id: read-panel-ai-connection-default-model-and-retention-settings
-      - content: Save panel AI settings. Enabling connects to or starts local OpenCode;
-          no provider credentials are stored in the panel.
-        id: save-panel-ai-settings-enabling-connects-to-or-starts-local-opencode-no-provider-credentials-are-stored-in-the-panel
-      - content: Connect to the configured local OpenCode and report its health,
-          version, executable and workspace.
-        id: connect-to-the-configured-local-opencode-and-report-its-health-version-executable-and-workspace
-      - content: Cancel active AI runs and reconnect local OpenCode, refreshing its
-          audit MCP registration.
-        id: cancel-active-ai-runs-and-reconnect-local-opencode-refreshing-its-audit-mcp-registration
+      - content: Save panel AI CLI executable, workspace, default model and history
+          retention.
+        id: save-panel-ai-cli-executable-workspace-default-model-and-history-retention
+      - content: Check the configured local OpenCode CLI version, executable and
+          workspace.
+        id: check-the-configured-local-opencode-cli-version-executable-and-workspace
+      - content: Cancel active AI runs and reload the OpenCode CLI configuration.
+        id: cancel-active-ai-runs-and-reload-the-opencode-cli-configuration
       - content: Read the models of connected providers directly from OpenCode.
         id: read-the-models-of-connected-providers-directly-from-opencode
       - content: Paginate panel-owned AI conversations, 20 per page.
@@ -104,13 +133,11 @@ _openapi:
       - content: Execute a task now without waiting for the next scheduled run.
         id: execute-a-task-now-without-waiting-for-the-next-scheduled-run
     contents:
-      - content: Connection URL, absolute executable path, workspace and authentication
-          are configured explicitly here. No environment or directory discovery.
-          Enabling requires a local HTTP URL. Empty executable connects only to
-          an existing server. Password is never returned; an empty password
-          preserves the stored value. Changing connection settings cancels
-          active runs.
-        heading: save-panel-ai-settings-enabling-connects-to-or-starts-local-opencode-no-provider-credentials-are-stored-in-the-panel
+      - content: Uses a managed or manually configured absolute CLI path. No HTTP
+          OpenCode service or shell environment discovery. Changing settings
+          cancels active runs. Provider credentials are managed separately in
+          the native configuration file.
+        heading: save-panel-ai-cli-executable-workspace-default-model-and-history-retention
 ---
 
 {/* This file was generated by Fumadocs. Do not edit this file directly. Any changes should be made by running the generation command again. */}
@@ -120,7 +147,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/ai/settings","method":"get"},{"path":"/panel/api/ai/settings","method":"post"},{"path":"/panel/api/ai/status","method":"get"},{"path":"/panel/api/ai/reconnect","method":"post"},{"path":"/panel/api/ai/models","method":"get"},{"path":"/panel/api/ai/sessions","method":"get"},{"path":"/panel/api/ai/sessions","method":"post"},{"path":"/panel/api/ai/sessions/{id}","method":"get"},{"path":"/panel/api/ai/sessions/{id}/delete","method":"post"},{"path":"/panel/api/ai/sessions/{id}/messages","method":"post"},{"path":"/panel/api/ai/runs","method":"get"},{"path":"/panel/api/ai/runs/{id}","method":"get"},{"path":"/panel/api/ai/runs/{id}/cancel","method":"post"},{"path":"/panel/api/ai/tasks","method":"get"},{"path":"/panel/api/ai/tasks","method":"post"},{"path":"/panel/api/ai/tasks/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks/{id}/run","method":"post"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/ai/deployment","method":"get"},{"path":"/panel/api/ai/deployment","method":"post"},{"path":"/panel/api/ai/provider-config","method":"get"},{"path":"/panel/api/ai/provider-config","method":"post"},{"path":"/panel/api/ai/runs/{id}/events","method":"get"},{"path":"/panel/api/ai/settings","method":"get"},{"path":"/panel/api/ai/settings","method":"post"},{"path":"/panel/api/ai/status","method":"get"},{"path":"/panel/api/ai/reconnect","method":"post"},{"path":"/panel/api/ai/models","method":"get"},{"path":"/panel/api/ai/sessions","method":"get"},{"path":"/panel/api/ai/sessions","method":"post"},{"path":"/panel/api/ai/sessions/{id}","method":"get"},{"path":"/panel/api/ai/sessions/{id}/delete","method":"post"},{"path":"/panel/api/ai/sessions/{id}/messages","method":"post"},{"path":"/panel/api/ai/runs","method":"get"},{"path":"/panel/api/ai/runs/{id}","method":"get"},{"path":"/panel/api/ai/runs/{id}/cancel","method":"post"},{"path":"/panel/api/ai/tasks","method":"get"},{"path":"/panel/api/ai/tasks","method":"post"},{"path":"/panel/api/ai/tasks/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks/{id}/run","method":"post"}]} showTitle />
     </>
   );
 }

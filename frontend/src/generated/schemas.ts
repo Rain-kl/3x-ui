@@ -54,6 +54,29 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "AIDeployment": {
+    "properties": {
+      "error": {
+        "type": "string"
+      },
+      "phase": {
+        "type": "string"
+      },
+      "state": {
+        "type": "string"
+      },
+      "version": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "error",
+      "phase",
+      "state",
+      "version"
+    ],
+    "type": "object"
+  },
   "AIModelOption": {
     "properties": {
       "id": {
@@ -70,6 +93,21 @@ export const SCHEMAS: Record<string, unknown> = {
       "id",
       "name",
       "provider"
+    ],
+    "type": "object"
+  },
+  "AIProviderConfig": {
+    "properties": {
+      "config": {
+        "type": "string"
+      },
+      "path": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "config",
+      "path"
     ],
     "type": "object"
   },
@@ -152,7 +190,7 @@ export const SCHEMAS: Record<string, unknown> = {
   "AISettings": {
     "properties": {
       "binary": {
-        "description": "FORK(panel-ai): Connection credentials and paths belong to explicit administrator settings.",
+        "description": "FORK(panel-ai): The panel owns a local CLI installation rather than HTTP connection credentials.",
         "type": "string"
       },
       "directory": {
@@ -161,34 +199,19 @@ export const SCHEMAS: Record<string, unknown> = {
       "enabled": {
         "type": "boolean"
       },
-      "hasPassword": {
-        "type": "boolean"
-      },
       "model": {
-        "type": "string"
-      },
-      "password": {
         "type": "string"
       },
       "retentionDays": {
         "type": "integer"
-      },
-      "url": {
-        "type": "string"
-      },
-      "username": {
-        "type": "string"
       }
     },
     "required": [
       "binary",
       "directory",
       "enabled",
-      "hasPassword",
       "model",
-      "retentionDays",
-      "url",
-      "username"
+      "retentionDays"
     ],
     "type": "object"
   },
@@ -206,9 +229,6 @@ export const SCHEMAS: Record<string, unknown> = {
       "error": {
         "type": "string"
       },
-      "url": {
-        "type": "string"
-      },
       "version": {
         "type": "string"
       }
@@ -218,8 +238,27 @@ export const SCHEMAS: Record<string, unknown> = {
       "connected",
       "directory",
       "error",
-      "url",
       "version"
+    ],
+    "type": "object"
+  },
+  "AIStream": {
+    "properties": {
+      "run": {
+        "$ref": "#/components/schemas/AIRun"
+      },
+      "sequence": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "thought": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "run",
+      "sequence",
+      "thought"
     ],
     "type": "object"
   },

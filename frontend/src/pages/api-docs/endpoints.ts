@@ -686,8 +686,47 @@ export const sections: readonly Section[] = [
     id: 'panel-ai',
     title: 'Panel AI',
     description:
-      'Administrator assistant backed by local OpenCode Server API and bounded audit MCP tools.',
+      'Administrator assistant backed by local OpenCode CLI / ACP stdio and bounded audit MCP tools.',
     endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/api/ai/deployment',
+        summary: 'Read managed OpenCode deployment state and phase.',
+        responseSchema: 'AIDeployment',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/deployment',
+        summary:
+          'Install checksum-verified official OpenCode CLI and configure the panel automatically.',
+        responseSchema: 'AIDeployment',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/provider-config',
+        summary:
+          'Read complete native OpenCode provider/model JSON, including administrator credentials.',
+        responseSchema: 'AIProviderConfig',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/ai/provider-config',
+        summary: 'Save the complete native provider/model JSON atomically.',
+        requestSchema: { $ref: '#/components/schemas/AIProviderConfig' },
+        responseSchema: 'AIProviderConfig',
+      },
+      {
+        method: 'GET',
+        path: '/panel/api/ai/runs/:id/events',
+        summary:
+          'Stream current text, reasoning and tool snapshots as Server-Sent Events; reconnect replays the current snapshot.',
+        responses: {
+          200: {
+            description: 'Server-Sent Events. Each snapshot data value is an AIStream object.',
+            content: { 'text/event-stream': { schema: { type: 'string' } } },
+          },
+        },
+      },
       {
         method: 'GET',
         path: '/panel/api/ai/settings',
@@ -697,25 +736,22 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/ai/settings',
-        summary:
-          'Save panel AI settings. Enabling connects to or starts local OpenCode; no provider credentials are stored in the panel.',
+        summary: 'Save panel AI CLI executable, workspace, default model and history retention.',
         responseSchema: 'AISettings',
         requestSchema: { $ref: '#/components/schemas/AISettings' },
         description:
-          'Connection URL, absolute executable path, workspace and authentication are configured explicitly here. No environment or directory discovery. Enabling requires a local HTTP URL. Empty executable connects only to an existing server. Password is never returned; an empty password preserves the stored value. Changing connection settings cancels active runs.',
+          'Uses a managed or manually configured absolute CLI path. No HTTP OpenCode service or shell environment discovery. Changing settings cancels active runs. Provider credentials are managed separately in the native configuration file.',
       },
       {
         method: 'GET',
         path: '/panel/api/ai/status',
-        summary:
-          'Connect to the configured local OpenCode and report its health, version, executable and workspace.',
+        summary: 'Check the configured local OpenCode CLI version, executable and workspace.',
         responseSchema: 'AIStatus',
       },
       {
         method: 'POST',
         path: '/panel/api/ai/reconnect',
-        summary:
-          'Cancel active AI runs and reconnect local OpenCode, refreshing its audit MCP registration.',
+        summary: 'Cancel active AI runs and reload the OpenCode CLI configuration.',
         responseSchema: 'AIStatus',
       },
       {

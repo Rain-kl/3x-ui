@@ -14,16 +14,27 @@ import (
 )
 
 func TestLocalOpenCodeAuditTools(t *testing.T) {
-	endpoint := os.Getenv("XUI_TEST_OPENCODE_URL")
-	if endpoint == "" {
-		t.Skip("set XUI_TEST_OPENCODE_URL to verify against a real local OpenCode server")
+	binary := os.Getenv("XUI_TEST_OPENCODE_BIN")
+	if binary == "" {
+		t.Skip("set XUI_TEST_OPENCODE_BIN to verify against a real OpenCode CLI")
+	}
+	configPath := os.Getenv("XUI_TEST_OPENCODE_CONFIG")
+	if configPath == "" {
+		t.Skip("set XUI_TEST_OPENCODE_CONFIG to a native provider/model JSON file for CLI integration")
+	}
+	providerJSON, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
 	}
 	workspace := filepath.Join(t.TempDir(), "opencode")
 	if err := database.InitDB(filepath.Join(t.TempDir(), "panel.db")); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
-	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, URL: endpoint, Model: os.Getenv("XUI_TEST_OPENCODE_MODEL"), RetentionDays: 7}); err != nil {
+	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, Binary: binary, Model: os.Getenv("XUI_TEST_OPENCODE_MODEL"), RetentionDays: 7}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SaveProviderConfig(AIProviderConfig{Config: string(providerJSON)}); err != nil {
 		t.Fatal(err)
 	}
 	var calls atomic.Int32

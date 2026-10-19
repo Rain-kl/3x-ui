@@ -2,7 +2,6 @@ package panelai
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -97,6 +96,7 @@ func (m *Manager) Begin(conversationID, taskID, prompt, selectedModel string, sc
 	}
 	ctx, cancel := context.WithTimeout(m.ctx, 15*time.Minute)
 	m.active[value.ID] = cancel
+	m.streamFor(value.ID).publish(AIStream{Run: value})
 	reserved = false
 	m.workers.Add(1)
 	go func() {
@@ -139,126 +139,19 @@ func (m *Manager) execute(ctx context.Context, run model.AIRun, task model.AITas
 	}
 	if task.ID != "" && client != nil && run.SessionID != "" {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		if err = client.call(cleanupCtx, "DELETE", "/session/"+run.SessionID, nil, nil); err != nil {
-			logger.Warningf("remove OpenCode task session %s: %v", run.ID, err)
+		if _, cleanupErr := client.output(cleanupCtx, "session", "delete", run.SessionID); cleanupErr != nil {
+			logger.Warningf("remove OpenCode task session %s: %v", run.ID, cleanupErr)
 		}
 		cancel()
 	}
 	fields := map[string]any{"session_id": run.SessionID, "state": run.State, "result": run.Result, "error": run.Error, "notify_error": run.NotifyError, "tools": run.Tools, "finished_at": run.FinishedAt}
 	if err = database.GetDB().Model(&model.AIRun{}).Where("id = ?", run.ID).Updates(fields).Error; err != nil {
 		logger.Errorf("persist completed AI run %s: %v", run.ID, err)
+		run.Error = "Persist completed AI run: " + err.Error()
 	}
-}
-
-func (m *Manager) prompt(ctx context.Context, client *openCode, run *model.AIRun) error {
-	if run.SessionID == "" {
-		var session struct {
-			ID string `json:"id"`
-		}
-		permission := []map[string]string{{"permission": "*", "pattern": "*", "action": "deny"}, {"permission": "panel_audit_*", "pattern": "*", "action": "allow"}}
-		if run.TaskID != "" {
-			permission = append(permission, map[string]string{"permission": "panel_audit_create_task", "pattern": "*", "action": "deny"})
-		}
-		if err := client.call(ctx, "POST", "/session", map[string]any{"title": "3x-ui: " + string([]rune(run.Prompt)[:min(utf8.RuneCountInString(run.Prompt), 80)]), "permission": permission}, &session); err != nil {
-			return err
-		}
-		if !strings.HasPrefix(session.ID, "ses") {
-			return fmt.Errorf("OpenCode returned an invalid session ID")
-		}
-		run.SessionID = session.ID
-		if run.ConversationID != "" {
-			if err := database.GetDB().Model(&model.AIConversation{}).Where("id = ?", run.ConversationID).Update("session_id", session.ID).Error; err != nil {
-				return fmt.Errorf("save OpenCode session reference: %w", err)
-			}
-		}
-	}
-	if err := database.GetDB().Model(&model.AIRun{}).Where("id = ?", run.ID).Update("session_id", run.SessionID).Error; err != nil {
-		return err
-	}
-	var ids []string
-	if err := client.call(ctx, "GET", "/experimental/tool/ids", nil, &ids); err != nil {
-		return fmt.Errorf("read OpenCode tool registry: %w", err)
-	}
-	tools := map[string]bool{}
-	for _, id := range ids {
-		tools[id] = false
-	}
-	tools["panel_audit_query"] = true
-	tools["panel_audit_create_task"] = run.TaskID == ""
-	guidance := auditGuidance
-	if run.TaskID != "" {
-		guidance += "\nThis is a scheduled task execution. Do not create, modify or schedule any tasks."
-	}
-	body := map[string]any{"agent": "build", "parts": []map[string]string{{"type": "text", "text": guidance + "\n\nAdministrator request:\n" + run.Prompt}}, "tools": tools}
-	if run.Model != "" {
-		provider, id, _ := strings.Cut(run.Model, "/")
-		body["model"] = map[string]string{"providerID": provider, "modelID": id}
-	}
-	var response codeMessage
-	if err := client.call(ctx, "POST", "/session/"+run.SessionID+"/message", body, &response); err != nil {
-		abortCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if abortErr := client.call(abortCtx, "POST", "/session/"+run.SessionID+"/abort", nil, nil); abortErr != nil {
-			logger.Warningf("abort OpenCode run %s: %v", run.ID, abortErr)
-		}
-		return err
-	}
-	if response.Info.Error != nil {
-		return fmt.Errorf("OpenCode model %s: %s", response.Info.Error.Name, response.Info.Error.Data.Message)
-	}
-	var text []string
-	for _, part := range response.Parts {
-		if part.Type == "text" && part.Text != "" {
-			text = append(text, part.Text)
-		}
-	}
-	run.Result = strings.Join(text, "\n\n")
-	if len(run.Result) > 128<<10 {
-		run.Result = strings.ToValidUTF8(run.Result[:128<<10], "") + "\n[Response truncated at 128 KiB]"
-	}
-	var messages []codeMessage
-	historyCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	if err := client.call(historyCtx, "GET", "/session/"+run.SessionID+"/message?limit=100", nil, &messages); err != nil {
-		return fmt.Errorf("retrieve OpenCode execution trace: %w", err)
-	}
-	trace := []map[string]string{}
-	for _, message := range messages {
-		if message.Info.Time.Created < run.StartedAt.UnixMilli() {
-			continue
-		}
-		for _, part := range message.Parts {
-			if part.Type == "tool" {
-				trace = append(trace, map[string]string{"tool": part.Tool, "status": part.State.Status})
-			}
-		}
-	}
-	encoded, _ := json.Marshal(trace)
-	run.Tools = string(encoded)
-	if run.Result == "" {
-		return fmt.Errorf("OpenCode completed without a text result; inspect the configured model and tools")
-	}
-	return nil
-}
-
-type codeMessage struct {
-	Info struct {
-		Error *struct {
-			Name string `json:"name"`
-			Data struct {
-				Message string `json:"message"`
-			} `json:"data"`
-		} `json:"error"`
-		Time struct {
-			Created int64 `json:"created"`
-		} `json:"time"`
-	} `json:"info"`
-	Parts []struct {
-		Type  string `json:"type"`
-		Text  string `json:"text"`
-		Tool  string `json:"tool"`
-		State struct {
-			Status string `json:"status"`
-		} `json:"state"`
-	} `json:"parts"`
+	stream := m.streamFor(run.ID)
+	snapshot := stream.snapshot()
+	snapshot.Run = run
+	stream.publish(snapshot)
+	m.streams.CompareAndDelete(run.ID, stream)
 }

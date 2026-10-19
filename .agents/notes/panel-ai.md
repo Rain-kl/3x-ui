@@ -1,5 +1,17 @@
 # 本地 OpenCode 面板助手
 
+## CLI、托管部署与实时对话（2026-10-19）
+
+本节取代上文 HTTP Server API 与手动服务连接方案。用户要求 CLI 通信、一键安装、网页维护原生模型配置及实时输出。使用 OpenCode 原生 ACP stdio JSON-RPC，不实现 agent 循环。按运行启动 `opencode acp --pure`，session/load 续聊，原生 session/set_model 选模型；session/update 的文字、思考与工具进度经有界内存快照及认证 SSE 转发，历史仍最终入库。加载历史时不接收旧消息增量，防止重复显示。原生工具权限默认拒绝，只开放审计 MCP；定时运行禁止创建任务。审计 MCP 仍是本机 loopback 工具传输，不是 OpenCode HTTP 对话接入。
+
+一键安装固定官方 1.19.3 独立包、内置校验和、限定平台与最大大小，仅提取目标常规可执行文件；版本检查成功再切换绝对路径。下载失败保留现有安装；同版本托管程序再次点击复用，不重复堆积文件。子进程使用专属 XDG/home/config，过滤继承的供应商密钥与 OpenCode 配置变量。Linux/macOS 使用进程组取消拥有的进程树；Windows 使用直接进程取消。
+
+设置页 JSON 编辑器支持 provider/model/small_model 和兼容供应商模板，运行时权限/工具/MCP 不可覆盖。用户明确要求管理员查看完整配置，因此 API 返回完整 JSON，不设脱敏占位符；no-store 与原子 0600 文件写入保留，异常日志仍过滤配置密钥。不再使用旧 URL、账号、密码；保存新设置丢弃旧字段。配置变化取消运行。原生 models 输出只展示配置的供应商，ACP enabled_providers 同样限制到它们，避免空配置意外使用内置免费模型。
+
+SSE 绕开 gzip 包装并解除正常30秒写超时，每次写单独10秒超时、15秒心跳、100ms合并快照；刷新/重连回放当前状态，不逐token写数据库。前端100ms合并渲染，结束刷新历史。既有确定性 HTTP fixture 已迁移为 CLI 子进程 fixture；真实集成入口改用 XUI_TEST_OPENCODE_BIN、XUI_TEST_OPENCODE_CONFIG 与可选模型。此次未新增测试用例或执行测试，仅进行生成、静态检查与构建。
+
+## 历史方案（以下 HTTP 接入已被 CLI 方案取代）
+
 ## 选型与边界
 
 用户确认以 OpenCode Server API 代替未确认可用的 A2A 协议。`internal/panelai` 只负责持久化引用、请求转发、调度和 MCP 适配；原生 OpenCode 执行模型、上下文和工具循环。使用专用工作目录和受限 session：默认拒绝权限，关闭其他工具，只开放面板审计工具；任务执行另外禁止创建任务。保持 OpenCode 原生系统提示，业务目标作为消息上下文交给它。

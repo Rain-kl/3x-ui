@@ -24,10 +24,22 @@ export interface AIConversationView {
   runs: AIRunPage;
 }
 
+export interface AIDeployment {
+  error: string;
+  phase: string;
+  state: string;
+  version: string;
+}
+
 export interface AIModelOption {
   id: string;
   name: string;
   provider: string;
+}
+
+export interface AIProviderConfig {
+  config: string;
+  path: string;
 }
 
 export interface AIRun {
@@ -54,12 +66,8 @@ export interface AISettings {
   binary: string;
   directory: string;
   enabled: boolean;
-  hasPassword: boolean;
   model: string;
-  password?: string;
   retentionDays: number;
-  url: string;
-  username: string;
 }
 
 export interface AIStatus {
@@ -67,8 +75,13 @@ export interface AIStatus {
   connected: boolean;
   directory: string;
   error: string;
-  url: string;
   version: string;
+}
+
+export interface AIStream {
+  run: AIRun;
+  sequence: number;
+  thought: string;
 }
 
 export interface AITask {

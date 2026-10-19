@@ -1,17 +1,60 @@
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { withBasePath } from '@/api/http-init';
+import { AIStreamSchema } from '@/generated/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Collapse, Space, Tag, Typography } from 'antd';
 import type { AIRun } from './api';
 
 const TraceSchema = z.array(z.object({ tool: z.string(), status: z.string() }));
 export default function RunResult({
-  run,
+  run: initialRun,
   onCancel,
 }: {
   run: AIRun;
   onCancel: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const cache = useQueryClient();
+  const [live, setLive] = useState<z.infer<typeof AIStreamSchema> | null>(null);
+  const [streamError, setStreamError] = useState(false);
+  const run = live?.run ?? initialRun;
+  useEffect(() => {
+    if (initialRun.state !== 'running') return;
+    const stream = new EventSource(
+      withBasePath(`/panel/api/ai/runs/${encodeURIComponent(initialRun.id)}/events`),
+    );
+    let pending: z.infer<typeof AIStreamSchema> | null = null;
+    const flush = () => {
+      if (pending) {
+        setLive(pending);
+        pending = null;
+      }
+    };
+    const timer = window.setInterval(flush, 100);
+    stream.addEventListener('open', () => setStreamError(false));
+    stream.addEventListener('snapshot', (event: MessageEvent<string>) => {
+      try {
+        const snapshot = AIStreamSchema.parse(JSON.parse(event.data));
+        if (snapshot.run.id !== initialRun.id) return;
+        pending = snapshot;
+        if (snapshot.run.state !== 'running') {
+          flush();
+          stream.close();
+          void cache.invalidateQueries({ queryKey: ['ai'] });
+        }
+      } catch {
+        setStreamError(true);
+        stream.close();
+      }
+    });
+    stream.onerror = () => setStreamError(true);
+    return () => {
+      window.clearInterval(timer);
+      stream.close();
+    };
+  }, [initialRun.id, initialRun.state, cache]);
   const states: Record<string, string> = {
     running: t('pages.ai.running'),
     completed: t('pages.ai.completed'),
@@ -60,6 +103,23 @@ export default function RunResult({
         <Typography.Paragraph className="ai-text" copyable>
           {run.result}
         </Typography.Paragraph>
+      )}
+      {live?.thought && (
+        <Collapse
+          size="small"
+          items={[
+            {
+              key: 'thought',
+              label: t('pages.ai.thinking'),
+              children: (
+                <Typography.Paragraph className="ai-text">{live.thought}</Typography.Paragraph>
+              ),
+            },
+          ]}
+        />
+      )}
+      {streamError && run.state === 'running' && (
+        <Alert type="warning" title={t('pages.ai.streamReconnecting')} />
       )}
       {run.error && <Alert type="error" title={run.error} />}
       {run.notifyError && (

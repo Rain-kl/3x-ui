@@ -43,12 +43,26 @@ export const AIConversationViewSchema = z.object({
 });
 export type AIConversationView = z.infer<typeof AIConversationViewSchema>;
 
+export const AIDeploymentSchema = z.object({
+  error: z.string(),
+  phase: z.string(),
+  state: z.string(),
+  version: z.string(),
+});
+export type AIDeployment = z.infer<typeof AIDeploymentSchema>;
+
 export const AIModelOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
   provider: z.string(),
 });
 export type AIModelOption = z.infer<typeof AIModelOptionSchema>;
+
+export const AIProviderConfigSchema = z.object({
+  config: z.string(),
+  path: z.string(),
+});
+export type AIProviderConfig = z.infer<typeof AIProviderConfigSchema>;
 
 export const AIRunSchema = z.object({
   conversationId: z.string(),
@@ -76,12 +90,8 @@ export const AISettingsSchema = z.object({
   binary: z.string(),
   directory: z.string(),
   enabled: z.boolean(),
-  hasPassword: z.boolean(),
   model: z.string(),
-  password: z.string().optional(),
   retentionDays: z.number().int(),
-  url: z.string(),
-  username: z.string(),
 });
 export type AISettings = z.infer<typeof AISettingsSchema>;
 
@@ -90,10 +100,16 @@ export const AIStatusSchema = z.object({
   connected: z.boolean(),
   directory: z.string(),
   error: z.string(),
-  url: z.string(),
   version: z.string(),
 });
 export type AIStatus = z.infer<typeof AIStatusSchema>;
+
+export const AIStreamSchema = z.object({
+  run: z.lazy(() => AIRunSchema),
+  sequence: z.number().int(),
+  thought: z.string(),
+});
+export type AIStream = z.infer<typeof AIStreamSchema>;
 
 export const AITaskSchema = z.object({
   createdAt: z.string(),

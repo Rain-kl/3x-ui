@@ -1,15 +1,12 @@
 package panelai
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -24,87 +21,14 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = database.CloseDB() })
 	workspace := t.TempDir()
-	var mu sync.Mutex
-	var mcpURL, authorization string
-	var prompts atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.URL.Path == "/global/health":
-			fmt.Fprint(w, `{"healthy":true,"version":"test"}`)
-		case r.URL.Path == "/mcp":
-			var body struct {
-				Config struct {
-					URL     string            `json:"url"`
-					Headers map[string]string `json:"headers"`
-				} `json:"config"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				t.Error(err)
-			}
-			mu.Lock()
-			mcpURL, authorization = body.Config.URL, body.Config.Headers["Authorization"]
-			mu.Unlock()
-			fmt.Fprint(w, `{"panel_audit":{"status":"connected"}}`)
-		case r.URL.Path == "/experimental/tool/ids":
-			fmt.Fprint(w, `["bash","read","task"]`)
-		case r.URL.Path == "/session":
-			var body struct {
-				Permission []map[string]string `json:"permission"`
-			}
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if len(body.Permission) < 2 || body.Permission[0]["action"] != "deny" {
-				t.Error("session was not restricted")
-			}
-			fmt.Fprintf(w, `{"id":"ses_%s"}`, randomID())
-		case strings.HasSuffix(r.URL.Path, "/abort"):
-			fmt.Fprint(w, `true`)
-		case strings.HasSuffix(r.URL.Path, "/message") && r.Method == http.MethodPost:
-			var body struct {
-				Tools map[string]bool `json:"tools"`
-				Parts []struct {
-					Text string `json:"text"`
-				} `json:"parts"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-				t.Error(err)
-			}
-			if body.Tools["bash"] || body.Tools["read"] || body.Tools["task"] || !body.Tools["panel_audit_query"] {
-				t.Error("unrelated native tools were allowed")
-			}
-			prompts.Add(1)
-			if len(body.Parts) > 0 && strings.Contains(body.Parts[0].Text, "BLOCK_UNTIL_CANCELLED") {
-				<-r.Context().Done()
-				return
-			}
-			if body.Tools["panel_audit_create_task"] {
-				t.Error("scheduled execution can create tasks")
-			}
-			mu.Lock()
-			endpoint, auth := mcpURL, authorization
-			mu.Unlock()
-			req, _ := http.NewRequestWithContext(r.Context(), http.MethodPost, endpoint, bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query","arguments":{"mode":"metadata"}}}`))
-			req.Header.Set("Authorization", auth)
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				t.Error(err)
-			} else {
-				_ = resp.Body.Close()
-				if resp.StatusCode != http.StatusOK {
-					t.Errorf("MCP status=%d", resp.StatusCode)
-				}
-			}
-			fmt.Fprint(w, `{"info":{},"parts":[{"type":"text","text":"Synthetic audit report"}]}`)
-		case strings.HasSuffix(r.URL.Path, "/message"):
-			fmt.Fprint(w, `[{"info":{"time":{"created":9999999999999}},"parts":[{"type":"tool","tool":"panel_audit_query","state":{"status":"completed"}}]}]`)
-		case r.Method == http.MethodDelete:
-			fmt.Fprint(w, `true`)
-		default:
-			http.Error(w, "unknown path "+r.URL.Path, http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, URL: server.URL, RetentionDays: 7}); err != nil {
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, Binary: binary, RetentionDays: 7}); err != nil {
+		t.Fatal(err)
+	}
+	if err := writePrivateFile(workspace, "opencode.json", []byte(`{"provider":{"fixture":{"models":{"model":{}}}}}`)); err != nil {
 		t.Fatal(err)
 	}
 	notifications := make(chan string, 2)
@@ -168,8 +92,8 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := wait(scheduled.ID, "completed")
-	if result.Result != "Synthetic audit report" || result.NotifyError != "fixture delivery failure" || calls.Load() != 1 || prompts.Load() != 1 || !strings.Contains(result.Tools, "panel_audit_query") {
-		t.Fatalf("incorrect task result %+v calls=%d prompts=%d", result, calls.Load(), prompts.Load())
+	if result.Result != "Synthetic audit report" || result.NotifyError != "fixture delivery failure" || calls.Load() != 1 || !strings.Contains(result.Tools, "panel_audit_query") {
+		t.Fatalf("incorrect task result %+v calls=%d", result, calls.Load())
 	}
 	select {
 	case text := <-notifications:
@@ -194,4 +118,21 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	wait(run.ID, "cancelled")
+}
+
+// TestMain's subprocess mode replaces the old HTTP fixture with native JSON-RPC transport.
+func TestMain(m *testing.M) {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version":
+			fmt.Println("fixture-cli")
+			os.Exit(0)
+		case "session":
+			os.Exit(0)
+		case "acp":
+			runACPFixture()
+			os.Exit(0)
+		}
+	}
+	os.Exit(m.Run())
 }

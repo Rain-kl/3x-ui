@@ -80,6 +80,29 @@
         ],
         "type": "object"
       },
+      "AIDeployment": {
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error",
+          "phase",
+          "state",
+          "version"
+        ],
+        "type": "object"
+      },
       "AIModelOption": {
         "properties": {
           "id": {
@@ -96,6 +119,21 @@
           "id",
           "name",
           "provider"
+        ],
+        "type": "object"
+      },
+      "AIProviderConfig": {
+        "properties": {
+          "config": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "config",
+          "path"
         ],
         "type": "object"
       },
@@ -178,7 +216,7 @@
       "AISettings": {
         "properties": {
           "binary": {
-            "description": "FORK(panel-ai): Connection credentials and paths belong to explicit administrator settings.",
+            "description": "FORK(panel-ai): The panel owns a local CLI installation rather than HTTP connection credentials.",
             "type": "string"
           },
           "directory": {
@@ -187,34 +225,19 @@
           "enabled": {
             "type": "boolean"
           },
-          "hasPassword": {
-            "type": "boolean"
-          },
           "model": {
-            "type": "string"
-          },
-          "password": {
             "type": "string"
           },
           "retentionDays": {
             "type": "integer"
-          },
-          "url": {
-            "type": "string"
-          },
-          "username": {
-            "type": "string"
           }
         },
         "required": [
           "binary",
           "directory",
           "enabled",
-          "hasPassword",
           "model",
-          "retentionDays",
-          "url",
-          "username"
+          "retentionDays"
         ],
         "type": "object"
       },
@@ -232,9 +255,6 @@
           "error": {
             "type": "string"
           },
-          "url": {
-            "type": "string"
-          },
           "version": {
             "type": "string"
           }
@@ -244,8 +264,27 @@
           "connected",
           "directory",
           "error",
-          "url",
           "version"
+        ],
+        "type": "object"
+      },
+      "AIStream": {
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/AIRun"
+          },
+          "sequence": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "thought": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run",
+          "sequence",
+          "thought"
         ],
         "type": "object"
       },
@@ -6291,7 +6330,7 @@
     },
     {
       "name": "Panel AI",
-      "description": "Administrator assistant backed by local OpenCode Server API and bounded audit MCP tools."
+      "description": "Administrator assistant backed by local OpenCode CLI / ACP stdio and bounded audit MCP tools."
     },
     {
       "name": "Audit",
@@ -9041,6 +9080,204 @@
         }
       }
     },
+    "/panel/api/ai/deployment": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Read managed OpenCode deployment state and phase.",
+        "operationId": "get_panel_api_ai_deployment",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIDeployment"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "error": "",
+                    "phase": "",
+                    "state": "",
+                    "version": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Install checksum-verified official OpenCode CLI and configure the panel automatically.",
+        "operationId": "post_panel_api_ai_deployment",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIDeployment"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "error": "",
+                    "phase": "",
+                    "state": "",
+                    "version": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/provider-config": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Read complete native OpenCode provider/model JSON, including administrator credentials.",
+        "operationId": "get_panel_api_ai_provider_config",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIProviderConfig"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "config": "",
+                    "path": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Save the complete native provider/model JSON atomically.",
+        "operationId": "post_panel_api_ai_provider_config",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIProviderConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/AIProviderConfig"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "config": "",
+                    "path": ""
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/ai/runs/{id}/events": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Stream current text, reasoning and tool snapshots as Server-Sent Events; reconnect replays the current snapshot.",
+        "operationId": "get_panel_api_ai_runs_id_events",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Server-Sent Events. Each snapshot data value is an AIStream object.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/ai/settings": {
       "get": {
         "tags": [
@@ -9073,12 +9310,8 @@
                     "binary": "",
                     "directory": "",
                     "enabled": false,
-                    "hasPassword": false,
                     "model": "",
-                    "password": "",
-                    "retentionDays": 0,
-                    "url": "",
-                    "username": ""
+                    "retentionDays": 0
                   }
                 }
               }
@@ -9090,9 +9323,9 @@
         "tags": [
           "Panel AI"
         ],
-        "summary": "Save panel AI settings. Enabling connects to or starts local OpenCode; no provider credentials are stored in the panel.",
+        "summary": "Save panel AI CLI executable, workspace, default model and history retention.",
         "operationId": "post_panel_api_ai_settings",
-        "description": "Connection URL, absolute executable path, workspace and authentication are configured explicitly here. No environment or directory discovery. Enabling requires a local HTTP URL. Empty executable connects only to an existing server. Password is never returned; an empty password preserves the stored value. Changing connection settings cancels active runs.",
+        "description": "Uses a managed or manually configured absolute CLI path. No HTTP OpenCode service or shell environment discovery. Changing settings cancels active runs. Provider credentials are managed separately in the native configuration file.",
         "requestBody": {
           "required": true,
           "content": {
@@ -9128,12 +9361,8 @@
                     "binary": "",
                     "directory": "",
                     "enabled": false,
-                    "hasPassword": false,
                     "model": "",
-                    "password": "",
-                    "retentionDays": 0,
-                    "url": "",
-                    "username": ""
+                    "retentionDays": 0
                   }
                 }
               }
@@ -9147,7 +9376,7 @@
         "tags": [
           "Panel AI"
         ],
-        "summary": "Connect to the configured local OpenCode and report its health, version, executable and workspace.",
+        "summary": "Check the configured local OpenCode CLI version, executable and workspace.",
         "operationId": "get_panel_api_ai_status",
         "responses": {
           "200": {
@@ -9175,7 +9404,6 @@
                     "connected": false,
                     "directory": "",
                     "error": "",
-                    "url": "",
                     "version": ""
                   }
                 }
@@ -9190,7 +9418,7 @@
         "tags": [
           "Panel AI"
         ],
-        "summary": "Cancel active AI runs and reconnect local OpenCode, refreshing its audit MCP registration.",
+        "summary": "Cancel active AI runs and reload the OpenCode CLI configuration.",
         "operationId": "post_panel_api_ai_reconnect",
         "responses": {
           "200": {
@@ -9218,7 +9446,6 @@
                     "connected": false,
                     "directory": "",
                     "error": "",
-                    "url": "",
                     "version": ""
                   }
                 }

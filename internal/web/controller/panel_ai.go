@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -26,6 +27,75 @@ func newPanelAIController(g *gin.RouterGroup) {
 		c.Header("Cache-Control", "no-store")
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 256<<10)
 		c.Next()
+	})
+	// FORK(panel-ai): Installation and provider editing are authenticated panel operations.
+	g.GET("/deployment", func(c *gin.Context) { jsonObj(c, panelai.Default.Deployment(), nil) })
+	g.POST("/deployment", func(c *gin.Context) { value, err := panelai.Default.Deploy(); jsonObj(c, value, err) })
+	g.GET("/provider-config", func(c *gin.Context) { value, err := panelai.ReadProviderConfig(); jsonObj(c, value, err) })
+	g.POST("/provider-config", func(c *gin.Context) {
+		var value panelai.AIProviderConfig
+		if err := c.ShouldBindJSON(&value); err != nil {
+			jsonObj(c, nil, fmt.Errorf("decode provider configuration: %w", err))
+			return
+		}
+		result, err := panelai.SaveProviderConfig(value)
+		jsonObj(c, result, err)
+	})
+	g.GET("/runs/:id/events", func(c *gin.Context) {
+		updates, stop, err := panelai.Default.Watch(c.Param("id"))
+		if err != nil {
+			jsonObj(c, nil, err)
+			return
+		}
+		defer stop()
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("X-Accel-Buffering", "no")
+		c.Header("Cache-Control", "no-store")
+		// The shared server's normal write deadline must not terminate a 15-minute model turn.
+		controller := http.NewResponseController(c.Writer)
+		_ = controller.SetWriteDeadline(time.Time{})
+		cadence := time.NewTicker(100 * time.Millisecond)
+		defer cadence.Stop()
+		var pending *panelai.AIStream
+		heartbeat := time.NewTicker(15 * time.Second)
+		defer heartbeat.Stop()
+		flush := func(data []byte) bool {
+			_ = controller.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if _, err := c.Writer.Write(data); err != nil {
+				return false
+			}
+			c.Writer.Flush()
+			_ = controller.SetWriteDeadline(time.Time{})
+			return true
+		}
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				return
+			case <-heartbeat.C:
+				if !flush([]byte(": heartbeat\n\n")) {
+					return
+				}
+			case snapshot := <-updates:
+				pending = &snapshot
+			case <-cadence.C:
+				if pending == nil {
+					continue
+				}
+				value := *pending
+				pending = nil
+				data, err := json.Marshal(value)
+				if err != nil {
+					return
+				}
+				if !flush(append(append([]byte("event: snapshot\ndata: "), data...), []byte("\n\n")...)) {
+					return
+				}
+				if value.Run.State != "running" {
+					return
+				}
+			}
+		}
 	})
 	g.GET("/settings", func(c *gin.Context) { value, err := panelai.ReadSettings(); jsonObj(c, value, err) })
 	g.POST("/settings", func(c *gin.Context) {

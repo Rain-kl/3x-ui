@@ -199,7 +199,7 @@
 ## 本地 OpenCode AI 助手 (panel-ai)
 
 - **需求背景**：管理员希望使用自然语言分析日志和疑似滥用，并安排定时分析后推送 Telegram；复用已有 OpenCode 的模型与 agent 能力。
-- **修改内容**：侧边栏新增 AI，包含对话、任务、设置。管理员在设置页手动填写本地 OpenCode 地址、程序路径、工作目录及认证账号密码，使用其原生 Server API 读取模型及执行对话。提供有界分页只读审计 MCP 工具，支持 AI 按管理员要求创建自然语言定时任务；任务可编辑、暂停、删除和立即运行，默认间隔12小时，可选择向管理员 Telegram 推送结果。会话与任务运行持久化，支持取消、工具轨迹、独立保留时间及清楚的分析/通知错误；不新增模型提供商或自研 agent 循环。
+- **修改内容**：侧边栏新增 AI，包含对话、任务、设置。设置页一键部署经过 SHA-256 校验的官方 OpenCode CLI 并自动配置专用目录；原生 ACP 标准输入输出通信，网页 SSE 实时显示文字、思考与工具状态。可在网页直接编辑 opencode.json、添加自定义模型供应商并完整查看/修改密钥；无需 HTTP 服务、Node/npm 或预先配置运行环境。提供有界分页只读审计 MCP 工具，支持 AI 按管理员要求创建自然语言定时任务；任务可编辑、暂停、删除和立即运行，默认间隔12小时，可选择向管理员 Telegram 推送结果。会话与任务运行持久化，支持取消、工具轨迹、独立保留时间及清楚的分析/通知错误；不新增模型提供商或自研 agent 循环。
 - **修改文件**：`internal/panelai/`、数据库模型/迁移注册、`internal/web/service/panel_ai.go`、控制器和生命周期、`internal/telegramuser/report.go`、`frontend/src/pages/ai/`、导航、生成接口文档及语言词条。
 - **上游改动标记**：`FORK(panel-ai)`。
 - **设计与实现**：[功能规格](docs/specs/panel-ai.md)、[Agent Note](.agents/notes/panel-ai.md)。

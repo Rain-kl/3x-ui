@@ -35,23 +35,6 @@ type Hooks struct {
 	Notify func(context.Context, string) error
 }
 
-func (m *Manager) registerMCP(ctx context.Context, client *openCode) error {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-	var status map[string]struct {
-		Status string `json:"status"`
-		Error  string `json:"error"`
-	}
-	err := client.call(ctx, "POST", "/mcp", map[string]any{"name": "panel_audit", "config": map[string]any{"type": "remote", "url": m.mcpURL, "oauth": false, "headers": map[string]string{"Authorization": "Bearer " + m.token}, "timeout": 30000}}, &status)
-	if err != nil {
-		return fmt.Errorf("register panel audit MCP: %s", strings.ReplaceAll(err.Error(), m.token, "[REDACTED]"))
-	}
-	if status["panel_audit"].Status != "connected" {
-		return fmt.Errorf("panel audit MCP is not connected: %s", status["panel_audit"].Error)
-	}
-	return nil
-}
-
 func (m *Manager) serveMCP(w http.ResponseWriter, r *http.Request) {
 	if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+m.token)) != 1 {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)

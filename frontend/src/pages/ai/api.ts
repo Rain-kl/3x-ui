@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { HttpUtil } from '@/utils';
 import {
   AISettingsSchema,
+  AIDeploymentSchema,
+  AIProviderConfigSchema,
   AIStatusSchema,
   AIModelOptionSchema,
   AIConversationSchema,
@@ -32,6 +34,11 @@ async function post<T extends z.ZodType>(
   return schema.parse(response.obj);
 }
 export const aiApi = {
+  deployment: () => get('/deployment', AIDeploymentSchema),
+  deploy: () => post('/deployment', {}, AIDeploymentSchema),
+  providerConfig: () => get('/provider-config', AIProviderConfigSchema),
+  saveProviderConfig: (value: z.infer<typeof AIProviderConfigSchema>) =>
+    post('/provider-config', value, AIProviderConfigSchema),
   settings: () => get('/settings', AISettingsSchema),
   saveSettings: (value: z.infer<typeof AISettingsSchema>) =>
     post('/settings', value, AISettingsSchema),
@@ -63,14 +70,6 @@ export const SettingsFormSchema = AISettingsSchema.extend({
     .int()
     .min(1, 'pages.ai.retentionLimit')
     .max(3650, 'pages.ai.retentionLimit'),
-  url: z
-    .string()
-    .trim()
-    .refine(
-      (value) =>
-        !value || /^http:\/\/(localhost|127\.\d+\.\d+\.\d+|\[::1\])(?::\d+)?\/?$/.test(value),
-      'pages.ai.localURL',
-    ),
 });
 export const TaskFormSchema = AITaskInputSchema.extend({
   name: z.string().trim().min(1, 'pages.ai.required').max(200, 'pages.ai.nameLimit'),

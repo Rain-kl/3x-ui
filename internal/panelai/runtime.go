@@ -23,11 +23,13 @@ type Manager struct {
 	cancel        context.CancelFunc
 	hooks         Hooks
 	client        *openCode
-	processCancel context.CancelFunc
 	server        *http.Server
 	mcpURL, token string
 	active        map[string]context.CancelFunc
 	slots         chan struct{}
+	streams       sync.Map
+	deploymentMu  sync.Mutex
+	deployment    AIDeployment
 	workers       sync.WaitGroup
 }
 
@@ -86,14 +88,7 @@ func (m *Manager) ResetConnection() {
 	m.runMu.Unlock()
 	m.connectionMu.Lock()
 	defer m.connectionMu.Unlock()
-	if m.processCancel != nil {
-		m.processCancel()
-		m.processCancel = nil
-	}
-	if m.client != nil {
-		m.client.http.CloseIdleConnections()
-		m.client = nil
-	}
+	m.client = nil
 }
 
 func (m *Manager) removeRemoteSession(id string) error {
@@ -103,7 +98,8 @@ func (m *Manager) removeRemoteSession(id string) error {
 	if err != nil {
 		return fmt.Errorf("connect to remove OpenCode session: %w", err)
 	}
-	return client.call(ctx, "DELETE", "/session/"+id, nil, nil)
+	_, err = client.output(ctx, "session", "delete", id)
+	return err
 }
 
 func (m *Manager) Cancel(id string) error {

@@ -41,8 +41,6 @@ export default function AIChat({
     queryKey: ['ai', 'session', id, page],
     queryFn: () => aiApi.session(id, page),
     enabled: !!id,
-    refetchInterval: (query) =>
-      query.state.data?.runs.items.some((run) => run.state === 'running') ? 2000 : false,
   });
   const create = useMutation({
     mutationFn: () => aiApi.createSession(t('pages.ai.newChat')),

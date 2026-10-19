@@ -40,9 +40,7 @@ export default function AIPage() {
                 <Tag color={status.data?.connected ? 'success' : 'default'}>
                   {t(status.data?.connected ? 'pages.ai.connected' : 'pages.ai.disconnected')}
                 </Tag>
-                <Typography.Text type="secondary">
-                  {status.data?.url} {status.data?.version}
-                </Typography.Text>
+                <Typography.Text type="secondary">{status.data?.version}</Typography.Text>
               </Space>
               {(error || status.data?.error) && (
                 <Alert

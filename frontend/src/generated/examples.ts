@@ -41,10 +41,20 @@ export const EXAMPLES: Record<string, unknown> = {
       "total": 0
     }
   },
+  "AIDeployment": {
+    "error": "",
+    "phase": "",
+    "state": "",
+    "version": ""
+  },
   "AIModelOption": {
     "id": "",
     "name": "",
     "provider": ""
+  },
+  "AIProviderConfig": {
+    "config": "",
+    "path": ""
   },
   "AIRun": {
     "conversationId": "",
@@ -83,20 +93,33 @@ export const EXAMPLES: Record<string, unknown> = {
     "binary": "",
     "directory": "",
     "enabled": false,
-    "hasPassword": false,
     "model": "",
-    "password": "",
-    "retentionDays": 0,
-    "url": "",
-    "username": ""
+    "retentionDays": 0
   },
   "AIStatus": {
     "binary": "",
     "connected": false,
     "directory": "",
     "error": "",
-    "url": "",
     "version": ""
+  },
+  "AIStream": {
+    "run": {
+      "conversationId": "",
+      "error": "",
+      "finishedAt": null,
+      "id": "",
+      "model": "",
+      "notifyError": "",
+      "prompt": "",
+      "result": "",
+      "startedAt": "2025-01-01T00:00:00Z",
+      "state": "",
+      "taskId": "",
+      "tools": ""
+    },
+    "sequence": 0,
+    "thought": ""
   },
   "AITask": {
     "createdAt": "2025-01-01T00:00:00Z",

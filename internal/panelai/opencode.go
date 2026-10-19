@@ -3,34 +3,17 @@ package panelai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 )
 
-type openCode struct {
-	base, directory, username, password string
-	http                                *http.Client
-}
-
-type openCodeHTTPError struct {
-	Path   string
-	Status int
-	Detail string
-}
-
-func (e *openCodeHTTPError) Error() string {
-	return fmt.Sprintf("OpenCode %s returned HTTP %d: %s", e.Path, e.Status, e.Detail)
-}
+type openCode struct{ binary, directory string }
 
 type tailBuffer struct {
 	mu   sync.Mutex
@@ -48,80 +31,61 @@ func (b *tailBuffer) Write(p []byte) (int, error) {
 }
 func (b *tailBuffer) String() string { b.mu.Lock(); defer b.mu.Unlock(); return b.text }
 
-// FORK(panel-ai): Use only the credentials explicitly saved in the panel.
-func newOpenCode(base, directory, username, password string) *openCode {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.Proxy = nil
-	return &openCode{base: base, directory: directory, username: username, password: password, http: &http.Client{Transport: transport, CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-		return fmt.Errorf("OpenCode redirects are not allowed")
-	}}}
+func (o *openCode) command(ctx context.Context, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, o.binary, args...)
+	cmd.Dir = o.directory
+	cmd.Env = cliEnvironment(o.directory)
+	cmd.WaitDelay = 2 * time.Second
+	isolateProcess(cmd)
+	return cmd
 }
 
-func (o *openCode) call(ctx context.Context, method, path string, body, result any) error {
-	var encoded io.Reader
-	if body != nil {
-		data, err := json.Marshal(body)
-		if err != nil {
-			return fmt.Errorf("encode OpenCode request: %w", err)
-		}
-		encoded = bytes.NewReader(data)
-	}
-	endpoint := o.base + path
-	separator := "?"
-	if strings.Contains(path, "?") {
-		separator = "&"
-	}
-	endpoint += separator + "directory=" + url.QueryEscape(o.directory)
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, encoded)
-	if err != nil {
-		return fmt.Errorf("build OpenCode %s %s: %w", method, path, err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if o.password != "" {
-		req.SetBasicAuth(o.username, o.password)
-	}
-	resp, err := o.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("OpenCode %s %s: %w", method, path, err)
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20+1))
-	if err != nil {
-		return fmt.Errorf("read OpenCode %s: %w", path, err)
-	}
-	if len(data) > 8<<20 {
-		return fmt.Errorf("OpenCode %s response exceeded 8 MiB", path)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		detail := string(data[:min(len(data), 2048)])
-		if o.password != "" {
-			detail = strings.ReplaceAll(detail, o.password, "[REDACTED]")
-		}
-		return &openCodeHTTPError{Path: path, Status: resp.StatusCode, Detail: detail}
-	}
-	if result != nil && len(data) > 0 {
-		if err = json.Unmarshal(data, result); err != nil {
-			return fmt.Errorf("decode OpenCode %s: %w", path, err)
+// FORK(panel-ai): Isolate native configuration and credentials from the administrator's shell environment.
+func cliEnvironment(directory string) []string {
+	allowed := map[string]bool{"PATH": true, "SystemRoot": true, "WINDIR": true, "COMSPEC": true, "PATHEXT": true, "TEMP": true, "TMP": true, "TMPDIR": true, "LANG": true, "LC_ALL": true, "HTTP_PROXY": true, "HTTPS_PROXY": true, "ALL_PROXY": true, "NO_PROXY": true, "http_proxy": true, "https_proxy": true, "all_proxy": true, "no_proxy": true, "SSL_CERT_FILE": true, "SSL_CERT_DIR": true, "NODE_EXTRA_CA_CERTS": true}
+	env := []string{}
+	for _, item := range os.Environ() {
+		key, _, _ := strings.Cut(item, "=")
+		if allowed[key] {
+			env = append(env, item)
 		}
 	}
-	return nil
+	root := filepath.Join(directory, ".runtime")
+	for key, suffix := range map[string]string{"HOME": "home", "USERPROFILE": "home", "XDG_CONFIG_HOME": "config", "XDG_DATA_HOME": "data", "XDG_CACHE_HOME": "cache", "XDG_STATE_HOME": "state"} {
+		env = append(env, key+"="+filepath.Join(root, suffix))
+	}
+	return append(env, "NO_COLOR=1", "TERM=dumb", "OPENCODE_CONFIG="+filepath.Join(directory, "opencode.json"), "OPENCODE_DISABLE_AUTOUPDATE=true", "OPENCODE_DISABLE_PROJECT_CONFIG=true", "OPENCODE_DISABLE_CLAUDE_CODE=true", "OPENCODE_DISABLE_EXTERNAL_SKILLS=true")
+}
+
+func (o *openCode) output(ctx context.Context, args ...string) (string, error) {
+	cmd := o.command(ctx, args...)
+	var stdout bytes.Buffer
+	tail := &tailBuffer{}
+	cmd.Stdout = &boundedOutput{buffer: &stdout, limit: 4 << 20}
+	cmd.Stderr = tail
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("OpenCode CLI %s: %w; %s", strings.Join(args, " "), err, redactConfigText(o.directory, tail.String()))
+	}
+	return stdout.String(), nil
+}
+
+type boundedOutput struct {
+	buffer *bytes.Buffer
+	limit  int
+}
+
+func (w *boundedOutput) Write(p []byte) (int, error) {
+	if w.buffer.Len()+len(p) > w.limit {
+		return 0, fmt.Errorf("OpenCode CLI output exceeds %d bytes", w.limit)
+	}
+	return w.buffer.Write(p)
 }
 
 func (o *openCode) health(ctx context.Context) (string, error) {
-	var status struct {
-		Healthy bool   `json:"healthy"`
-		Version string `json:"version"`
-	}
-	if err := o.call(ctx, "GET", "/global/health", nil, &status); err != nil {
-		return "", err
-	}
-	if !status.Healthy {
-		return "", fmt.Errorf("OpenCode reported an unhealthy server")
-	}
-	return status.Version, nil
+	out, err := o.output(ctx, "--version")
+	return strings.TrimSpace(out), err
 }
 
-// FORK(panel-ai): Connection and startup paths must come from saved administrator settings.
 func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 	m.connectionMu.Lock()
 	defer m.connectionMu.Unlock()
@@ -135,117 +99,44 @@ func (m *Manager) connect(ctx context.Context) (*openCode, error) {
 	if !cfg.Enabled {
 		return nil, fmt.Errorf("AI is disabled; enable it in AI settings")
 	}
-	base, err := configuredURL(cfg)
-	if err != nil {
-		return nil, err
+	binary := cfg.Binary
+	if binary == "" {
+		return nil, fmt.Errorf("OpenCode CLI is not installed; use Deploy OpenCode in AI settings")
 	}
 	directory, err := filepathAbsolute(workspaceDirectory(cfg))
 	if err != nil {
 		return nil, err
 	}
-	if err = os.MkdirAll(directory, 0o700); err != nil {
-		return nil, fmt.Errorf("create OpenCode workspace: %w", err)
+	if err = prepareWorkspace(directory); err != nil {
+		return nil, err
 	}
-	client := newOpenCode(base, directory, cfg.Username, cfg.Password)
-	probe, cancel := context.WithTimeout(ctx, 2*time.Second)
-	_, err = client.health(probe)
-	cancel()
-	if err != nil {
-		var httpErr *openCodeHTTPError
-		if errors.As(err, &httpErr) {
-			return nil, fmt.Errorf("existing OpenCode health check failed: %w", err)
-		}
-		binary := cfg.Binary
-		if binary == "" {
-			return nil, fmt.Errorf("OpenCode is unavailable at %s and no executable path is configured; set it in AI settings or start the configured local service: %w", base, err)
-		}
-		parsed, _ := url.Parse(base)
-		port := parsed.Port()
-		if port == "" {
-			port = "80"
-		}
-		processCtx, processCancel := context.WithCancel(m.ctx)
-		password := cfg.Password
-		cmd := exec.CommandContext(processCtx, binary, "serve", "--hostname", parsed.Hostname(), "--port", port)
-		cmd.Dir = directory
-		// FORK(panel-ai): OpenCode receives the saved credentials, independent of the panel's inherited environment.
-		for _, item := range os.Environ() {
-			if !strings.HasPrefix(item, "OPENCODE_SERVER_PASSWORD=") && !strings.HasPrefix(item, "OPENCODE_SERVER_USERNAME=") {
-				cmd.Env = append(cmd.Env, item)
-			}
-		}
-		cmd.Env = append(cmd.Env, "OPENCODE_SERVER_PASSWORD="+password, "OPENCODE_SERVER_USERNAME="+cfg.Username, "OPENCODE_DISABLE_AUTOUPDATE=true")
-		tail := &tailBuffer{}
-		cmd.Stdout = tail
-		cmd.Stderr = tail
-		if err = cmd.Start(); err != nil {
-			processCancel()
-			return nil, fmt.Errorf("start OpenCode %s: %w", binary, err)
-		}
-		m.processCancel = processCancel
-		exited := make(chan error, 1)
-		go func() { exited <- cmd.Wait() }()
-		client = newOpenCode(base, directory, cfg.Username, password)
-		deadline := time.NewTimer(20 * time.Second)
-		defer deadline.Stop()
-		tick := time.NewTicker(250 * time.Millisecond)
-		defer tick.Stop()
-	ready:
-		for {
-			select {
-			case <-ctx.Done():
-				processCancel()
-				m.processCancel = nil
-				return nil, ctx.Err()
-			case exitErr := <-exited:
-				processCancel()
-				m.processCancel = nil
-				return nil, fmt.Errorf("OpenCode exited during startup (%w): %s", exitErr, redactOpenCodeOutput(tail.String(), password))
-			case <-deadline.C:
-				processCancel()
-				m.processCancel = nil
-				return nil, fmt.Errorf("OpenCode startup timed out: %s", redactOpenCodeOutput(tail.String(), password))
-			case <-tick.C:
-				probe, cancel := context.WithTimeout(ctx, time.Second)
-				_, err = client.health(probe)
-				cancel()
-				if err == nil {
-					break ready
-				}
-			}
-		}
-	}
-	if err = m.registerMCP(ctx, client); err != nil {
-		if m.processCancel != nil {
-			m.processCancel()
-			m.processCancel = nil
-		}
+	client := &openCode{binary: binary, directory: directory}
+	probe, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	if _, err = client.health(probe); err != nil {
 		return nil, err
 	}
 	m.client = client
 	return client, nil
 }
 
-// FORK(panel-ai): Report configured paths without scanning the host environment.
+func prepareWorkspace(directory string) error {
+	for _, suffix := range []string{"", ".runtime/home", ".runtime/config", ".runtime/data", ".runtime/cache", ".runtime/state"} {
+		if err := os.MkdirAll(filepath.Join(directory, suffix), 0o700); err != nil {
+			return fmt.Errorf("prepare OpenCode workspace %s: %w", directory, err)
+		}
+	}
+	return nil
+}
+
 func (m *Manager) ConnectionStatus(ctx context.Context) AIStatus {
 	cfg, err := ReadSettings()
-	status := AIStatus{}
+	status := AIStatus{Binary: cfg.Binary, Directory: workspaceDirectory(cfg)}
 	if err != nil {
 		status.Error = err.Error()
-		return status
-	}
-	directory, dirErr := filepathAbsolute(workspaceDirectory(cfg))
-	status.Binary, status.Directory, status.URL = cfg.Binary, directory, cfg.URL
-	if dirErr != nil {
-		status.Error = dirErr.Error()
 		return status
 	}
 	if !cfg.Enabled {
-		return status
-	}
-	status.URL, err = configuredURL(cfg)
-	if err != nil {
-		status.Error = err.Error()
 		return status
 	}
 	client, err := m.connect(ctx)
@@ -264,37 +155,26 @@ func (m *Manager) Models(ctx context.Context) ([]AIModelOption, error) {
 	if err != nil {
 		return nil, err
 	}
-	var list struct {
-		All []struct {
-			ID     string `json:"id"`
-			Models map[string]struct {
-				Name string `json:"name"`
-			} `json:"models"`
-		} `json:"all"`
-		Connected []string `json:"connected"`
-	}
-	if err = client.call(ctx, "GET", "/provider", nil, &list); err != nil {
+	config, err := loadProviderConfig(client.directory)
+	if err != nil {
 		return nil, err
 	}
-	connected := map[string]bool{}
-	for _, id := range list.Connected {
-		connected[id] = true
+	providers, _ := config["provider"].(map[string]any)
+	if len(providers) == 0 {
+		return []AIModelOption{}, nil
+	}
+	out, err := client.output(ctx, "models", "--pure")
+	if err != nil {
+		return nil, err
 	}
 	result := []AIModelOption{}
-	for _, provider := range list.All {
-		if connected[provider.ID] {
-			for id, item := range provider.Models {
-				result = append(result, AIModelOption{ID: provider.ID + "/" + id, Name: item.Name, Provider: provider.ID})
-			}
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		provider, id, ok := strings.Cut(line, "/")
+		if ok && providers[provider] != nil && id != "" {
+			result = append(result, AIModelOption{ID: line, Name: id, Provider: provider})
 		}
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result, nil
-}
-
-func redactOpenCodeOutput(value, password string) string {
-	if password == "" {
-		return value
-	}
-	return strings.ReplaceAll(value, password, "[REDACTED]")
 }
