@@ -2716,8 +2716,6 @@
       "tasks": "任务",
       "settings": "设置",
       "enabled": "启用",
-      "connected": "OpenCode CLI 已就绪",
-      "disconnected": "未连接",
       "disabledHint": "请先到设置一键部署或启用 OpenCode CLI，并配置模型供应商。",
       "newChat": "新建对话",
       "selectChat": "新建或选择一个对话",
