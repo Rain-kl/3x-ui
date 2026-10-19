@@ -10082,6 +10082,47 @@
         }
       }
     },
+    "/panel/api/ai/runs/{id}/delete": {
+      "post": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Delete a finished execution record without deleting its task or OpenCode session.",
+        "operationId": "post_panel_api_ai_runs_id_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/ai/tasks": {
       "get": {
         "tags": [

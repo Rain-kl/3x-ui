@@ -71,6 +71,10 @@ _openapi:
       title: Cancel an active run and abort its OpenCode turn.
       url: '#cancel-an-active-run-and-abort-its-opencode-turn'
     - depth: 2
+      title: Delete a finished execution record without deleting its task or OpenCode
+        session.
+      url: '#delete-a-finished-execution-record-without-deleting-its-task-or-opencode-session'
+    - depth: 2
       title: Paginate recurring AI tasks, 20 per page.
       url: '#paginate-recurring-ai-tasks-20-per-page'
     - depth: 2
@@ -130,6 +134,9 @@ _openapi:
         id: read-execution-result-tool-trace-and-separate-telegram-delivery-errors
       - content: Cancel an active run and abort its OpenCode turn.
         id: cancel-an-active-run-and-abort-its-opencode-turn
+      - content: Delete a finished execution record without deleting its task or
+          OpenCode session.
+        id: delete-a-finished-execution-record-without-deleting-its-task-or-opencode-session
       - content: Paginate recurring AI tasks, 20 per page.
         id: paginate-recurring-ai-tasks-20-per-page
       - content: Create or update a natural-language recurring task with intervalHours,
@@ -160,7 +167,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/ai/opencode","method":"get"},{"path":"/panel/api/ai/deployment","method":"get"},{"path":"/panel/api/ai/deployment","method":"post"},{"path":"/panel/api/ai/provider-config","method":"get"},{"path":"/panel/api/ai/provider-config","method":"post"},{"path":"/panel/api/ai/runs/{id}/events","method":"get"},{"path":"/panel/api/ai/settings","method":"get"},{"path":"/panel/api/ai/settings","method":"post"},{"path":"/panel/api/ai/status","method":"get"},{"path":"/panel/api/ai/reconnect","method":"post"},{"path":"/panel/api/ai/models","method":"get"},{"path":"/panel/api/ai/sessions","method":"get"},{"path":"/panel/api/ai/sessions","method":"post"},{"path":"/panel/api/ai/sessions/{id}","method":"get"},{"path":"/panel/api/ai/sessions/{id}/delete","method":"post"},{"path":"/panel/api/ai/sessions/{id}/messages","method":"post"},{"path":"/panel/api/ai/runs","method":"get"},{"path":"/panel/api/ai/runs/{id}","method":"get"},{"path":"/panel/api/ai/runs/{id}/cancel","method":"post"},{"path":"/panel/api/ai/tasks","method":"get"},{"path":"/panel/api/ai/tasks","method":"post"},{"path":"/panel/api/ai/tasks/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks/{id}/run","method":"post"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/ai/opencode","method":"get"},{"path":"/panel/api/ai/deployment","method":"get"},{"path":"/panel/api/ai/deployment","method":"post"},{"path":"/panel/api/ai/provider-config","method":"get"},{"path":"/panel/api/ai/provider-config","method":"post"},{"path":"/panel/api/ai/runs/{id}/events","method":"get"},{"path":"/panel/api/ai/settings","method":"get"},{"path":"/panel/api/ai/settings","method":"post"},{"path":"/panel/api/ai/status","method":"get"},{"path":"/panel/api/ai/reconnect","method":"post"},{"path":"/panel/api/ai/models","method":"get"},{"path":"/panel/api/ai/sessions","method":"get"},{"path":"/panel/api/ai/sessions","method":"post"},{"path":"/panel/api/ai/sessions/{id}","method":"get"},{"path":"/panel/api/ai/sessions/{id}/delete","method":"post"},{"path":"/panel/api/ai/sessions/{id}/messages","method":"post"},{"path":"/panel/api/ai/runs","method":"get"},{"path":"/panel/api/ai/runs/{id}","method":"get"},{"path":"/panel/api/ai/runs/{id}/cancel","method":"post"},{"path":"/panel/api/ai/runs/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks","method":"get"},{"path":"/panel/api/ai/tasks","method":"post"},{"path":"/panel/api/ai/tasks/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks/{id}/run","method":"post"}]} showTitle />
     </>
   );
 }

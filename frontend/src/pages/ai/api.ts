@@ -54,6 +54,7 @@ export const aiApi = {
   send: (id: string, prompt: string, model: string) =>
     post(`/sessions/${encodeURIComponent(id)}/messages`, { prompt, model }, AIRunSchema),
   cancel: (id: string) => post(`/runs/${encodeURIComponent(id)}/cancel`, {}, z.unknown()),
+  deleteRun: (id: string) => post(`/runs/${encodeURIComponent(id)}/delete`, {}, z.unknown()),
   tasks: (page: number) => get(`/tasks?page=${page}`, AITaskPageSchema),
   saveTask: (value: z.infer<typeof AITaskInputSchema>) => post('/tasks', value, AITaskSchema),
   deleteTask: (id: string) => post(`/tasks/${encodeURIComponent(id)}/delete`, {}, z.unknown()),

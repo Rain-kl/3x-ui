@@ -78,3 +78,7 @@ AI 页面占据动态视口高度，扣除提示条和页签栏后，官方 Open
 ## ACP v2 模型选择
 
 任务通过 session/set_config_option 发送 sessionId、configId="model"、value="供应商ID/模型ID"，与 OpenCode v2.0.32 原生协议保持一致；不再调用已移除的 session/set_model。选择失败必须保留具体协议错误，不得忽略并偷偷回退默认模型。用户配置采用 providers/package/settings；模型键与供应商键大小写原样保留，name 仅为显示名称。
+
+## 执行记录删除
+
+任务执行记录逐条提供删除入口，需管理员确认；删除仅移除该条面板记录的输入、结果、错误与工具轨迹，不删除任务，不影响后续定时执行或 OpenCode 会话历史。运行中的记录禁用删除，必须先取消并等待执行结束；服务端同时检查活动 worker 与数据库状态，避免删除后被完成回调写回。删除末页最后一条时退回上一页。接口 POST /panel/api/ai/runs/:id/delete，沿用管理员认证与 CSRF。

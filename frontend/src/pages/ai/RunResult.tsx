@@ -4,16 +4,20 @@ import { withBasePath } from '@/api/http-init';
 import { AIStreamSchema } from '@/generated/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, Collapse, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Collapse, Popconfirm, Space, Tag, Typography } from 'antd';
 import type { AIRun } from './api';
 
 const TraceSchema = z.array(z.object({ tool: z.string(), status: z.string() }));
 export default function RunResult({
   run: initialRun,
   onCancel,
+  onDelete,
+  deleting = false,
 }: {
   run: AIRun;
   onCancel: (id: string) => void;
+  onDelete?: (id: string) => void;
+  deleting?: boolean;
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
@@ -91,11 +95,24 @@ export default function RunResult({
         </Space>
       }
       extra={
-        run.state === 'running' && (
-          <Button size="small" onClick={() => onCancel(run.id)}>
-            {t('pages.ai.cancel')}
-          </Button>
-        )
+        <Space>
+          {run.state === 'running' && (
+            <Button size="small" onClick={() => onCancel(run.id)}>
+              {t('pages.ai.cancel')}
+            </Button>
+          )}
+          {onDelete && (
+            <Popconfirm
+              title={t('pages.ai.confirmDelete')}
+              onConfirm={() => onDelete(run.id)}
+              disabled={run.state === 'running' || deleting}
+            >
+              <Button size="small" danger disabled={run.state === 'running'} loading={deleting}>
+                {t('pages.ai.delete')}
+              </Button>
+            </Popconfirm>
+          )}
+        </Space>
       }
     >
       <Typography.Paragraph className="ai-text ai-prompt">{run.prompt}</Typography.Paragraph>

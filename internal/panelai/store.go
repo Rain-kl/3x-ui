@@ -105,6 +105,30 @@ func Run(id string) (*model.AIRun, error) {
 	return &value, err
 }
 
+func (m *Manager) DeleteRun(id string) error {
+	m.runMu.Lock()
+	defer m.runMu.Unlock()
+	if _, active := m.active[id]; active {
+		return fmt.Errorf("cancel the AI run and wait for it to finish before deleting its record")
+	}
+	row, err := Run(id)
+	if err != nil {
+		return fmt.Errorf("load AI execution record for deletion: %w", err)
+	}
+	if row.State == "running" {
+		return fmt.Errorf("cancel the AI run and wait for it to finish before deleting its record")
+	}
+	result := database.GetDB().Where("id = ? AND state <> ?", id, "running").Delete(&model.AIRun{})
+	if result.Error != nil {
+		return fmt.Errorf("delete AI execution record %s: %w", id, result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("AI execution record %s was not found or is still running", id)
+	}
+	m.streams.Delete(id)
+	return nil
+}
+
 func Tasks(page int) (*AITaskPage, error) {
 	result := &AITaskPage{Items: []model.AITask{}}
 	if err := database.GetDB().Model(&model.AITask{}).Count(&result.Total).Error; err != nil {

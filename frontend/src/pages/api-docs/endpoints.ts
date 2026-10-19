@@ -825,6 +825,12 @@ export const sections: readonly Section[] = [
         summary: 'Cancel an active run and abort its OpenCode turn.',
       },
       {
+        method: 'POST',
+        path: '/panel/api/ai/runs/:id/delete',
+        summary:
+          'Delete a finished execution record without deleting its task or OpenCode session.',
+      },
+      {
         method: 'GET',
         path: '/panel/api/ai/tasks',
         summary: 'Paginate recurring AI tasks, 20 per page.',

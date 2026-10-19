@@ -254,3 +254,5 @@
 - 2026-10-19：修复 AI 对话页在 Ant Design 6 下容器高度链中断，OpenCode 填满页签栏下方的动态视口剩余高度，任务与设置保留内部滚动。（frontend/src/pages/ai/AIPage.css；FORK(panel-ai)；docs/specs/panel-ai.md）
 
 - 2026-10-19：定时 AI 任务改用 OpenCode v2 的 session/set_config_option 选择模型，修复 session/set_model 不存在导致任务失败；保留模型选择错误，不回退其他模型。（internal/panelai/acp.go；docs/specs/panel-ai.md）
+
+- 2026-10-19：AI 任务执行记录支持逐条确认删除，运行中需先取消并等待完成；删除记录不影响任务及后续调度，末页删空自动退页。（internal/panelai/store.go、internal/web/controller/panel_ai.go、frontend/src/pages/ai/；docs/specs/panel-ai.md）

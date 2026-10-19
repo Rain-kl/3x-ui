@@ -182,6 +182,7 @@ func newPanelAIController(g *gin.RouterGroup) {
 	})
 	g.GET("/runs/:id", func(c *gin.Context) { value, err := panelai.Run(c.Param("id")); jsonObj(c, value, err) })
 	g.POST("/runs/:id/cancel", func(c *gin.Context) { jsonObj(c, true, panelai.Default.Cancel(c.Param("id"))) })
+	g.POST("/runs/:id/delete", func(c *gin.Context) { jsonObj(c, true, panelai.Default.DeleteRun(c.Param("id"))) })
 	g.GET("/tasks", func(c *gin.Context) {
 		page, err := aiPage(c)
 		if err != nil {

@@ -52,8 +52,21 @@ export default function AITasks({
   });
   const remove = useMutation({ mutationFn: aiApi.deleteTask, onSuccess: refresh });
   const cancel = useMutation({ mutationFn: aiApi.cancel, onSuccess: refresh });
+  const removeRun = useMutation({
+    mutationFn: aiApi.deleteRun,
+    onSuccess: () => {
+      if (runs.data?.items.length === 1 && runPage > 1) setRunPage(runPage - 1);
+      refresh();
+    },
+  });
   const error =
-    tasks.error || runs.error || save.error || run.error || remove.error || cancel.error;
+    tasks.error ||
+    runs.error ||
+    save.error ||
+    run.error ||
+    remove.error ||
+    cancel.error ||
+    removeRun.error;
   return (
     <Space orientation="vertical" style={{ width: '100%' }} size="middle">
       {error && <Alert type="error" title={error.message} />}
@@ -159,7 +172,13 @@ export default function AITasks({
         options={(tasks.data?.items ?? []).map((row) => ({ value: row.id, label: row.name }))}
       />
       {runs.data?.items.map((item) => (
-        <RunResult key={item.id} run={item} onCancel={(id) => cancel.mutate(id)} />
+        <RunResult
+          key={item.id}
+          run={item}
+          onCancel={(id) => cancel.mutate(id)}
+          onDelete={(id) => removeRun.mutate(id)}
+          deleting={removeRun.isPending && removeRun.variables === item.id}
+        />
       ))}
       <Pagination
         current={runPage}

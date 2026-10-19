@@ -88,3 +88,16 @@ provider structure with placeholder credentials and a loopback endpoint,
 created an ACP session, and returned currentValue=arctel/flash after
 session/set_config_option. No session/prompt or external provider request
 was sent. Full push checks remain skipped per the earlier user instruction.
+
+## Delete execution records
+
+Add a manager-owned deletion operation under runMu, checking both the active
+worker map and persisted running state. Delete only AIRun and its in-memory
+stream, leaving tasks, schedules and native conversation sessions intact.
+The history cards confirm deletion, disable it for running records, expose
+errors and move back one page when deleting the last item on a non-first page.
+Reuse translated delete/confirmation keys; optional RunResult props preserve
+the legacy conversation component. Register the new authenticated POST route
+in endpoint metadata and regenerate frontend/docs OpenAPI outputs.
+Per explicit user instruction: no checks, tests, build or Git hooks; commit
+only, with no push requested for this change.
