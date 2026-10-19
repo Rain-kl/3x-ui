@@ -3,7 +3,8 @@
 # ========================================================
 FROM --platform=$BUILDPLATFORM node:26-alpine AS frontend
 WORKDIR /src/frontend
-RUN corepack enable
+# node:26 no longer bundles corepack; keep in sync with frontend/package.json packageManager.
+RUN npm install -g pnpm@11.26.0
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
