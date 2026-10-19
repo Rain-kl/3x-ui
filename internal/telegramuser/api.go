@@ -19,6 +19,9 @@ import (
 
 const MaxAttachment = 20 << 20
 
+// FORK(telegram-user-bot): Long polls need connection and TLS headroom beyond Telegram's server-side wait.
+const telegramLongPollSeconds = 25
+
 type Network struct {
 	Proxy      string
 	APIServer  string
@@ -111,7 +114,13 @@ func (a *botAPI) request(ctx context.Context, method, contentType string, body i
 		return a.redact(err)
 	}
 	req.Header.Set("Content-Type", contentType)
-	response, err := a.client.Do(req)
+	client := a.client
+	if method == "getUpdates" {
+		pollClient := *a.client
+		pollClient.Timeout = (telegramLongPollSeconds + 35) * time.Second
+		client = &pollClient
+	}
+	response, err := client.Do(req)
 	if err != nil {
 		return a.redact(err)
 	}

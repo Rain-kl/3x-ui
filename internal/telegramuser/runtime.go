@@ -31,12 +31,13 @@ type UserTelegramStatus struct {
 }
 
 type Manager struct {
-	mu      sync.RWMutex
-	reload  sync.Mutex
-	hooks   Hooks
-	parent  context.Context
-	current *receiver
-	lastErr string
+	mu        sync.RWMutex
+	reload    sync.Mutex
+	hooks     Hooks
+	parent    context.Context
+	current   *receiver
+	lastErr   string
+	lastEvent string
 }
 
 type awaiting struct {
@@ -98,7 +99,7 @@ func (m *Manager) Reload() (resultErr error) {
 	defer func() {
 		if resultErr != nil {
 			m.mu.Lock()
-			m.lastErr = resultErr.Error()
+			m.lastErr, m.lastEvent = resultErr.Error(), "bot.reload.failed"
 			m.mu.Unlock()
 			if database.GetDB() != nil {
 				if err := RecordLog(0, 0, "bot.reload.failed", resultErr.Error()); err != nil {
@@ -141,7 +142,7 @@ func (m *Manager) Reload() (resultErr error) {
 		}
 	}
 	m.mu.Lock()
-	m.current, m.lastErr = r, ""
+	m.current, m.lastErr, m.lastEvent = r, "", ""
 	// FORK(telegram-subscription-details): Wait for pending deletion work before closing the database.
 	r.wg.Add(4)
 	m.mu.Unlock()
@@ -200,9 +201,25 @@ func (r *receiver) failure(event string, err error) {
 		return
 	}
 	Default.mu.Lock()
-	Default.lastErr = err.Error()
+	// FORK(telegram-user-bot): A stopped receiver must not overwrite the replacement receiver's status.
+	if Default.current == r {
+		Default.lastErr, Default.lastEvent = err.Error(), event
+	}
 	Default.mu.Unlock()
 	r.log(0, 0, event, err.Error())
+}
+
+// FORK(telegram-user-bot): Only a matching successful operation resolves a displayed failure.
+func (r *receiver) recovered(event string) {
+	Default.mu.Lock()
+	resolved := Default.current == r && Default.lastEvent == event
+	if resolved {
+		Default.lastErr, Default.lastEvent = "", ""
+	}
+	Default.mu.Unlock()
+	if resolved {
+		r.log(0, 0, "bot.poll.recovered", "Telegram getUpdates succeeded after a polling failure")
+	}
 }
 
 func pause(ctx context.Context, duration time.Duration) bool {
@@ -234,7 +251,7 @@ func (r *receiver) poll() {
 		// FORK(telegram-custom-commands): Retry changed slash menus after long polls.
 		r.syncCommands()
 		var updates []telego.Update
-		err := r.user.call(r.ctx, "getUpdates", map[string]any{"offset": offset, "timeout": 25, "allowed_updates": []string{"message", "edited_message", "callback_query"}}, &updates)
+		err := r.user.call(r.ctx, "getUpdates", map[string]any{"offset": offset, "timeout": telegramLongPollSeconds, "allowed_updates": []string{"message", "edited_message", "callback_query"}}, &updates)
 		if err != nil {
 			r.failure("bot.poll.failed", err)
 			if !pause(r.ctx, backoff) {
@@ -244,6 +261,7 @@ func (r *receiver) poll() {
 			continue
 		}
 		backoff = 5 * time.Second
+		r.recovered("bot.poll.failed")
 		for _, update := range updates {
 			if err := r.handle(update); err != nil {
 				r.failure("bot.update.failed", err)

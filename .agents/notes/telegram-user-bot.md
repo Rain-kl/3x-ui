@@ -67,3 +67,9 @@ Telegram 不允许跨 Bot 复用 file_id，桥接先从源下载再向目标上�
 ## 2026-10-18：绑定只按核心订阅标识匹配
 
 按用户要求放宽绑定：去掉订阅链接的 scheme/host/port/path 前缀校验，改为消息文本包含任意客户端的 sub_id 即视为该客户端的绑定凭据（sub_id 本身是 bearer 凭据，不访问用户 URL）；未绑定账号的非指令消息含 sub_id 时直接按凭据处理，无需先 /bind；命中多个客户端仍拒绝歧义。PublicSubURL 仅用于 /subscription 链接生成，不再参与绑定校验。临时测试覆盖任意域名链接、带前后文字、裸凭据、无凭据与歧义五种情况，验证后已删除（沿用不新增测试要求）；go build、go vet、gofmt 通过。
+
+## 长轮询错误恢复（2026-10-19）
+
+截图中的 context deadline exceeded 是 getUpdates 的实际网络超时，并非收到空数组时的正常长轮询结束。原代码虽会退避重试，却只设置 lastErr，从不在轮询恢复后清除，导致 Bot 继续工作而页面长期显示旧红框。新增内存 lastEvent，只有当前 receiver 且事件匹配 bot.poll.failed 时，下一次成功轮询才清除该故障并留下一条恢复日志；其他类型错误保持原状态，不以轮询成功掩盖存储等问题。
+
+服务端长轮询25秒不变；getUpdates 使用共享 transport 的独立 client 副本，总超时60秒，发送和附件请求保持40秒，避免并发修改 http.Client。失败与退避仍保留，没有忽略真实网络故障。

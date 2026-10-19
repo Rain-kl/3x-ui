@@ -188,6 +188,10 @@
 - **上游改动标记**：`FORK(telegram-custom-commands)`。
 - **设计与实现**：[功能规格](docs/specs/telegram-custom-commands.md)、[Agent Note](.agents/notes/telegram-custom-commands.md)。
 
+### 长轮询恢复状态
+
+- `getUpdates` 客户端总超时60秒，服务端等待25秒，为连接和代理留出余量；失败自动退避重试。恢复后清除对应旧错误，历史失败与恢复事件保留在日志，不清除其他故障。修改 `internal/telegramuser/api.go`、`runtime.go`；标记 `FORK(telegram-user-bot)`，规格与实现见本节链接。
+
 ## 审计数据 ZIP 导出 (audit-export)
 
 - **需求背景**：分页页面无法方便地取得完整网站流量、指定客户端网站访问数据和日志库档案。
