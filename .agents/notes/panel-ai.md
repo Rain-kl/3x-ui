@@ -8,7 +8,9 @@ SQL分析沿用2个审计并发槽和30秒上下文；200行、64列、256KiB及
 
 ## OpenCode v2 官方 Web（2026-10-19）
 
-固定官方 @opencode/cli 2.0.32；v2 npm 包名/配置结构/CLI 参数均与 v1 不同，不能只改版本字符串。安装从官方 npm 下载按平台的独立二进制，固定发布摘要校验 SHA-512，宿主机不依赖 Node。官方 Web 源码由 scripts/build-opencode-web.py 固定版本和源包 SHA-256 重建，仅调整 Router base、服务地址、同源写请求 CSRF 和禁用 service worker；完整产物压缩入面板，附 MIT 许可证。不要对打包混淆 JS 做字符串补丁。HTML先重写官方根资源路径，再注入base/meta，避免新base被重复拼接面板前缀。
+固定官方 @opencode/cli 2.0.32；v2 npm 包名/配置结构/CLI 参数均与 v1 不同，不能只改版本字符串。安装从官方 npm 下载按平台的独立二进制，固定发布摘要校验 SHA-512，宿主机不依赖 Node。官方 Web 源码由 scripts/build-opencode-web.py 固定版本和源包 SHA-256 重建，仅调整 hash 路由、服务地址、同源写请求 CSRF 和禁用 service worker；完整产物压缩入面板，附 MIT 许可证。不要对打包混淆 JS 做字符串补丁。HTML先重写官方根资源路径，再注入base/meta，避免新base被重复拼接面板前缀。
+
+上游 `currentRoute` 等代码直接按根路径解析 `useLocation().pathname`，官方 `Router` 的 `base` 只给路由模式加前缀，不会从 pathname 去掉部署前缀；面板挂在随机路径下时解析得到空结果并触发错误页。适配改用官方 `HashRouter`，页面 URL 形如 `<panel>/panel/ai/opencode/#/...`，让全部 pathname 读取和前载看到根相对路径；`panel-opencode-base` 仍只用于服务地址与 CSRF 请求。`officialweb` 的回归测试读取入口脚本并断言存在 `hashchange`，重建时漏掉适配会直接失败。
 
 Web 服务使用 serve --stdio 的拥有者 stdin lease，由 readiness JSON 读取真实随机 loopback 端口，随机密码只存内存并经服务端注入 BasicAuth。官方页面和全部代理 API 单独逐请求检查真实管理员会话、Origin 和 CSRF，不走 API Token 的豁免路径；拒绝 auth/pair 入口，不代理浏览器 Cookie/Authorization、不转发服务 Set-Cookie/认证挑战/重定向。普通服务仅监听 127.0.0.1，设置变化及退出关闭整个进程组。仅流式 API 代理禁 gzip、清除正常写超时并立即 flush，支持 WS 升级；官方静态脚本/WASM 沿用 gzip（官方全部 JS 约29MiB、WASM约34MiB，不能将整个界面前缀排除压缩）。
 

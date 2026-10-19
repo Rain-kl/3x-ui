@@ -5,8 +5,9 @@ Source: https://github.com/anomalyco/opencode/tree/v2.0.32/packages/app
 Version: 2.0.32. License: MIT (see LICENSE).
 
 `app.zip` contains the official production Web UI, embedded into the panel.
-The panel adapter changes only the deployment base path, router base, API and
-attachment URL prefix, browser CSRF headers, and service-worker registration.
+The panel adapter changes only the deployment base path, routing (the official
+hash router, so the app sees root-relative paths), API and attachment URL
+prefix, browser CSRF headers, and service-worker registration.
 No chat components or agent loop are reimplemented. Source maps are omitted.
 The gateway removes the inline theme preload script to retain a restrictive CSP.
 

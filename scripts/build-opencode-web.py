@@ -53,7 +53,9 @@ def adapt(source):
     global SOURCE
     SOURCE = source
     replace('packages/app/vite.config.ts', 'export default defineConfig({', 'export default defineConfig({\n  base: "./",')
-    replace('packages/app/src/app.tsx', '<Dynamic component={props.router ?? Router} root={Root}>', '<Dynamic component={props.router ?? Router} root={Root} base={document.querySelector<HTMLMetaElement>(\'meta[name="panel-opencode-base"]\')?.content}>')
+    # Upstream parses useLocation().pathname as root-relative; Router base would keep the panel prefix in it.
+    replace('packages/app/src/app.tsx', 'import { type BaseRouterProps, Router } from "@solidjs/router"', 'import { type BaseRouterProps, HashRouter } from "@solidjs/router"')
+    replace('packages/app/src/app.tsx', '<Dynamic component={props.router ?? Router} root={Root}>', '<Dynamic component={props.router ?? HashRouter} root={Root}>')
     replace('packages/app/src/runtime/platform/web.ts', 'return location.origin', 'return location.origin + document.querySelector<HTMLMetaElement>(\'meta[name="panel-opencode-base"]\')!.content')
     replace('packages/app/src/entry.tsx', 'if (import.meta.env.PROD && "serviceWorker" in navigator)', 'if (false && "serviceWorker" in navigator)')
     replace('packages/app/src/composer/attachments/destination.ts', 'new URL("/api/experimental/fs/write", server.conn.http.url)', 'new URL("api/experimental/fs/write", server.conn.http.url.replace(/\/$/, "") + "/")')
