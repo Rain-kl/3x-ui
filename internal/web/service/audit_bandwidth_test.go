@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math"
 	"path/filepath"
 	"testing"
 	"time"
@@ -119,8 +120,12 @@ func TestAuditBandwidthCapturesRawCounters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !value.Fresh || value.Upload < 990 || value.Upload > 1010 || value.Download < 1980 || value.Download > 2020 {
-		t.Fatalf("raw counters with 10x billing ratio: %+v", value)
+	elapsed := auditBandwidth.nodes[0].At.Sub(baseline.At).Seconds()
+	if elapsed <= 0 || elapsed > 30 {
+		t.Fatalf("unexpected sampling interval: %v seconds", elapsed)
+	}
+	if !value.Fresh || math.Abs(value.Upload*elapsed-5000) > 0.001 || math.Abs(value.Download*elapsed-10000) > 0.001 {
+		t.Fatalf("raw counters with 10x billing ratio over %v seconds: %+v; want 5000/10000 bytes", elapsed, value)
 	}
 	other, err := (AuditService{}).QueryBandwidth(AuditFilter{NodeID: 999, Client: client.Email})
 	if err != nil || other.Fresh || other.Upload != 0 {
