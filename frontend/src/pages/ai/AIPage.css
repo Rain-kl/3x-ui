@@ -1,5 +1,9 @@
+/* FORK(panel-ai): Match Ant Design 6 containers so the embedded UI receives the remaining viewport height. */
 .ai-page {
   height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 .ai-page .content-shell,
 .ai-page .content-area {
@@ -26,22 +30,29 @@
   margin-bottom: 0;
   padding: 0 16px;
 }
-.ai-tabs .ant-tabs-content-holder {
+.ai-tabs > .ant-tabs-body-holder,
+.ai-tabs > .ant-tabs-body-holder > .ant-tabs-body,
+.ai-tabs
+  > .ant-tabs-body-holder
+  > .ant-tabs-body
+  > .ant-tabs-content:not(.ant-tabs-content-hidden) {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
-}
-.ai-tabs .ant-tabs-content,
-.ai-tabs .ant-tabs-tabpane {
-  height: 100%;
+  overflow: hidden;
 }
 .ai-chat-frame {
   display: block;
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  height: 0;
   border: 0;
 }
 .ai-tab-body {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 16px;
 }

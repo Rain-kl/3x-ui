@@ -53,3 +53,19 @@ Telegram 复用管理员配置、代理和 API 服务，通过既有用户 Bot �
 连接参数以 AI 设置为唯一来源：服务地址、绝对可执行路径、绝对工作目录、认证账号和密码。禁用环境/目录/PATH/默认端口发现；目录留空仅选择面板自己的 ai 工作区，不扫描本地服务。程序路径为空时不会启动进程。模型仍来自 OpenCode 原生模型接口。
 
 私有 readSettings 保留认证密码，公开 ReadSettings 清空原文并返回 hasPassword；保存响应重新读取脱敏视图，不回显请求密码。保存 SQL 使用静默 logger，HTTP/启动错误脱敏；空白密码保留旧值。子进程认证只取已保存值，连接字段变化重建连接并取消任务。
+
+## Ant Design 6 remaining-height fix
+
+The previous layout styled obsolete ant-tabs-content-holder / ant-tabs-tabpane
+classes. Installed @rc-component/tabs 1.13 renders ant-tabs-body-holder >
+ant-tabs-body > ant-tabs-content. The intermediate body remained auto-sized,
+so the iframe's percentage height did not receive the remaining viewport space.
+Make all three current containers flex columns with flex:1/min-height:0 and
+exclude hidden content panes. Let the iframe flex from a zero height instead
+of an unresolved percentage; task/settings bodies retain internal scrolling.
+Use 100dvh (100vh fallback) to track mobile viewport changes as well.
+
+Height fix: formatted the affected CSS and rebuilt the production frontend
+successfully. No automated test suite or full pre-push gate was run, following
+the user's prior instruction to skip push validation. Browser layout has not
+been verified against the user's running deployment.
