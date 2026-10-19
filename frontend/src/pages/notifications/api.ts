@@ -2,9 +2,12 @@ import { z } from 'zod';
 import { HttpUtil } from '@/utils';
 import {
   NotificationClientSchema,
+  NotificationSaveInputSchema,
   NotificationPageSchema,
   SubscriptionNotificationSchema,
 } from '@/generated/zod';
+
+export type NotificationSaveInput = z.infer<typeof NotificationSaveInputSchema>;
 
 export type Notification = z.infer<typeof SubscriptionNotificationSchema>;
 
@@ -28,7 +31,7 @@ export async function notificationClients(search: string, page: number, ids: num
   return z.array(NotificationClientSchema).parse(msg.obj);
 }
 
-export async function saveNotification(body: Notification) {
+export async function saveNotification(body: NotificationSaveInput) {
   const msg = await HttpUtil.post('/panel/api/notifications/save', body, {
     headers: { 'Content-Type': 'application/json' },
     silent: true,

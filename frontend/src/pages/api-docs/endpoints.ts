@@ -439,10 +439,10 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/notifications/save',
-        summary: 'Create, edit, publish or withdraw a notification.',
+        summary: 'Save, publish, explicitly publish to Telegram, or withdraw a notification.',
         description:
-          'Use id=0 to create. published=false saves a draft or withdraws an existing event. A published event requires at least one client ID or group. Titles are limited to 120 characters, bodies to 4000, audiences to 2000 entries, and sortIndex to 0–1000000.',
-        requestSchema: { $ref: '#/components/schemas/SubscriptionNotification' },
+          'Use id=0 to create. pushTelegram is optional and defaults to false: normal publication does not enqueue Telegram messages. Set published=true and pushTelegram=true to publish and enqueue messages only for matching bound clients. Explicit Telegram delivery requires an enabled user Bot; failure rolls back the save. published=false saves a draft or withdraws an existing event. A published event requires at least one client ID or group. Titles are limited to 120 characters, bodies to 4000, audiences to 2000 entries, and sortIndex to 0–1000000.',
+        requestSchema: { $ref: '#/components/schemas/NotificationSaveInput' },
         responseSchema: 'SubscriptionNotification',
       },
       {

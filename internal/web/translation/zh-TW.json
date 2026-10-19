@@ -2590,7 +2590,9 @@
       "selectAllClients": "全选客户端",
       "selectAllGroups": "全选用户组",
       "clearSelection": "清空选择",
-      "audienceHelp": "客户端和用户组可同时选择，命中任一项即可接收，同一用户只发送一次。全选客户端包含所有页面，不受搜索词影响。"
+      "audienceHelp": "客户端和用户组可同时选择，命中任一项即可接收，同一用户只发送一次。全选客户端包含所有页面，不受搜索词影响。",
+      "publishTelegram": "发布并推送 TG",
+      "telegramHelp": "普通发布不主动发送 Telegram。点击“发布并推送 TG”才向匹配且已绑定的用户发送，投递状态可在 Telegram 消息和日志中查看。"
     },
     "telegram": {
       "messages": "消息",

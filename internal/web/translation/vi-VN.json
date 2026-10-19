@@ -2590,7 +2590,9 @@
       "selectAllClients": "Select all clients",
       "selectAllGroups": "Select all groups",
       "clearSelection": "Clear selection",
-      "audienceHelp": "Select clients and groups together. Matching either receives the notice once. Select all clients includes every page, regardless of search."
+      "audienceHelp": "Select clients and groups together. Matching either receives the notice once. Select all clients includes every page, regardless of search.",
+      "publishTelegram": "Publish and send to Telegram",
+      "telegramHelp": "Publishing alone does not send Telegram messages. Use “Publish and send to Telegram” to notify matching bound users. Delivery status is available under Telegram messages and logs."
     },
     "telegram": {
       "messages": "Messages",

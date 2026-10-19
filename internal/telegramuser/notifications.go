@@ -17,12 +17,12 @@ func EnqueueNotification(tx *gorm.DB, notice model.SubscriptionNotification) err
 	}
 	var cfg model.TelegramUserConfig
 	if err := tx.First(&cfg, 1).Error; errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil
+		return fmt.Errorf("configure and enable the user Telegram Bot before publishing with Telegram delivery")
 	} else if err != nil {
 		return fmt.Errorf("load user Bot notification settings: %w", err)
 	}
 	if !cfg.Enabled {
-		return nil
+		return fmt.Errorf("enable the user Telegram Bot before publishing with Telegram delivery")
 	}
 	var recipients []model.TelegramBinding
 	query := tx.Table("telegram_bindings AS b").Select("b.*").Joins("JOIN clients c ON c.id = b.client_id")

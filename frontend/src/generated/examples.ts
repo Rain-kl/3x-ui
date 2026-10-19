@@ -1376,6 +1376,25 @@ export const EXAMPLES: Record<string, unknown> = {
     ],
     "total": 0
   },
+  "NotificationSaveInput": {
+    "body": "Scheduled maintenance at 02:00.",
+    "clientIds": [
+      0
+    ],
+    "createdAt": 0,
+    "groups": [
+      ""
+    ],
+    "id": 0,
+    "publishToNodes": false,
+    "published": false,
+    "publishedAt": 0,
+    "pushTelegram": false,
+    "sortIndex": 0,
+    "targetType": "clients",
+    "title": "Maintenance",
+    "updatedAt": 0
+  },
   "OutboundTraffics": {
     "down": 0,
     "id": 0,

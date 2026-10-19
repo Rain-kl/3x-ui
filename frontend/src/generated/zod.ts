@@ -1268,6 +1268,23 @@ export const NotificationPageSchema = z.object({
 });
 export type NotificationPage = z.infer<typeof NotificationPageSchema>;
 
+export const NotificationSaveInputSchema = z.object({
+  body: z.string(),
+  clientIds: z.array(z.number().int()),
+  createdAt: z.number().int(),
+  groups: z.array(z.string()),
+  id: z.number().int(),
+  publishToNodes: z.boolean(),
+  published: z.boolean(),
+  publishedAt: z.number().int(),
+  pushTelegram: z.boolean().optional(),
+  sortIndex: z.number().int(),
+  targetType: z.string(),
+  title: z.string(),
+  updatedAt: z.number().int(),
+});
+export type NotificationSaveInput = z.infer<typeof NotificationSaveInputSchema>;
+
 export const OutboundTrafficsSchema = z.object({
   down: z.number().int(),
   id: z.number().int(),

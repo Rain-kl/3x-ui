@@ -27,6 +27,12 @@ type NotificationClient struct {
 	Group string `json:"group" gorm:"column:group_name"`
 }
 
+// FORK(subscription-notifications): Telegram delivery is an explicit publish action, not persisted notification state.
+type NotificationSaveInput struct {
+	model.SubscriptionNotification
+	PushTelegram bool `json:"pushTelegram,omitempty"`
+}
+
 type NotificationService struct{}
 
 func (NotificationService) List(page, size int) (NotificationPage, error) {
@@ -60,7 +66,11 @@ func (NotificationService) Clients(search string, ids []int, page, size int) ([]
 	return rows, nil
 }
 
-func (NotificationService) Save(input model.SubscriptionNotification) (model.SubscriptionNotification, error) {
+func (NotificationService) Save(request NotificationSaveInput) (model.SubscriptionNotification, error) {
+	input := request.SubscriptionNotification
+	if request.PushTelegram && !input.Published {
+		return input, fmt.Errorf("Telegram delivery requires a published notification")
+	}
 	input.Title = strings.TrimSpace(input.Title)
 	input.Body = strings.TrimSpace(input.Body)
 	if input.Id < 0 || utf8.RuneCountInString(input.Title) > 120 || input.Body == "" || utf8.RuneCountInString(input.Body) > 4000 {
@@ -155,8 +165,10 @@ func (NotificationService) Save(input model.SubscriptionNotification) (model.Sub
 				return fmt.Errorf("advance notification delivery version: %w", err)
 			}
 		}
-		if err := telegramuser.EnqueueNotification(tx, input); err != nil {
-			return err
+		if request.PushTelegram {
+			if err := telegramuser.EnqueueNotification(tx, input); err != nil {
+				return err
+			}
 		}
 		// FORK-END(telegram-user-bot)
 		return nil

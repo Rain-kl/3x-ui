@@ -92,7 +92,7 @@ export default function NotificationsPage() {
     },
     {
       title: t('pages.notifications.actions'),
-      width: 260,
+      width: 380,
       render: (_, row) => (
         <Space wrap>
           <Button size="small" onClick={() => setEditing(row)}>
@@ -103,13 +103,28 @@ export default function NotificationsPage() {
             loading={save.isPending}
             onClick={async () => {
               try {
-                await save.mutateAsync({ ...row, published: !row.published });
+                await save.mutateAsync({ ...row, published: !row.published, pushTelegram: false });
               } catch (error) {
                 reportError(error);
               }
             }}
           >
             {t(row.published ? 'pages.notifications.withdraw' : 'pages.notifications.publish')}
+          </Button>
+          {/* FORK(subscription-notifications): Telegram delivery is a separate explicit action, including republishing. */}
+          <Button
+            size="small"
+            loading={save.isPending}
+            disabled={save.isPending}
+            onClick={async () => {
+              try {
+                await save.mutateAsync({ ...row, published: true, pushTelegram: true });
+              } catch (error) {
+                reportError(error);
+              }
+            }}
+          >
+            {t('pages.notifications.publishTelegram')}
           </Button>
           <Popconfirm
             title={t('pages.notifications.deleteConfirm')}

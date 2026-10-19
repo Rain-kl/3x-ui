@@ -18,13 +18,18 @@ import {
 import { FormField, useZodForm } from '@/components/form/rhf';
 import { GroupSummaryListSchema } from '@/schemas/client';
 import { HttpUtil } from '@/utils';
-import { NotificationFormSchema, notificationClients, type Notification } from './api';
+import {
+  NotificationFormSchema,
+  notificationClients,
+  type Notification,
+  type NotificationSaveInput,
+} from './api';
 
 interface Props {
   value: Notification;
   saving: boolean;
   onClose: () => void;
-  onSave: (value: Notification) => Promise<void>;
+  onSave: (value: NotificationSaveInput) => Promise<void>;
 }
 
 export default function NotificationEditor({ value, saving, onClose, onSave }: Props) {
@@ -101,14 +106,14 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
     setBulkError(null);
     methods.setValue('groups', names, { shouldDirty: true, shouldValidate: true });
   };
-  const submit = (published: boolean) => {
+  const submit = (published: boolean, pushTelegram = false) => {
     methods.setValue('published', published);
     void methods.handleSubmit(async (data) => {
       if (published && data.clientIds.length === 0 && data.groups.length === 0) {
         methods.setError('clientIds', { message: 'pages.notifications.chooseAudience' });
         return;
       }
-      await onSave(data);
+      await onSave({ ...data, pushTelegram: published && pushTelegram });
     })();
   };
   const error = bulkError || clients.error || selected.error || groups.error;
@@ -136,6 +141,10 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
             onClick={() => submit(true)}
           >
             {t('pages.notifications.publish')}
+          </Button>
+          {/* FORK(subscription-notifications): Publishing alone must not send Telegram messages. */}
+          <Button loading={saving} disabled={selectingAll} onClick={() => submit(true, true)}>
+            {t('pages.notifications.publishTelegram')}
           </Button>
         </Space>
       }
@@ -263,6 +272,11 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
                 <Switch />
               </FormField>
               <Alert type="info" title={t('pages.notifications.nodeHelp')} />
+              <Alert
+                type="info"
+                title={t('pages.notifications.telegramHelp')}
+                style={{ marginTop: 12 }}
+              />
             </Col>
           </Row>
         </Form>

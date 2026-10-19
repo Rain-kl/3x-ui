@@ -5023,6 +5023,77 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "NotificationSaveInput": {
+    "description": "FORK(subscription-notifications): Telegram delivery is an explicit publish action, not persisted notification state.",
+    "properties": {
+      "body": {
+        "example": "Scheduled maintenance at 02:00.",
+        "type": "string"
+      },
+      "clientIds": {
+        "items": {
+          "type": "integer"
+        },
+        "type": "array"
+      },
+      "createdAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "groups": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "publishToNodes": {
+        "type": "boolean"
+      },
+      "published": {
+        "type": "boolean"
+      },
+      "publishedAt": {
+        "format": "int64",
+        "type": "integer"
+      },
+      "pushTelegram": {
+        "type": "boolean"
+      },
+      "sortIndex": {
+        "type": "integer"
+      },
+      "targetType": {
+        "example": "clients",
+        "type": "string"
+      },
+      "title": {
+        "example": "Maintenance",
+        "type": "string"
+      },
+      "updatedAt": {
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "body",
+      "clientIds",
+      "createdAt",
+      "groups",
+      "id",
+      "publishToNodes",
+      "published",
+      "publishedAt",
+      "sortIndex",
+      "targetType",
+      "title",
+      "updatedAt"
+    ],
+    "type": "object"
+  },
   "OutboundTraffics": {
     "description": "OutboundTraffics tracks traffic statistics for Xray outbound connections.",
     "properties": {

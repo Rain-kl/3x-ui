@@ -150,6 +150,10 @@
 - **上游改动标记**：`FORK(subscription-notifications)`。
 - **设计文档**：[定向订阅通知规范](docs/specs/subscription-notifications.md)；**实现文档**：[Agent Note](.agents/notes/subscription-notifications.md)。
 
+### 普通发布与 Telegram 推送分开
+
+- 通知编辑器和列表新增“发布并推送 TG”。普通发布默认不主动推送 Telegram；仅显式点击新按钮才在保存事务内向匹配的绑定用户排队发送，Bot 未配置或未启用时明确报错。请求标志不入库，避免后续普通保存继承推送意图。修改通知前后端、Telegram 入队与 API 契约，使用 `FORK(subscription-notifications)`，设计与实现见本节链接。
+
 ## mixed 统一客户端管理（mixed-clients）
 
 - **需求背景**：主控无法向子节点部署 mixed，独立静态账号无法复用客户端的计费、限速、到期和撤销流程。

@@ -1177,6 +1177,22 @@ export interface NotificationPage {
   total: number;
 }
 
+export interface NotificationSaveInput {
+  body: string;
+  clientIds: number[];
+  createdAt: number;
+  groups: string[];
+  id: number;
+  publishToNodes: boolean;
+  published: boolean;
+  publishedAt: number;
+  pushTelegram?: boolean;
+  sortIndex: number;
+  targetType: string;
+  title: string;
+  updatedAt: number;
+}
+
 export interface OutboundTraffics {
   down: number;
   id: number;

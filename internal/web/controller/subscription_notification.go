@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"github.com/mhsanaei/3x-ui/v3/internal/web/service"
 )
 
@@ -40,7 +39,7 @@ func newNotificationController(g *gin.RouterGroup) {
 		jsonObj(c, result, err)
 	})
 	g.POST("/save", func(c *gin.Context) {
-		var body model.SubscriptionNotification
+		var body service.NotificationSaveInput
 		if err := c.ShouldBindJSON(&body); err != nil {
 			jsonObj(c, nil, fmt.Errorf("decode subscription notification: %w", err))
 			return
