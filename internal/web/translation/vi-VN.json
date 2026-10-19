@@ -2735,7 +2735,7 @@
       "save": "Save",
       "saved": "Saved",
       "refreshModels": "Reload and refresh models",
-      "discoveryHint": "Communicates through CLI stdin/stdout, without an HTTP service or authentication. Deployment sets the executable path; a blank workspace uses the panel directory. Changing settings cancels active AI runs.",
+      "discoveryHint": "Uses the official OpenCode v2 Web UI. The panel manages a loopback service and administrator authentication; no service password is needed. Scheduled tasks use native CLI. Changing settings cancels active runs.",
       "newTask": "New task",
       "editTask": "Edit task",
       "taskName": "Task name",
@@ -2772,7 +2772,7 @@
         "ready": "Ready"
       },
       "providerConfig": "OpenCode provider and model configuration",
-      "providerHint": "Edit native opencode.json. Add a provider and enter its baseURL, apiKey and model IDs. Complete credentials are visible to administrators. Saving cancels active AI runs.",
+      "providerHint": "Edit native OpenCode v2 config: providers, package and settings (baseURL, apiKey). Full credentials are visible only to administrators. Saving restarts OpenCode and cancels active runs.",
       "addProvider": "Add OpenAI-compatible provider",
       "saveProviderConfig": "Save provider configuration",
       "invalidJSON": "Enter a valid JSON object",

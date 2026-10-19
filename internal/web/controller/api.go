@@ -181,6 +181,8 @@ func relAPIPath(fullPath string) string {
 
 // initRouter sets up the API routes for inbounds, server, and other endpoints.
 func (a *APIController) initRouter(g *gin.RouterGroup) {
+	// FORK(panel-ai): The official UI uses administrator sessions and its own browser CSRF adapter.
+	newPanelAIWebController(g)
 	// Main API group
 	api := g.Group("/panel/api")
 	api.Use(a.checkAPIAuth)

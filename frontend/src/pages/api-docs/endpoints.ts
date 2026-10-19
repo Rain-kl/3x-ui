@@ -689,8 +689,17 @@ export const sections: readonly Section[] = [
     id: 'panel-ai',
     title: 'Panel AI',
     description:
-      'Administrator assistant backed by local OpenCode CLI / ACP stdio and bounded audit MCP tools.',
+      'Official OpenCode v2 Web UI behind administrator session authentication; scheduled tasks use native ACP and bounded audit MCP tools.',
     endpoints: [
+      {
+        method: 'GET',
+        path: '/panel/ai/opencode',
+        summary:
+          'Open official OpenCode v2 UI, assets and streaming API through the authenticated panel gateway.',
+        description:
+          'Redirects to the official UI; resources and native API paths are served below this prefix. Requires an administrator browser session; API tokens are not accepted. Mutating native API requests require the panel X-CSRF-Token header; same-origin WebSocket upgrades are supported. OpenCode pairing and authentication endpoints are blocked.',
+        response: 'Official HTML, static resource or native OpenCode API response.',
+      },
       {
         method: 'GET',
         path: '/panel/api/ai/deployment',

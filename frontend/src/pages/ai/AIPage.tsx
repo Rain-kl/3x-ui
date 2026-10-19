@@ -5,7 +5,7 @@ import AppSidebar from '@/layouts/AppSidebar';
 import { useTheme } from '@/hooks/useTheme';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { aiApi } from './api';
-import AIChat from './AIChat';
+import { withBasePath } from '@/api/http-init';
 import AITasks from './AITasks';
 import AISettings from './AISettings';
 import './AIPage.css';
@@ -62,13 +62,18 @@ export default function AIPage() {
                   {
                     key: 'chat',
                     label: t('pages.ai.chat'),
-                    children: (
-                      <AIChat
-                        models={models.data ?? []}
-                        defaultModel={settings.data?.model ?? ''}
-                        enabled={enabled}
+                    children: enabled ? (
+                      <iframe
+                        title="OpenCode"
+                        src={withBasePath('/panel/ai/opencode/')}
+                        style={{
+                          width: '100%',
+                          height: 'calc(100dvh - 260px)',
+                          minHeight: 520,
+                          border: 0,
+                        }}
                       />
-                    ),
+                    ) : null,
                   },
                   {
                     key: 'tasks',

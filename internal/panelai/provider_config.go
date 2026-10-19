@@ -21,7 +21,7 @@ type AIProviderConfig struct {
 func loadProviderConfig(directory string) (map[string]any, error) {
 	data, err := os.ReadFile(filepath.Join(directory, "opencode.json"))
 	if errors.Is(err, os.ErrNotExist) {
-		return map[string]any{"$schema": "https://opencode.ai/config.json", "provider": map[string]any{}}, nil
+		return map[string]any{"$schema": "https://opencode.ai/config.json", "providers": map[string]any{}}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("read OpenCode provider configuration: %w", err)
@@ -36,7 +36,7 @@ func loadProviderConfig(directory string) (map[string]any, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("OpenCode configuration must be a JSON object")
 	}
-	return cfg, nil
+	return normalizeProviderConfig(cfg), nil
 }
 
 func secretField(key string) bool {
@@ -84,8 +84,8 @@ func saveProviderConfig(raw string) error {
 		return fmt.Errorf("OpenCode configuration must be one JSON object")
 	}
 	for key := range value {
-		if key != "$schema" && key != "provider" && key != "model" && key != "small_model" {
-			return fmt.Errorf("OpenCode configuration field %q is panel-managed; only provider/model/small_model are editable", key)
+		if key != "$schema" && key != "providers" && key != "provider" && key != "model" && key != "small_model" {
+			return fmt.Errorf("OpenCode configuration field %q is panel-managed; only providers/model/small_model are editable", key)
 		}
 	}
 	for _, key := range []string{"model", "small_model", "$schema"} {
@@ -95,24 +95,25 @@ func saveProviderConfig(raw string) error {
 			}
 		}
 	}
-	providers, ok := value["provider"].(map[string]any)
+	value = normalizeProviderConfig(value)
+	providers, ok := value["providers"].(map[string]any)
 	if !ok {
-		return fmt.Errorf("OpenCode provider must be an object")
+		return fmt.Errorf("OpenCode providers must be an object")
 	}
 	for id, entry := range providers {
 		provider, ok := entry.(map[string]any)
 		if !ok || id == "" || strings.ContainsAny(id, "/\\\n\r") {
 			return fmt.Errorf("invalid OpenCode provider ID or object")
 		}
-		if npm, ok := provider["npm"]; ok {
-			pkg, ok := npm.(string)
-			if !ok || !strings.HasPrefix(pkg, "@ai-sdk/") || strings.ContainsAny(strings.TrimPrefix(pkg, "@ai-sdk/"), "/@ \\;\n\r") {
-				return fmt.Errorf("provider %q npm must be an @ai-sdk package name", id)
+		if adapter, ok := provider["package"]; ok {
+			pkg, ok := adapter.(string)
+			if !ok || !strings.HasPrefix(pkg, "@opencode/ai/providers/") || strings.ContainsAny(strings.TrimPrefix(pkg, "@opencode/ai/providers/"), "/@ \\;\n\r") {
+				return fmt.Errorf("provider %q package must be an @opencode/ai/providers adapter", id)
 			}
 		}
-		if options, ok := provider["options"]; ok {
+		if options, ok := provider["settings"]; ok {
 			if _, ok := options.(map[string]any); !ok {
-				return fmt.Errorf("provider %q options must be an object", id)
+				return fmt.Errorf("provider %q settings must be an object", id)
 			}
 		}
 		if models, ok := provider["models"]; ok {
@@ -188,4 +189,31 @@ func redactConfigText(directory, text string) string {
 	}
 	walk(config)
 	return text
+}
+
+func normalizeProviderConfig(value map[string]any) map[string]any {
+	if _, exists := value["providers"]; exists {
+		return value
+	}
+	providers, ok := value["provider"].(map[string]any)
+	if !ok {
+		return value
+	}
+	for _, entry := range providers {
+		provider, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		if pkg, ok := provider["npm"].(string); ok {
+			provider["package"] = strings.Replace(pkg, "@ai-sdk/", "@opencode/ai/providers/", 1)
+			delete(provider, "npm")
+		}
+		if options, ok := provider["options"]; ok {
+			provider["settings"] = options
+			delete(provider, "options")
+		}
+	}
+	value["providers"] = providers
+	delete(value, "provider")
+	return value
 }

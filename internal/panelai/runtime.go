@@ -17,6 +17,8 @@ import (
 )
 
 type Manager struct {
+	webMu         sync.Mutex
+	web           *webProcess
 	connectionMu  sync.Mutex
 	runMu         sync.Mutex
 	ctx           context.Context
@@ -81,6 +83,7 @@ func (m *Manager) Stop() {
 }
 
 func (m *Manager) ResetConnection() {
+	m.stopWeb()
 	m.runMu.Lock()
 	for _, cancel := range m.active {
 		cancel()
@@ -98,7 +101,7 @@ func (m *Manager) removeRemoteSession(id string) error {
 	if err != nil {
 		return fmt.Errorf("connect to remove OpenCode session: %w", err)
 	}
-	_, err = client.output(ctx, "session", "delete", id)
+	_, err = client.output(ctx, "session", "delete", id, "--standalone")
 	return err
 }
 

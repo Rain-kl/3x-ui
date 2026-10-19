@@ -5,8 +5,8 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
+	"crypto/sha512"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,7 +19,7 @@ import (
 	"github.com/mhsanaei/3x-ui/v3/internal/config"
 )
 
-const openCodeVersion = "1.19.3"
+const openCodeVersion = "2.0.32"
 
 type AIDeployment struct {
 	State   string `json:"state"`
@@ -79,20 +79,20 @@ func deploymentAsset() (string, string, error) {
 	switch runtime.GOOS + "/" + runtime.GOARCH {
 	case "linux/amd64":
 		if !muslHost() {
-			return "opencode-linux-x64-baseline.tar.gz", "531cff2441129c30f0edd5878af494108ad07f5feb46d7ee29a2a5b830a5765d", nil
+			return "https://registry.npmjs.org/@opencode/cli-linux-x64-baseline/-/cli-linux-x64-baseline-2.0.32.tgz", "NrB4iglJb7vGZWJ6B0qVH1EMHhWBZ4ADsAG9W0xLanzgxJ6eLEEsGBvxRX0cm/KPag5E/N0yZGsDVDZYcnz/OQ==", nil
 		}
-		return "opencode-linux-x64-baseline-musl.tar.gz", "738506562666cc67e3512f04ecac50c0bae833c5bf44e1a59c99e5827a851778", nil
+		return "https://registry.npmjs.org/@opencode/cli-linux-x64-baseline-musl/-/cli-linux-x64-baseline-musl-2.0.32.tgz", "SdZFMhObZVoK+XQYXxv2Hwey/n6+tHzVAEMgICjd/T8n6no9B0T/+5VMFnFsEaqPGIx3GvU3e0AdnoHLp0Uh0w==", nil
 	case "linux/arm64":
 		if !muslHost() {
-			return "opencode-linux-arm64.tar.gz", "7900818a6a98881edbbadab4b7525940eff3b9750040c200481f9f56cacee405", nil
+			return "https://registry.npmjs.org/@opencode/cli-linux-arm64/-/cli-linux-arm64-2.0.32.tgz", "YR5O03irvmot/G0f8W49ehvhn5uqCFN3vf9JTsChvf47W6ldjKCNvsaCSXS2SP26dPOUMQBn7WqbKnyHzrNR5w==", nil
 		}
-		return "opencode-linux-arm64-musl.tar.gz", "39c9ff1ea47fd59752613079f97bef40a2d14c30bc6bb5772a91d9d708e2d0b3", nil
+		return "https://registry.npmjs.org/@opencode/cli-linux-arm64-musl/-/cli-linux-arm64-musl-2.0.32.tgz", "C0FaJbYTeoAmN73bWgSIXIeJcbWXhTQ2c/Df4DSQ8FwDY6bvOuqhsvVz4rTXvGvIqsRtVDfofWp01F4aQlwk5A==", nil
 	case "darwin/amd64":
-		return "opencode-darwin-x64-baseline.zip", "03f8c32f81a2c35429afedfb8f63978af32329febcebf800d52486f6ba568151", nil
+		return "https://registry.npmjs.org/@opencode/cli-darwin-x64-baseline/-/cli-darwin-x64-baseline-2.0.32.tgz", "r/T6QeDkYqzDHdI6VclvlJXqU6j0tbBmsP1+a1S+AyZxqEsY4vm9veFaoT5WQ/ekGH4TsAp3x0XtyF/m8eLFoQ==", nil
 	case "darwin/arm64":
-		return "opencode-darwin-arm64.zip", "c2d0fecd27acf6e08be02c1f5d384614d07495587766bcc4a6bff3971749bb64", nil
+		return "https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.0.32.tgz", "wASwXBsWaOAYcZrh4ZLl4oaVxPCUAGVb7zZvXBBF8TjWE4uWgY0D2tj6gn80JfcO3b/s9woM6dP/gKqYKK2EdQ==", nil
 	case "windows/amd64":
-		return "opencode-windows-x64-baseline.zip", "0d59113484bfe8d6dc146fc981f5c33faa8318303c183711b7a9387060b289e8", nil
+		return "https://registry.npmjs.org/@opencode/cli-windows-x64-baseline/-/cli-windows-x64-baseline-2.0.32.tgz", "8vim3HxOdy5VaL686BvwozryJCaiet5PiMIC/Ir9rP6h9m+qtd9KBV/2Hd2yuXvpq8ykNlFgHziAqwfsbkyrQg==", nil
 	default:
 		return "", "", fmt.Errorf("OpenCode one-click deployment does not support %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
@@ -141,7 +141,7 @@ func (m *Manager) install(ctx context.Context) error {
 	}
 	defer os.Remove(archive.Name())
 	defer archive.Close()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://github.com/anomalyco/opencode/releases/download/v"+openCodeVersion+"/"+asset, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, asset, nil)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (m *Manager) install(ctx context.Context) error {
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("download official OpenCode: HTTP %d", response.StatusCode)
 	}
-	hash := sha256.New()
+	hash := sha512.New()
 	size, err := io.Copy(io.MultiWriter(archive, hash), io.LimitReader(response.Body, (512<<20)+1))
 	if err != nil {
 		return fmt.Errorf("download OpenCode archive: %w", err)
@@ -163,8 +163,8 @@ func (m *Manager) install(ctx context.Context) error {
 		return fmt.Errorf("OpenCode archive exceeds 512 MiB")
 	}
 	m.installPhase("verify")
-	if hex.EncodeToString(hash.Sum(nil)) != digest {
-		return fmt.Errorf("OpenCode %s SHA-256 checksum mismatch; installation unchanged", asset)
+	if base64.StdEncoding.EncodeToString(hash.Sum(nil)) != digest {
+		return fmt.Errorf("OpenCode %s SHA-512 checksum mismatch; installation unchanged", asset)
 	}
 	if _, err = archive.Seek(0, io.SeekStart); err != nil {
 		return err
@@ -255,7 +255,7 @@ func extractCLI(archive *os.File, asset, destination, name string, size int64) e
 			if err != nil {
 				return fmt.Errorf("read OpenCode tar: %w", err)
 			}
-			if strings.TrimPrefix(entry.Name, "./") == name && entry.Typeflag == tar.TypeReg {
+			if (strings.TrimPrefix(entry.Name, "./") == name || entry.Name == "package/bin/"+name) && entry.Typeflag == tar.TypeReg {
 				source = tarReader
 				break
 			}

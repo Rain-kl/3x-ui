@@ -3,6 +3,7 @@ package panelai
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -35,6 +36,11 @@ func (o *openCode) command(ctx context.Context, args ...string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, o.binary, args...)
 	cmd.Dir = o.directory
 	cmd.Env = cliEnvironment(o.directory)
+	if cfg, err := loadProviderConfig(o.directory); err == nil {
+		if data, err := json.Marshal(cfg); err == nil {
+			cmd.Env = append(cmd.Env, "OPENCODE_CONFIG_CONTENT="+string(data))
+		}
+	}
 	cmd.WaitDelay = 2 * time.Second
 	isolateProcess(cmd)
 	return cmd
@@ -83,7 +89,7 @@ func (w *boundedOutput) Write(p []byte) (int, error) {
 
 func (o *openCode) health(ctx context.Context) (string, error) {
 	out, err := o.output(ctx, "--version")
-	return strings.TrimSpace(out), err
+	return strings.TrimPrefix(strings.TrimSpace(out), "opencode v"), err
 }
 
 func (m *Manager) connect(ctx context.Context) (*openCode, error) {
@@ -159,11 +165,11 @@ func (m *Manager) Models(ctx context.Context) ([]AIModelOption, error) {
 	if err != nil {
 		return nil, err
 	}
-	providers, _ := config["provider"].(map[string]any)
+	providers, _ := config["providers"].(map[string]any)
 	if len(providers) == 0 {
 		return []AIModelOption{}, nil
 	}
-	out, err := client.output(ctx, "models", "--pure")
+	out, err := client.output(ctx, "models", "--standalone")
 	if err != nil {
 		return nil, err
 	}

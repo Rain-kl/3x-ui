@@ -41,7 +41,7 @@ func (o *openCode) startACP(ctx context.Context, scheduled bool) (*acpClient, er
 	if err != nil {
 		return nil, err
 	}
-	providers, _ := configuration["provider"].(map[string]any)
+	providers, _ := configuration["providers"].(map[string]any)
 	if len(providers) == 0 {
 		return nil, fmt.Errorf("configure an OpenCode provider and model in AI settings before starting a conversation")
 	}
@@ -50,13 +50,13 @@ func (o *openCode) startACP(ctx context.Context, scheduled bool) (*acpClient, er
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	cmd := o.command(ctx, "acp", "--pure", "--cwd", o.directory)
-	permission := map[string]string{"*": "deny", "panel_audit_query": "allow"}
-	tools := map[string]bool{"*": false, "panel_audit_query": true, "panel_audit_create_task": !scheduled}
+	cmd := o.command(ctx, "acp")
+	permission := map[string]string{"*": "deny", "execute": "allow", "panel_audit_query": "allow"}
+	tools := map[string]bool{"*": false, "execute": true, "panel_audit_query": true, "panel_audit_create_task": !scheduled}
 	if !scheduled {
 		permission["panel_audit_create_task"] = "allow"
 	}
-	override := map[string]any{"enabled_providers": ids, "permission": permission, "tools": tools, "default_agent": "build", "agent": map[string]any{"build": map[string]any{"permission": permission, "tools": tools}}, "mcp": map[string]any{}}
+	override := map[string]any{"providers": providers, "enabled_providers": ids, "permission": permission, "tools": tools, "default_agent": "build", "agent": map[string]any{"build": map[string]any{"permission": permission, "tools": tools}}, "mcp": map[string]any{}}
 	config, _ := json.Marshal(override)
 	cmd.Env = append(cmd.Env, "OPENCODE_CONFIG_CONTENT="+string(config))
 	input, err := cmd.StdinPipe()

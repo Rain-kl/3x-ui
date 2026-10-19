@@ -38,15 +38,15 @@ function Editor({ initial, path }: { initial: string; path: string }) {
       const config = z
         .record(z.string(), z.unknown())
         .parse(JSON.parse(methods.getValues('config')));
-      const providers = z.record(z.string(), z.unknown()).parse(config.provider ?? {});
+      const providers = z.record(z.string(), z.unknown()).parse(config.providers ?? {});
       let id = 'my-provider';
       for (let n = 2; providers[id]; n++) id = `my-provider-${n}`;
-      config.provider = {
+      config.providers = {
         ...providers,
         [id]: {
-          npm: '@ai-sdk/openai-compatible',
+          package: '@opencode/ai/providers/openai-compatible',
           name: id,
-          options: { baseURL: 'https://api.example.com/v1', apiKey: '' },
+          settings: { baseURL: 'https://api.example.com/v1', apiKey: '' },
           models: { 'my-model': { name: 'My model' } },
         },
       };

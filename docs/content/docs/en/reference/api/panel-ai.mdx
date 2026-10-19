@@ -1,12 +1,16 @@
 ---
 title: Panel AI
-description: Administrator assistant backed by local OpenCode CLI / ACP stdio
-  and bounded audit MCP tools.
+description: Official OpenCode v2 Web UI behind administrator session
+  authentication; scheduled tasks use native ACP and bounded audit MCP tools.
 full: true
 _openapi:
   preload:
     - ./public/openapi.json
   toc:
+    - depth: 2
+      title: Open official OpenCode v2 UI, assets and streaming API through the
+        authenticated panel gateway.
+      url: '#open-official-opencode-v2-ui-assets-and-streaming-api-through-the-authenticated-panel-gateway'
     - depth: 2
       title: Read managed OpenCode deployment state and phase.
       url: '#read-managed-opencode-deployment-state-and-phase'
@@ -81,6 +85,9 @@ _openapi:
       url: '#execute-a-task-now-without-waiting-for-the-next-scheduled-run'
   structuredData:
     headings:
+      - content: Open official OpenCode v2 UI, assets and streaming API through the
+          authenticated panel gateway.
+        id: open-official-opencode-v2-ui-assets-and-streaming-api-through-the-authenticated-panel-gateway
       - content: Read managed OpenCode deployment state and phase.
         id: read-managed-opencode-deployment-state-and-phase
       - content: Install checksum-verified official OpenCode CLI and configure the panel
@@ -133,6 +140,12 @@ _openapi:
       - content: Execute a task now without waiting for the next scheduled run.
         id: execute-a-task-now-without-waiting-for-the-next-scheduled-run
     contents:
+      - content: Redirects to the official UI; resources and native API paths are served
+          below this prefix. Requires an administrator browser session; API
+          tokens are not accepted. Mutating native API requests require the
+          panel X-CSRF-Token header; same-origin WebSocket upgrades are
+          supported. OpenCode pairing and authentication endpoints are blocked.
+        heading: open-official-opencode-v2-ui-assets-and-streaming-api-through-the-authenticated-panel-gateway
       - content: Uses a managed or manually configured absolute CLI path. No HTTP
           OpenCode service or shell environment discovery. Changing settings
           cancels active runs. Provider credentials are managed separately in
@@ -147,7 +160,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/ai/deployment","method":"get"},{"path":"/panel/api/ai/deployment","method":"post"},{"path":"/panel/api/ai/provider-config","method":"get"},{"path":"/panel/api/ai/provider-config","method":"post"},{"path":"/panel/api/ai/runs/{id}/events","method":"get"},{"path":"/panel/api/ai/settings","method":"get"},{"path":"/panel/api/ai/settings","method":"post"},{"path":"/panel/api/ai/status","method":"get"},{"path":"/panel/api/ai/reconnect","method":"post"},{"path":"/panel/api/ai/models","method":"get"},{"path":"/panel/api/ai/sessions","method":"get"},{"path":"/panel/api/ai/sessions","method":"post"},{"path":"/panel/api/ai/sessions/{id}","method":"get"},{"path":"/panel/api/ai/sessions/{id}/delete","method":"post"},{"path":"/panel/api/ai/sessions/{id}/messages","method":"post"},{"path":"/panel/api/ai/runs","method":"get"},{"path":"/panel/api/ai/runs/{id}","method":"get"},{"path":"/panel/api/ai/runs/{id}/cancel","method":"post"},{"path":"/panel/api/ai/tasks","method":"get"},{"path":"/panel/api/ai/tasks","method":"post"},{"path":"/panel/api/ai/tasks/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks/{id}/run","method":"post"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/ai/opencode","method":"get"},{"path":"/panel/api/ai/deployment","method":"get"},{"path":"/panel/api/ai/deployment","method":"post"},{"path":"/panel/api/ai/provider-config","method":"get"},{"path":"/panel/api/ai/provider-config","method":"post"},{"path":"/panel/api/ai/runs/{id}/events","method":"get"},{"path":"/panel/api/ai/settings","method":"get"},{"path":"/panel/api/ai/settings","method":"post"},{"path":"/panel/api/ai/status","method":"get"},{"path":"/panel/api/ai/reconnect","method":"post"},{"path":"/panel/api/ai/models","method":"get"},{"path":"/panel/api/ai/sessions","method":"get"},{"path":"/panel/api/ai/sessions","method":"post"},{"path":"/panel/api/ai/sessions/{id}","method":"get"},{"path":"/panel/api/ai/sessions/{id}/delete","method":"post"},{"path":"/panel/api/ai/sessions/{id}/messages","method":"post"},{"path":"/panel/api/ai/runs","method":"get"},{"path":"/panel/api/ai/runs/{id}","method":"get"},{"path":"/panel/api/ai/runs/{id}/cancel","method":"post"},{"path":"/panel/api/ai/tasks","method":"get"},{"path":"/panel/api/ai/tasks","method":"post"},{"path":"/panel/api/ai/tasks/{id}/delete","method":"post"},{"path":"/panel/api/ai/tasks/{id}/run","method":"post"}]} showTitle />
     </>
   );
 }

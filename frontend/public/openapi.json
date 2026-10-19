@@ -6417,7 +6417,7 @@
     },
     {
       "name": "Panel AI",
-      "description": "Administrator assistant backed by local OpenCode CLI / ACP stdio and bounded audit MCP tools."
+      "description": "Official OpenCode v2 Web UI behind administrator session authentication; scheduled tasks use native ACP and bounded audit MCP tools."
     },
     {
       "name": "Audit",
@@ -9152,6 +9152,37 @@
                 "example": {
                   "success": true,
                   "msg": "Inbound updated"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/ai/opencode": {
+      "get": {
+        "tags": [
+          "Panel AI"
+        ],
+        "summary": "Open official OpenCode v2 UI, assets and streaming API through the authenticated panel gateway.",
+        "operationId": "get_panel_ai_opencode",
+        "description": "Redirects to the official UI; resources and native API paths are served below this prefix. Requires an administrator browser session; API tokens are not accepted. Mutating native API requests require the panel X-CSRF-Token header; same-origin WebSocket upgrades are supported. OpenCode pairing and authentication endpoints are blocked.",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
                 }
               }
             }

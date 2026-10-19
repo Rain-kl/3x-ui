@@ -2735,7 +2735,7 @@
       "save": "保存",
       "saved": "已保存",
       "refreshModels": "重新加载并读取模型",
-      "discoveryHint": "通过 CLI 标准输入输出通信，无需 HTTP 地址或认证。部署自动填写程序路径；工作目录留空使用面板专用目录。修改设置会取消正在执行的 AI 任务。",
+      "discoveryHint": "使用 OpenCode v2 官方网页；面板自动管理本机服务并验证管理员登录，无需填写服务密码。定时任务通过原生 CLI 执行，修改设置会中止正在执行的任务。",
       "newTask": "新建任务",
       "editTask": "编辑任务",
       "taskName": "任务名称",
@@ -2772,7 +2772,7 @@
         "ready": "已就绪"
       },
       "providerConfig": "OpenCode 供应商与模型配置",
-      "providerHint": "直接编辑原生 opencode.json；添加供应商后填写 baseURL、apiKey 和模型 ID。配置包含完整密钥，仅管理员可访问。保存会取消正在执行的 AI 任务。",
+      "providerHint": "编辑 OpenCode v2 原生配置：providers 为供应商，package 为适配器，settings 包含 baseURL 和 apiKey。完整密钥仅管理员可见；保存将重启 OpenCode 并取消活动任务。",
       "addProvider": "添加兼容 OpenAI 的供应商",
       "saveProviderConfig": "保存供应商配置",
       "invalidJSON": "请输入有效的 JSON 对象",
