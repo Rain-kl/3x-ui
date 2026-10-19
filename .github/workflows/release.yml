@@ -20,6 +20,12 @@ on:
       - "x-ui.service.rhel"
       - ".github/workflows/release.yml"
 
+permissions:
+  contents: read
+
+env:
+  BOOTLIN_VERSION: 2026.08-1
+
 jobs:
   resolve-xray-version:
     runs-on: ubuntu-latest
@@ -65,21 +71,18 @@ jobs:
             sleep 15
           done
 
-  validate-core:
-    needs: resolve-xray-version
+  frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-          check-latest: true
       - uses: pnpm/action-setup@v6
         with:
           package_json_file: frontend/package.json
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: 26
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
       - name: Verify panel frontend
         working-directory: frontend
         run: |
@@ -88,6 +91,41 @@ jobs:
           pnpm lint
           pnpm test --project unit
           pnpm run build
+      - name: Share verified frontend bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: panel-frontend
+          path: internal/web/dist/
+          include-hidden-files: true
+          retention-days: 1
+
+  validate-core:
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [integration, race]
+    needs: resolve-xray-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Cache Go modules
+        uses: actions/cache@v5
+        with:
+          path: ~/go/pkg/mod
+          key: modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: modules-${{ runner.os }}-
+      - name: Cache Go compilation
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/go-build
+          key: compile-${{ runner.os }}-${{ runner.arch }}-native-${{ matrix.check }}-gcc-${{ hashFiles('go.mod') }}-${{ hashFiles('go.mod', 'go.sum') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            compile-${{ runner.os }}-${{ runner.arch }}-native-${{ matrix.check }}-gcc-${{ hashFiles('go.mod') }}-${{ hashFiles('go.mod', 'go.sum') }}-
+            compile-${{ runner.os }}-${{ runner.arch }}-native-${{ matrix.check }}-gcc-${{ hashFiles('go.mod') }}-
       - name: Download and verify selected custom core
         env:
           XRAY_VERSION: ${{ needs.resolve-xray-version.outputs.version }}
@@ -106,22 +144,29 @@ jobs:
           actual=$(./xray version | awk 'NR==1 {print "v" $2}')
           test "$actual" = "$XRAY_VERSION"
       - name: Verify selected binary audit, domains and rate limits
+        if: matrix.check == 'integration'
         env:
           XRAY_TRAFFICLOG_BIN: /tmp/validated-xray/xray
         run: go test github.com/xtls/xray-core/testing/trafficlog -count=1
       - name: Verify panel audit and real core API integration
+        if: matrix.check == 'integration'
         env:
           XRAY_E2E_BINARY: /tmp/validated-xray/xray
         run: |
           make dist-stub
           go test ./internal/audit ./internal/xray ./internal/web/service ./internal/database ./internal/web/controller ./internal/web/job ./internal/web/runtime -count=1
           go test ./internal/web -run 'Test(MasterNodeContract|RouteRegistryContract)' -count=1
-          go test -race ./internal/audit ./internal/web/service -run 'Test(Audit|SetAudit|Node)' -count=1
+      - name: Verify audit and node races
+        if: matrix.check == 'race'
+        env:
+          XRAY_E2E_BINARY: /tmp/validated-xray/xray
+        run: |
+          make dist-stub
+          go test -race ./internal/audit -count=1
+          go test -race ./internal/web/service -run 'Test(Audit|SetAudit|Node)' -count=1 -timeout 25m
 
   build:
-    needs: [resolve-xray-version, validate-core]
-    permissions:
-      contents: write
+    needs: [resolve-xray-version, frontend]
     strategy:
       # One platform hitting a transient outage must not cancel the other six.
       fail-fast: false
@@ -143,29 +188,33 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-          check-latest: true
-
-      # Frontend dist must be built BEFORE go build — Go's //go:embed
-      # all:dist directive in internal/web/web.go requires internal/web/dist/ to exist
-      # at compile time. internal/web/dist/ is .gitignored, so on a fresh CI
-      # checkout it doesn't exist until vite emits it.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          cache: false
+      - name: Cache Go modules
+        uses: actions/cache@v5
         with:
-          package_json_file: frontend/package.json
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+          path: ~/go/pkg/mod
+          key: modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: modules-${{ runner.os }}-
+      - name: Cache Go compilation
+        uses: actions/cache@v5
         with:
-          node-version-file: .nvmrc
-          cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          path: ~/.cache/go-build
+          key: compile-${{ runner.os }}-${{ runner.arch }}-linux-${{ matrix.platform }}-bootlin-${{ env.BOOTLIN_VERSION }}-${{ hashFiles('go.mod') }}-${{ hashFiles('go.mod', 'go.sum') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            compile-${{ runner.os }}-${{ runner.arch }}-linux-${{ matrix.platform }}-bootlin-${{ env.BOOTLIN_VERSION }}-${{ hashFiles('go.mod') }}-${{ hashFiles('go.mod', 'go.sum') }}-
+            compile-${{ runner.os }}-${{ runner.arch }}-linux-${{ matrix.platform }}-bootlin-${{ env.BOOTLIN_VERSION }}-${{ hashFiles('go.mod') }}-
 
-      - name: Build frontend bundle
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run build
-        working-directory: frontend
+      - name: Download verified frontend bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: panel-frontend
+          path: internal/web/dist
+
+      - name: Cache Bootlin toolchain
+        uses: actions/cache@v5
+        with:
+          path: /tmp/xui-bootlin
+          key: bootlin-${{ runner.os }}-${{ runner.arch }}-${{ matrix.platform }}-${{ env.BOOTLIN_VERSION }}
 
       - name: Build 3X-UI
         run: |
@@ -184,19 +233,17 @@ jobs:
             386) BOOTLIN_ARCH="x86-i686" ;;
             s390x) BOOTLIN_ARCH="s390x-z13" ;;
           esac
-          echo "Resolving Bootlin musl toolchain for arch=$BOOTLIN_ARCH (platform=${{ matrix.platform }})"
-          TARBALL_BASE="https://toolchains.bootlin.com/downloads/releases/toolchains/$BOOTLIN_ARCH/tarballs/"
-          TARBALL_URL=$(curl -fsSL $CURL_RETRY "$TARBALL_BASE" | grep -oE "${BOOTLIN_ARCH}--musl--stable-[^\"]+\\.tar\\.xz" | sort -r | head -n1)
-          [ -z "$TARBALL_URL" ] && { echo "Failed to locate Bootlin musl toolchain for arch=$BOOTLIN_ARCH" >&2; exit 1; }
-          echo "Downloading: $TARBALL_URL"
-          cd /tmp
-          curl -fL -sS $CURL_RETRY -o "$(basename "$TARBALL_URL")" "$TARBALL_BASE/$TARBALL_URL"
-          tar -xf "$(basename "$TARBALL_URL")"
-          TOOLCHAIN_DIR=$(find . -maxdepth 1 -type d -name "${BOOTLIN_ARCH}--musl--stable-*" | head -n1)
-          export PATH="$(realpath "$TOOLCHAIN_DIR")/bin:$PATH"
-          export CC=$(realpath "$(find "$TOOLCHAIN_DIR/bin" -name '*-gcc.br_real' -type f -executable | head -n1)")
-          [ -z "$CC" ] && { echo "No gcc.br_real found in $TOOLCHAIN_DIR/bin" >&2; exit 1; }
-          cd -
+          TOOLCHAIN_DIR="/tmp/xui-bootlin/${BOOTLIN_ARCH}--musl--stable-${BOOTLIN_VERSION}"
+          if [ ! -d "$TOOLCHAIN_DIR/bin" ]; then
+            TARBALL="${BOOTLIN_ARCH}--musl--stable-${BOOTLIN_VERSION}.tar.xz"
+            mkdir -p /tmp/xui-bootlin
+            curl -fL -sS $CURL_RETRY -o /tmp/bootlin.tar.xz "https://toolchains.bootlin.com/downloads/releases/toolchains/$BOOTLIN_ARCH/tarballs/$TARBALL"
+            tar -xf /tmp/bootlin.tar.xz -C /tmp/xui-bootlin
+          fi
+          export PATH="$TOOLCHAIN_DIR/bin:$PATH"
+          CC=$(find "$TOOLCHAIN_DIR/bin" -name '*-gcc.br_real' -type f -executable -print -quit)
+          [ -n "$CC" ] || { echo "No gcc.br_real found in $TOOLCHAIN_DIR/bin" >&2; exit 1; }
+          export CC
           # Stamp the commit into per-commit (dev channel) builds only; tagged
           # stable releases stay unstamped so config.IsDevBuild() returns false.
           LDFLAGS="-w -s -linkmode external -extldflags '-static'"
@@ -267,37 +314,25 @@ jobs:
 
       - name: Package
         run: |
-          tar -zcvf x-ui-linux-${{ matrix.platform }}.tar.gz x-ui
+          tar -I 'pigz -p 2' -cf x-ui-linux-${{ matrix.platform }}.tar.gz x-ui
           sha256sum x-ui-linux-${{ matrix.platform }}.tar.gz > x-ui-linux-${{ matrix.platform }}.tar.gz.sha256
 
       - name: Upload files to Artifacts
         uses: actions/upload-artifact@v7
         with:
+          compression-level: 0
           name: x-ui-linux-${{ matrix.platform }}
           path: |
             ./x-ui-linux-${{ matrix.platform }}.tar.gz
             ./x-ui-linux-${{ matrix.platform }}.tar.gz.sha256
 
-      - name: Upload files to GH release
-        uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
-          file: x-ui-linux-${{ matrix.platform }}.tar.gz*
-          file_glob: true
-          overwrite: true
-          prerelease: true
-
   # =================================
   #  Windows Build
   # =================================
   build-windows:
-    needs: [resolve-xray-version, validate-core]
+    needs: [resolve-xray-version, frontend]
     name: Build for Windows
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
-    permissions:
-      contents: write
     strategy:
       matrix:
         platform:
@@ -311,29 +346,27 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-          check-latest: true
-
-      # Frontend dist must be built BEFORE go build — see comment on the
-      # Linux job above. This step is identical except npm runs on the
-      # Windows runner here.
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+          cache: false
+      - name: Cache Go modules
+        uses: actions/cache@v5
         with:
-          package_json_file: frontend/package.json
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
+          path: ~/go/pkg/mod
+          key: modules-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: modules-${{ runner.os }}-
+      - name: Cache Go compilation
+        uses: actions/cache@v5
         with:
-          node-version-file: .nvmrc
-          cache: 'pnpm'
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          path: ~/AppData/Local/go-build
+          key: compile-${{ runner.os }}-${{ runner.arch }}-windows-amd64-mingw-${{ hashFiles('go.mod') }}-${{ hashFiles('go.mod', 'go.sum') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            compile-${{ runner.os }}-${{ runner.arch }}-windows-amd64-mingw-${{ hashFiles('go.mod') }}-${{ hashFiles('go.mod', 'go.sum') }}-
+            compile-${{ runner.os }}-${{ runner.arch }}-windows-amd64-mingw-${{ hashFiles('go.mod') }}-
 
-      - name: Build frontend bundle
-        shell: pwsh
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run build
-        working-directory: frontend
+      - name: Download verified frontend bundle
+        uses: actions/download-artifact@v8
+        with:
+          name: panel-frontend
+          path: internal/web/dist
 
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
@@ -423,21 +456,11 @@ jobs:
       - name: Upload files to Artifacts
         uses: actions/upload-artifact@v7
         with:
+          compression-level: 0
           name: x-ui-windows-amd64
           path: |
             ./x-ui-windows-amd64.zip
             ./x-ui-windows-amd64.zip.sha256
-
-      - name: Upload files to GH release
-        uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.ref_name }}
-          file: x-ui-windows-amd64.zip*
-          file_glob: true
-          overwrite: true
-          prerelease: true
 
   # =================================
   #  Rolling dev channel (per-commit)
@@ -449,7 +472,7 @@ jobs:
   # channel is unaffected.
   publish-dev:
     name: Publish rolling dev release
-    needs: [build]
+    needs: [build, validate-core]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -466,6 +489,7 @@ jobs:
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
         with:
+          pattern: x-ui-linux-*
           path: dev-artifacts
           merge-multiple: true
 
@@ -508,3 +532,27 @@ jobs:
           gh release delete-asset dev-latest x-ui-windows-amd64.zip.sha256 -y 2>/dev/null || true
 
           retry gh release upload dev-latest dev-artifacts/*.tar.gz dev-artifacts/*.sha256 --clobber
+
+  publish-tag:
+    name: Publish versioned release
+    needs: [build, build-windows, validate-core]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: x-ui-*
+          path: release-artifacts
+          merge-multiple: true
+      - name: Publish verified packages
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          file: release-artifacts/*
+          file_glob: true
+          overwrite: true
+          prerelease: true
