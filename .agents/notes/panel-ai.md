@@ -69,3 +69,22 @@ Height fix: formatted the affected CSS and rebuilt the production frontend
 successfully. No automated test suite or full pre-push gate was run, following
 the user's prior instruction to skip push validation. Browser layout has not
 been verified against the user's running deployment.
+
+## ACP v2 model selection
+
+OpenCode 2.0.32 registers session/set_config_option and no session/set_model.
+Its model selector takes configId=model and value=providerID/modelID. Replace
+the legacy call without fallback or swallowing invalid-model errors. The
+provided providers/package/settings JSON matches v2 schema and the compatible
+adapter accepts settings.apiKey/baseURL. Top-level model is optional when the
+task explicitly selects its model; provider display name is not its ID.
+Strengthen the existing fixture: reject unknown RPC methods and require model
+selection before prompting, with an explicit fixture/model default in the
+existing scheduled-run/cancellation scenario.
+
+Validation: existing TestScheduledOpenCodeRunAndCancellation passed (0.168s).
+The real @opencode/cli-linux-x64-baseline 2.0.32 binary accepted the same v2
+provider structure with placeholder credentials and a loopback endpoint,
+created an ACP session, and returned currentValue=arctel/flash after
+session/set_config_option. No session/prompt or external provider request
+was sent. Full push checks remain skipped per the earlier user instruction.

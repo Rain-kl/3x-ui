@@ -25,7 +25,7 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, Binary: binary, RetentionDays: 7}); err != nil {
+	if err := SaveSettings(AISettings{Enabled: true, Directory: workspace, Binary: binary, Model: "fixture/model", RetentionDays: 7}); err != nil {
 		t.Fatal(err)
 	}
 	if err := writePrivateFile(workspace, "opencode.json", []byte(`{"provider":{"fixture":{"models":{"model":{}}}}}`)); err != nil {

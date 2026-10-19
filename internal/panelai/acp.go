@@ -182,7 +182,7 @@ func (m *Manager) prompt(ctx context.Context, client *openCode, run *model.AIRun
 		return err
 	}
 	if run.Model != "" {
-		if err = acp.call("session/set_model", map[string]any{"sessionId": run.SessionID, "modelId": run.Model}, nil); err != nil {
+		if err = acp.call("session/set_config_option", map[string]any{"sessionId": run.SessionID, "configId": "model", "value": run.Model}, nil); err != nil {
 			return fmt.Errorf("select OpenCode model: %s", redactConfigText(client.directory, err.Error()))
 		}
 	}

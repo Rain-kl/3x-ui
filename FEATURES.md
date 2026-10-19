@@ -252,3 +252,5 @@
 - 2026-10-19：AI 页移除页面标题和 OpenCode 状态行，对话页签占满整个页面高度，任务/设置页签改为内边距滚动容器；错误与未启用提示保留在页签上方。（frontend/src/pages/ai/AIPage.tsx、frontend/src/pages/ai/AIPage.css、internal/web/translation/*.json）
 
 - 2026-10-19：修复 AI 对话页在 Ant Design 6 下容器高度链中断，OpenCode 填满页签栏下方的动态视口剩余高度，任务与设置保留内部滚动。（frontend/src/pages/ai/AIPage.css；FORK(panel-ai)；docs/specs/panel-ai.md）
+
+- 2026-10-19：定时 AI 任务改用 OpenCode v2 的 session/set_config_option 选择模型，修复 session/set_model 不存在导致任务失败；保留模型选择错误，不回退其他模型。（internal/panelai/acp.go；docs/specs/panel-ai.md）

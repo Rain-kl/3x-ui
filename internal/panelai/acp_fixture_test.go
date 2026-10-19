@@ -12,6 +12,7 @@ import (
 func runACPFixture() {
 	scanner := bufio.NewScanner(os.Stdin)
 	var mcpURL, authorization string
+	modelSelected := false
 	sid := "ses_fixture"
 	send := func(value any) { _ = json.NewEncoder(os.Stdout).Encode(value) }
 	for scanner.Scan() {
@@ -48,7 +49,20 @@ func runACPFixture() {
 				}
 			}
 			result = map[string]string{"sessionId": sid}
+		case "session/set_config_option":
+			var params struct {
+				SessionID string `json:"sessionId"`
+				ConfigID  string `json:"configId"`
+				Value     string `json:"value"`
+			}
+			if json.Unmarshal(request.Params, &params) != nil || params.SessionID != sid || params.ConfigID != "model" || params.Value != "fixture/model" {
+				os.Exit(7)
+			}
+			modelSelected = true
 		case "session/prompt":
+			if !modelSelected {
+				os.Exit(8)
+			}
 			if strings.Contains(string(request.Params), "BLOCK_UNTIL_CANCELLED") {
 				_, _ = io.Copy(io.Discard, os.Stdin)
 				return
@@ -75,6 +89,9 @@ func runACPFixture() {
 			send(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{"sessionId": sid, "update": map[string]any{"sessionUpdate": "tool_call", "toolCallId": "one", "title": "panel_audit_execute_sql", "status": "completed"}}})
 			send(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{"sessionId": sid, "update": map[string]any{"sessionUpdate": "agent_message_chunk", "content": map[string]string{"type": "text", "text": "Synthetic audit report"}}}})
 			result = map[string]string{"stopReason": "end_turn"}
+		default:
+			send(map[string]any{"jsonrpc": "2.0", "id": request.ID, "error": map[string]any{"code": -32601, "message": "Method not found"}})
+			continue
 		}
 		send(map[string]any{"jsonrpc": "2.0", "id": request.ID, "result": result})
 	}
