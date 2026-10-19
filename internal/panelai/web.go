@@ -68,8 +68,12 @@ func (m *Manager) WebEndpoint(ctx context.Context) (*url.URL, string, error) {
 	if settings.Model != "" {
 		cfg["model"] = settings.Model
 	}
-	cfg["permission"] = map[string]string{"*": "deny", "panel_audit_query": "allow", "panel_audit_create_task": "allow"}
-	cfg["agents"] = map[string]any{"build": map[string]any{"system": auditGuidance}}
+	cfg["permission"] = map[string]string{"*": "deny", "panel_audit_execute_sql": "allow", "panel_audit_create_task": "allow"}
+	environment, err := m.environment(ctx)
+	if err != nil {
+		return nil, "", fmt.Errorf("load audit SQL environment: %w", err)
+	}
+	cfg["agents"] = map[string]any{"build": map[string]any{"system": auditGuidance + environment}}
 	cfg["default_agent"] = "build"
 	cfg["mcp"] = map[string]any{"servers": map[string]any{"panel_audit": map[string]any{"type": "remote", "url": m.mcpURL, "headers": map[string]string{"Authorization": "Bearer " + m.token}, "oauth": false, "codemode": false}}}
 	override, err := json.Marshal(cfg)

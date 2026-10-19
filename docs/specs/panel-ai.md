@@ -1,3 +1,14 @@
+# SQL 审计分析工具（2026-10-19）
+
+- 用 execute_sql 取代提供给模型的分页 query 工具；保留 create_task。支持单条本机数据库方言的 SELECT/WITH，包括聚合、CTE、子查询、窗口与排序。SQL 直接在数据库计算，只返回有界结果，不按每个客户端循环分页获取历史。
+- 仅查询日志审计表：audit_events、audit_daily_stats、audit_minute_stats、audit_bandwidth_minutes、audit_receipts、subscription_accesses；不扩展到账号/密钥等业务表。SQLite 使用真实连接 authorizer 限制读表、禁止写操作/ATTACH/PRAGMA/扩展加载及文件函数；PostgreSQL 使用只读事务、语法树与原生 EXPLAIN 实际计划验证日志基表及内置非 volatile 函数/运算符，禁止写 CTE、SELECT INTO、锁定与其他语句。
+- 执行共用审计查询并发槽（最多2），30秒超时，SQL最多32KiB，返回最多200行/64列/256KiB，超限标记 truncated 并要求精化SQL，不通过分页整库拉取。SQLite 使用独立 mode=ro/query_only 连接及 authorizer，查询结束关闭；取消/异常均清理，不更改主库连接池权限。
+- 官方 Web agent、原生任务以及 MCP initialize 环境信息都包含数据库方言、当前UTC时间、保留策略、日志表字段/含义、时间与流量单位、归档去重条件和SQL分析示例。禁止 SELECT * 或分页枚举整表；优先时间过滤、GROUP BY/HAVING/窗口排名，输出证据、覆盖情况与不确定性。
+- 详细记录与日汇总经事务归档保持互斥；延迟子节点汇总可能位于近期日期，按真实保留与日期粒度合并，audit_receipts 仅用于防重，不计连接。分钟连接数不能当并发连接数；带宽必须用原始分钟字节与 covered_seconds，不能拿关闭连接的计费流量估计实时带宽；未知流量 NULL 不视为已计量0。
+- 验收：SQLite/PG聚合、WITH和窗口可用；写入、堆叠语句、写CTE、非日志读表、危险函数失败；超时取消/截断不污染连接；两种对话入口和定时任务均用同一工具和环境上下文。
+
+---
+
 # OpenCode v2 官方界面接入（2026-10-19）
 
 本节替代下文 v1 自制对话及 CLI-only 的旧规则。管理员已授权改用 OpenCode v2 官方 Web 界面、本机服务及面板反向代理。

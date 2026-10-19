@@ -34,7 +34,7 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 	notifications := make(chan string, 2)
 	var calls atomic.Int32
 	manager := &Manager{}
-	if err := manager.Start(context.Background(), Hooks{Audit: func(context.Context, AuditQuery) (any, error) {
+	if err := manager.Start(context.Background(), Hooks{SQL: func(context.Context, string) (any, error) {
 		calls.Add(1)
 		return map[string]string{"source": "fixture"}, nil
 	}, Notify: func(_ context.Context, text string) error {
@@ -92,7 +92,7 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := wait(scheduled.ID, "completed")
-	if result.Result != "Synthetic audit report" || result.NotifyError != "fixture delivery failure" || calls.Load() != 1 || !strings.Contains(result.Tools, "panel_audit_query") {
+	if result.Result != "Synthetic audit report" || result.NotifyError != "fixture delivery failure" || calls.Load() != 1 || !strings.Contains(result.Tools, "panel_audit_execute_sql") {
 		t.Fatalf("incorrect task result %+v calls=%d", result, calls.Load())
 	}
 	select {

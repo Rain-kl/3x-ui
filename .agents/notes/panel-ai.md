@@ -1,3 +1,11 @@
+## SQL 聚合审计（2026-10-19）
+
+删除 agent 可见的分页 query，改为 execute_sql 单条 SELECT/WITH DQL，保留 create_task。官方 Web agent system、ACP 每次请求与 MCP initialize.instructions 都注入同一环境说明：真实方言、UTC快照、保留策略、六张日志表的全部字段语义、秒/毫秒差异、NULL计量、归档互斥、分钟速率和带宽覆盖。提示词先全客户端SQL聚合和排名，再取少量候选明细，禁止 SELECT * / 逐页整库读取。系统时间标注为启动快照，滚动窗口由数据库 CURRENT_TIMESTAMP 计算。
+
+SQL分析沿用2个审计并发槽和30秒上下文；200行、64列、256KiB及单字段4096字节上限，结果含columns/rows/truncated/asOf。SQLite新建短生命周期 mode=ro/query_only 连接，SQLite原生authorizer只允许六张日志表，关闭连接释放回调句柄，不污染业务连接池，也避免反复注册authorizer的句柄积累。PostgreSQL使用原生PostgreSQL语法树（pg_query）验证单条SELECT、读表、CTE、函数和类型，禁写CTE/INTO/锁定及自定义或volatile函数；另检查原生 EXPLAIN 实际计划中的基表，避免同名嵌套 CTE 的作用域掩盖非日志表；再在只读事务中执行。数据库执行聚合可能扫描索引/数据，这是服务端计算；不等同于把原始全表传给模型。
+
+连接计数不是并发；audit_receipts仅防重；日归档可能来自延迟子节点，不能机械以详细保留边界裁掉近期汇总。带宽client=''行仅记录覆盖，客户端行covered_seconds通常为0；按epoch/minute/node先聚合再连接覆盖，避免乘法放大。保留现有确定性检查并随工具协议迁移fixture，不新增测试用例，不向真实模型/Telegram发请求。
+
 ## OpenCode v2 官方 Web（2026-10-19）
 
 固定官方 @opencode/cli 2.0.32；v2 npm 包名/配置结构/CLI 参数均与 v1 不同，不能只改版本字符串。安装从官方 npm 下载按平台的独立二进制，固定发布摘要校验 SHA-512，宿主机不依赖 Node。官方 Web 源码由 scripts/build-opencode-web.py 固定版本和源包 SHA-256 重建，仅调整 Router base、服务地址、同源写请求 CSRF 和禁用 service worker；完整产物压缩入面板，附 MIT 许可证。不要对打包混淆 JS 做字符串补丁。

@@ -39,9 +39,9 @@ func TestLocalOpenCodeAuditTools(t *testing.T) {
 	}
 	var calls atomic.Int32
 	manager := &Manager{}
-	if err := manager.Start(context.Background(), Hooks{Audit: func(_ context.Context, query AuditQuery) (any, error) {
+	if err := manager.Start(context.Background(), Hooks{SQL: func(_ context.Context, query string) (any, error) {
 		calls.Add(1)
-		return map[string]any{"client": "synthetic-client", "connectionsPerSecond": 12, "observation": "Synthetic fixture, not real user data", "mode": query.Mode}, nil
+		return map[string]any{"client": "synthetic-client", "connectionsPerSecond": 12, "observation": "Synthetic fixture, not real user data", "sql": query}, nil
 	}}); err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestLocalOpenCodeAuditTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	run, err := manager.Begin(conversation.ID, "", "Call panel_audit_query with mode metadata. Report the exact synthetic client identifier from the tool result. This is a connection test, do not infer abuse or create a task.", "", false)
+	run, err := manager.Begin(conversation.ID, "", "Call panel_audit_execute_sql with SELECT COUNT(*) FROM audit_events. Report the exact synthetic client identifier from the tool result. This is a connection test, do not infer abuse or create a task.", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}

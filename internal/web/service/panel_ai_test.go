@@ -8,10 +8,9 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
-	"github.com/mhsanaei/3x-ui/v3/internal/panelai"
 )
 
-func TestAIAuditQueryClientScopeAndPaging(t *testing.T) {
+func TestAIAuditSQLClientScopeAndAggregation(t *testing.T) {
 	if err := database.InitDB(filepath.Join(t.TempDir(), "audit.db")); err != nil {
 		t.Fatal(err)
 	}
@@ -22,23 +21,24 @@ func TestAIAuditQueryClientScopeAndPaging(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	result, err := queryAIAudit(context.Background(), panelai.AuditQuery{Mode: "client_sites", Hours: 24, Page: 1, Limit: 1})
+
+	result, err := queryAISQL(context.Background(), "SELECT client, COUNT(*) AS connections FROM audit_events GROUP BY client ORDER BY client LIMIT 1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	page := result.(map[string]any)
-	if page["hasMore"] != true || len(page["items"].([]map[string]any)) != 1 {
-		t.Fatalf("unbounded or unpaged result: %v", page)
+	ranked := result.(aiSQLResult)
+	if len(ranked.Rows) != 1 || ranked.Rows[0][0] != "alice" {
+		t.Fatalf("unexpected SQL ranking: %+v", ranked)
 	}
-	result, err = queryAIAudit(context.Background(), panelai.AuditQuery{Mode: "details", Client: "bob", Hours: 24, Page: 1, Limit: 50})
+	result, err = queryAISQL(context.Background(), "SELECT client,site FROM audit_events WHERE client = 'bob'")
 	if err != nil {
 		t.Fatal(err)
 	}
-	details := result.(map[string]any)["items"].([]model.AuditEvent)
-	if len(details) != 1 || details[0].Client != "bob" {
+	details := result.(aiSQLResult)
+	if len(details.Rows) != 1 || details.Rows[0][0] != "bob" {
 		t.Fatalf("client scope leaked: %+v", details)
 	}
-	if _, err = queryAIAudit(context.Background(), panelai.AuditQuery{Mode: "DELETE FROM audit_events", Hours: 24, Page: 1, Limit: 50}); err == nil {
-		t.Fatal("arbitrary query mode accepted")
+	if _, err = queryAISQL(context.Background(), "DELETE FROM audit_events"); err == nil {
+		t.Fatal("write SQL accepted")
 	}
 }

@@ -51,8 +51,8 @@ func (o *openCode) startACP(ctx context.Context, scheduled bool) (*acpClient, er
 	}
 	sort.Strings(ids)
 	cmd := o.command(ctx, "acp")
-	permission := map[string]string{"*": "deny", "execute": "allow", "panel_audit_query": "allow"}
-	tools := map[string]bool{"*": false, "execute": true, "panel_audit_query": true, "panel_audit_create_task": !scheduled}
+	permission := map[string]string{"*": "deny", "execute": "allow", "panel_audit_execute_sql": "allow"}
+	tools := map[string]bool{"*": false, "execute": true, "panel_audit_execute_sql": true, "panel_audit_create_task": !scheduled}
 	if !scheduled {
 		permission["panel_audit_create_task"] = "allow"
 	}
@@ -244,7 +244,11 @@ func (m *Manager) prompt(ctx context.Context, client *openCode, run *model.AIRun
 		}
 		stream.publish(AIStream{Run: *run, Thought: thought})
 	}
-	guidance := auditGuidance
+	environment, err := m.environment(ctx)
+	if err != nil {
+		return fmt.Errorf("load audit SQL environment: %w", err)
+	}
+	guidance := auditGuidance + environment
 	if run.TaskID != "" {
 		guidance += "\nThis is a scheduled task execution. Do not create, modify or schedule any tasks."
 	}

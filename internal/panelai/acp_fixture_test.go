@@ -58,10 +58,10 @@ func runACPFixture() {
 				Tools      map[string]bool   `json:"tools"`
 			}
 			_ = json.Unmarshal([]byte(os.Getenv("OPENCODE_CONFIG_CONTENT")), &settings)
-			if settings.Permission["*"] != "deny" || settings.Tools["*"] || !settings.Tools["panel_audit_query"] {
+			if settings.Permission["*"] != "deny" || settings.Tools["*"] || !settings.Tools["panel_audit_execute_sql"] {
 				os.Exit(4)
 			}
-			req, _ := http.NewRequest(http.MethodPost, mcpURL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query","arguments":{"mode":"metadata"}}}`))
+			req, _ := http.NewRequest(http.MethodPost, mcpURL, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"execute_sql","arguments":{"sql":"SELECT COUNT(*) FROM audit_events"}}}`))
 			req.Header.Set("Authorization", authorization)
 			response, err := http.DefaultClient.Do(req)
 			if err != nil {
@@ -72,7 +72,7 @@ func runACPFixture() {
 			if response.StatusCode != http.StatusOK || !strings.Contains(string(body), "fixture") {
 				os.Exit(6)
 			}
-			send(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{"sessionId": sid, "update": map[string]any{"sessionUpdate": "tool_call", "toolCallId": "one", "title": "panel_audit_query", "status": "completed"}}})
+			send(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{"sessionId": sid, "update": map[string]any{"sessionUpdate": "tool_call", "toolCallId": "one", "title": "panel_audit_execute_sql", "status": "completed"}}})
 			send(map[string]any{"jsonrpc": "2.0", "method": "session/update", "params": map[string]any{"sessionId": sid, "update": map[string]any{"sessionUpdate": "agent_message_chunk", "content": map[string]string{"type": "text", "text": "Synthetic audit report"}}}})
 			result = map[string]string{"stopReason": "end_turn"}
 		}
