@@ -203,15 +203,17 @@ func newTelegramUserController(g *gin.RouterGroup) {
 		jsonObj(c, result, err)
 	})
 	g.POST("/bind-code", func(c *gin.Context) {
-		var body struct {
-			ClientID int `json:"clientId"`
+		var body telegramuser.BindCodeInput
+		if err := c.ShouldBindJSON(&body); err != nil {
+			jsonObj(c, nil, fmt.Errorf("decode Telegram binding code options: %w", err))
+			return
 		}
-		if err := c.ShouldBindJSON(&body); err != nil || body.ClientID <= 0 {
+		if body.ClientID <= 0 {
 			jsonObj(c, nil, fmt.Errorf("binding code requires a valid client ID"))
 			return
 		}
 		c.Header("Cache-Control", "no-store")
-		result, err := telegramuser.CreateCode(body.ClientID)
+		result, err := telegramuser.CreateCodeWithOptions(body)
 		jsonObj(c, result, err)
 	})
 	g.POST("/bindings/:tgId/unbind", func(c *gin.Context) {

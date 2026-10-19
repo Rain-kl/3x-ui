@@ -2699,7 +2699,17 @@
       "commandsHelp": "Enabled custom commands appear in the native Telegram menu when users type /. Replies update immediately; menu updates usually take about 25 seconds, subject to Telegram client caching. Replies are plain text and available to unbound users. Maximum 93 commands; built-in names are reserved.",
       "commandNameInvalid": "Use 1–32 ASCII letters, digits or underscores, with an optional leading /.",
       "commandDescriptionInvalid": "Menu descriptions must contain 1–256 characters.",
-      "commandReplyInvalid": "Replies must contain 1–4096 characters."
+      "commandReplyInvalid": "Replies must contain 1–4096 characters.",
+      "neverExpires": "Never expires",
+      "inviteDuration": "Valid for",
+      "inviteUnit": "Time unit",
+      "inviteValidityLimit": "Enter a whole-number duration between 1 minute and 3650 days",
+      "inviteValidityHelp": "The code and Bot link share expiration. Never-expiring codes remain single-use; rotation or revocation invalidates the old link.",
+      "inviteUnits": {
+        "minutes": "Minutes",
+        "hours": "Hours",
+        "days": "Days"
+      }
     },
     "ai": {
       "chat": "Chat",

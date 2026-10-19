@@ -2363,6 +2363,22 @@
         ],
         "type": "object"
       },
+      "BindCodeInput": {
+        "description": "FORK(telegram-invite-management): Expiration belongs to each invitation, without changing one-time binding rules.",
+        "properties": {
+          "clientId": {
+            "type": "integer"
+          },
+          "validityMinutes": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clientId"
+        ],
+        "type": "object"
+      },
       "Client": {
         "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
         "properties": {
@@ -7401,23 +7417,15 @@
         "tags": [
           "Telegram user Bot"
         ],
-        "summary": "Generate a one-time binding code valid for 30 minutes.",
+        "summary": "Generate or rotate a one-time binding code with custom validity or no expiration.",
         "operationId": "post_panel_api_telegram_bind_code",
+        "description": "validityMinutes is optional: omitted/null defaults to 30 minutes, 0 never expires, otherwise 1..5256000 whole minutes. Rotation invalidates the old code. Codes remain one-time even without expiration. Response expiresAt=0 denotes no expiration.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "clientId": {
-                    "type": "integer",
-                    "description": ""
-                  }
-                },
-                "required": [
-                  "clientId"
-                ]
+                "$ref": "#/components/schemas/BindCodeInput"
               }
             }
           }

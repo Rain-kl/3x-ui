@@ -2699,7 +2699,17 @@
       "commandsHelp": "用户输入 / 即可在 Telegram 原生指令菜单中看到启用的自定义指令。保存后回复立即生效，菜单通常在约25秒内更新；Telegram 客户端可能有缓存。回复为纯文本，未绑定用户也可使用。最多93项，不能覆盖内置指令。",
       "commandNameInvalid": "请输入1–32个英文字母、数字或下划线，可带前导 /",
       "commandDescriptionInvalid": "菜单说明须为1–256个字符",
-      "commandReplyInvalid": "回复内容须为1–4096个字符"
+      "commandReplyInvalid": "回复内容须为1–4096个字符",
+      "neverExpires": "永不过期",
+      "inviteDuration": "有效时长",
+      "inviteUnit": "时间单位",
+      "inviteValidityLimit": "有效期须为整数时长，范围1分钟至3650天",
+      "inviteValidityHelp": "绑定码与绑定链接共用有效期。永不过期仍为一次性，轮转或吊销后旧链接立即失效。",
+      "inviteUnits": {
+        "minutes": "分钟",
+        "hours": "小时",
+        "days": "天"
+      }
     },
     "ai": {
       "chat": "对话",

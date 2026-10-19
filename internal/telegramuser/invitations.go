@@ -50,7 +50,7 @@ func Invitations(page, size int) (InvitationPage, error) {
 			status = "revoked"
 		case row.UsedAt > 0:
 			status = "used"
-		case row.ExpiresAt <= now:
+		case row.ExpiresAt > 0 && row.ExpiresAt <= now:
 			status = "expired"
 		case row.Code == "":
 			status = "legacy"

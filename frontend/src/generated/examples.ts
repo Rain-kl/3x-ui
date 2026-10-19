@@ -662,6 +662,10 @@ export const EXAMPLES: Record<string, unknown> = {
     "expiresAt": 0,
     "url": ""
   },
+  "BindCodeInput": {
+    "clientId": 0,
+    "validityMinutes": null
+  },
   "Client": {
     "adTag": "0123456789abcdef0123456789abcdef",
     "allowedIPs": [

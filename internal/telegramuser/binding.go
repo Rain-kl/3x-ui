@@ -23,6 +23,12 @@ type BindCode struct {
 	ExpiresAt int64  `json:"expiresAt"`
 }
 
+// FORK(telegram-invite-management): Expiration belongs to each invitation, without changing one-time binding rules.
+type BindCodeInput struct {
+	ClientID        int  `json:"clientId"`
+	ValidityMinutes *int `json:"validityMinutes,omitempty"`
+}
+
 func codeHash(value string) string {
 	hash := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(hash[:])
@@ -32,6 +38,19 @@ func codeHash(value string) string {
 var inviteMu sync.Mutex
 
 func CreateCode(clientID int) (BindCode, error) {
+	return CreateCodeWithOptions(BindCodeInput{ClientID: clientID})
+}
+
+func CreateCodeWithOptions(input BindCodeInput) (BindCode, error) {
+	clientID := input.ClientID
+	minutes := 30
+	if input.ValidityMinutes != nil {
+		minutes = *input.ValidityMinutes
+	}
+	if minutes < 0 || minutes > 5256000 {
+		return BindCode{}, fmt.Errorf("binding validity must be 0 (never expires) or 1..5256000 whole minutes")
+	}
+
 	inviteMu.Lock()
 	defer inviteMu.Unlock()
 	if clientID <= 0 {
@@ -53,7 +72,10 @@ func CreateCode(clientID int) (BindCode, error) {
 		return BindCode{}, fmt.Errorf("generate Telegram binding code: %w", err)
 	}
 	code := "bind_" + hex.EncodeToString(secret)
-	expires := time.Now().Add(30 * time.Minute).UnixMilli()
+	var expires int64
+	if minutes > 0 {
+		expires = time.Now().Add(time.Duration(minutes) * time.Minute).UnixMilli()
+	}
 	err := database.GetDB().Session(&gorm.Session{Logger: gormlogger.Discard}).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("client_id = ?", clientID).Delete(&model.TelegramBindCode{}).Error; err != nil {
 			return err
@@ -89,14 +111,14 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 		var clientID int
 		if strings.HasPrefix(proof, "bind_") {
 			var code model.TelegramBindCode
-			if err := tx.Where("hash = ? AND expires_at > ? AND used_at = 0 AND revoked_at = 0", codeHash(proof), time.Now().UnixMilli()).First(&code).Error; err != nil {
+			if err := tx.Where("hash = ? AND (expires_at = 0 OR expires_at > ?) AND used_at = 0 AND revoked_at = 0", codeHash(proof), time.Now().UnixMilli()).First(&code).Error; err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					return fmt.Errorf("绑定码无效、已轮转、已使用或已过期，请联系管理员生成新码")
 				}
 				return fmt.Errorf("load binding code: %w", err)
 			}
 			clientID = code.ClientID
-			consumed := tx.Where("hash = ? AND expires_at > ? AND used_at = 0 AND revoked_at = 0", code.Hash, time.Now().UnixMilli()).Model(&model.TelegramBindCode{}).Update("used_at", time.Now().UnixMilli())
+			consumed := tx.Where("hash = ? AND (expires_at = 0 OR expires_at > ?) AND used_at = 0 AND revoked_at = 0", code.Hash, time.Now().UnixMilli()).Model(&model.TelegramBindCode{}).Update("used_at", time.Now().UnixMilli())
 			if consumed.Error != nil {
 				return fmt.Errorf("consume binding code: %w", consumed.Error)
 			}

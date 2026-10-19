@@ -2337,6 +2337,22 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "BindCodeInput": {
+    "description": "FORK(telegram-invite-management): Expiration belongs to each invitation, without changing one-time binding rules.",
+    "properties": {
+      "clientId": {
+        "type": "integer"
+      },
+      "validityMinutes": {
+        "nullable": true,
+        "type": "integer"
+      }
+    },
+    "required": [
+      "clientId"
+    ],
+    "type": "object"
+  },
   "Client": {
     "description": "Client represents a client configuration for Xray inbounds with traffic limits and settings.",
     "properties": {

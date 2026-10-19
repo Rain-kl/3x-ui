@@ -587,6 +587,11 @@ export interface BindCode {
   url: string;
 }
 
+export interface BindCodeInput {
+  clientId: number;
+  validityMinutes?: number | null;
+}
+
 export interface Client {
   adTag?: string;
   allowedIPs?: string[];

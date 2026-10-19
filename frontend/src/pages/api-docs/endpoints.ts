@@ -360,8 +360,11 @@ export const sections: readonly Section[] = [
       {
         method: 'POST',
         path: '/panel/api/telegram/bind-code',
-        summary: 'Generate a one-time binding code valid for 30 minutes.',
-        params: [{ name: 'clientId', in: 'body (json)', type: 'integer' }],
+        summary:
+          'Generate or rotate a one-time binding code with custom validity or no expiration.',
+        requestSchema: { $ref: '#/components/schemas/BindCodeInput' },
+        description:
+          'validityMinutes is optional: omitted/null defaults to 30 minutes, 0 never expires, otherwise 1..5256000 whole minutes. Rotation invalidates the old code. Codes remain one-time even without expiration. Response expiresAt=0 denotes no expiration.',
         responseSchema: 'BindCode',
       },
       {

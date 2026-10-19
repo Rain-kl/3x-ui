@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { HttpUtil } from '@/utils';
 import {
   BindCodeSchema,
+  BindCodeInputSchema,
+  InvitationViewSchema,
   InvitationPageSchema,
   CustomCommandsSchema,
   TelegramCustomCommandSchema,
@@ -88,7 +90,8 @@ export const telegramApi = {
     getTelegram(`/invitations?page=${page}&pageSize=20`, InvitationPageSchema),
   revokeInvitation: (clientId: number) =>
     postTelegram(`/invitations/${clientId}/revoke`, undefined, z.unknown()),
-  bindCode: (clientId: number) => postTelegram('/bind-code', { clientId }, BindCodeSchema),
+  bindCode: (input: z.infer<typeof BindCodeInputSchema>) =>
+    postTelegram('/bind-code', input, BindCodeSchema),
   unbind: (tgId: number) => postTelegram(`/bindings/${tgId}/unbind`, undefined, z.unknown()),
   logs: (page: number, size: number, event: string, tgId: string) =>
     getTelegram(
@@ -150,3 +153,5 @@ export const TelegramComposerSchema = z.object({
     .min(1, 'pages.telegram.required')
     .max(3500, 'pages.telegram.messageLimit'),
 });
+
+export type Invitation = z.infer<typeof InvitationViewSchema>;

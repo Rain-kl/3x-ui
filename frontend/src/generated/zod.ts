@@ -634,6 +634,12 @@ export const BindCodeSchema = z.object({
 });
 export type BindCode = z.infer<typeof BindCodeSchema>;
 
+export const BindCodeInputSchema = z.object({
+  clientId: z.number().int(),
+  validityMinutes: z.number().int().nullable().optional(),
+});
+export type BindCodeInput = z.infer<typeof BindCodeInputSchema>;
+
 export const ClientSchema = z.object({
   adTag: z.string().optional(),
   allowedIPs: z.array(z.string()).optional(),
