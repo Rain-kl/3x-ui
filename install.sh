@@ -9,6 +9,15 @@ plain='\033[0m'
 xui_folder="${XUI_MAIN_FOLDER:=/usr/local/x-ui}"
 xui_service="${XUI_SERVICE:=/etc/systemd/system}"
 
+# FORK-BEGIN(其他更新): ACME listener port is a product default, not upstream's 80.
+# Default local port for acme.sh's standalone HTTP-01 listener; external port 80
+# must forward here because Let's Encrypt always validates on port 80.
+ACME_HTTP_PORT="${XUI_ACME_HTTP_PORT:-65800}"
+if ! [[ "${ACME_HTTP_PORT}" =~ ^[0-9]+$ ]] || ((ACME_HTTP_PORT < 1 || ACME_HTTP_PORT > 65535)); then
+    ACME_HTTP_PORT=65800
+fi
+# FORK-END(其他更新)
+
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error: ${plain} Please run this script with root privilege \n " && exit 1
 
@@ -75,6 +84,40 @@ acme_listen_flag() {
         echo "--listen-v6"
     fi
 }
+
+# FORK-BEGIN(其他更新): Persist the non-standard listener port across renewals.
+# acme.sh reads Le_HTTPPort from each cert's conf on renew, so persist the port
+# there; --httpport on the renew command line is overwritten by the conf.
+# Rewrite one conf atomically and keep its permissions (conf may hold DNS tokens).
+acme_write_http_port() {
+    local conf="$1"
+    local port="$2"
+    local tmp="${conf}.tmp.$$"
+    local mode
+    if grep -q '^Le_HTTPPort=' "$conf"; then
+        sed "s/^Le_HTTPPort=.*/Le_HTTPPort='${port}'/" "$conf" > "$tmp" || { rm -f "$tmp"; return 1; }
+    else
+        { cat "$conf"; printf "\nLe_HTTPPort='%s'\n" "${port}"; } > "$tmp" || { rm -f "$tmp"; return 1; }
+    fi
+    if ! chmod --reference="$conf" "$tmp" 2> /dev/null; then
+        mode=$(stat -c '%a' "$conf" 2> /dev/null || stat -f '%Lp' "$conf" 2> /dev/null)
+        [ -n "$mode" ] && chmod "$mode" "$tmp"
+    fi
+    mv -f "$tmp" "$conf"
+}
+
+acme_set_http_port() {
+    local domain="$1"
+    local port="$2"
+    local conf
+    for conf in "$HOME/.acme.sh/${domain}_ecc/${domain}.conf" "$HOME/.acme.sh/${domain}/${domain}.conf"; do
+        [ -f "$conf" ] || continue
+        if ! acme_write_http_port "$conf" "$port"; then
+            echo -e "${red}Failed to set ACME listener port in ${conf}${plain}"
+        fi
+    done
+}
+# FORK-END(其他更新)
 
 # Port helpers
 is_port_in_use() {
@@ -450,14 +493,16 @@ setup_ssl_certificate() {
 
     # Issue certificate
     echo -e "${green}Issuing SSL certificate for ${domain}...${plain}"
-    echo -e "${yellow}Note: Port 80 must be open and accessible from the internet${plain}"
+    # FORK-BEGIN(其他更新): Use the non-standard listener port.
+    echo -e "${yellow}Note: External port 80 must forward to the ACME listener on ${ACME_HTTP_PORT}${plain}"
 
     ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt --force > /dev/null 2>&1
-    ~/.acme.sh/acme.sh --issue -d ${domain} $(acme_listen_flag) --standalone --httpport 80 --force
+    ~/.acme.sh/acme.sh --issue -d ${domain} $(acme_listen_flag) --standalone --httpport ${ACME_HTTP_PORT} --force
 
     if [ $? -ne 0 ]; then
         echo -e "${yellow}Failed to issue certificate for ${domain}${plain}"
-        echo -e "${yellow}Please ensure port 80 is open and try again later with: x-ui${plain}"
+        echo -e "${yellow}Please ensure external port 80 forwards to ${ACME_HTTP_PORT} and try again later with: x-ui${plain}"
+    # FORK-END(其他更新)
         rm -rf ~/.acme.sh/${domain} ~/.acme.sh/${domain}_ecc 2> /dev/null
         rm -rf "$certPath" 2> /dev/null
         return 1
@@ -502,7 +547,8 @@ setup_ip_certificate() {
 
     echo -e "${green}Setting up Let's Encrypt IP certificate (shortlived profile)...${plain}"
     echo -e "${yellow}Note: IP certificates are valid for ~6 days and will auto-renew.${plain}"
-    echo -e "${yellow}Default listener is port 80. If you choose another port, ensure external port 80 forwards to it.${plain}"
+    # FORK(其他更新): Default to the non-standard listener port.
+    echo -e "${yellow}Listener default is port ${ACME_HTTP_PORT}; external port 80 must forward to it.${plain}"
 
     # Check for acme.sh
     if ! command -v ~/.acme.sh/acme.sh &> /dev/null; then
@@ -538,14 +584,16 @@ setup_ip_certificate() {
     # Set reload command for auto-renewal (add || true so it doesn't fail during first install)
     local reloadCmd="systemctl restart x-ui 2>/dev/null || rc-service x-ui restart 2>/dev/null || true"
 
-    # Choose port for HTTP-01 listener (default 80, prompt override)
+    # FORK-BEGIN(其他更新): Default to the non-standard listener port.
+    # Choose port for HTTP-01 listener (default 65800, prompt override)
     local WebPort=""
-    prompt_or_default WebPort "Port to use for ACME HTTP-01 listener (default 80): " "80" XUI_ACME_HTTP_PORT
-    WebPort="${WebPort:-80}"
+    prompt_or_default WebPort "Port to use for ACME HTTP-01 listener (default ${ACME_HTTP_PORT}): " "${ACME_HTTP_PORT}" XUI_ACME_HTTP_PORT
+    WebPort="${WebPort:-${ACME_HTTP_PORT}}"
     if ! [[ "${WebPort}" =~ ^[0-9]+$ ]] || ((WebPort < 1 || WebPort > 65535)); then
-        echo -e "${red}Invalid port provided. Falling back to 80.${plain}"
-        WebPort=80
+        echo -e "${red}Invalid port provided. Falling back to ${ACME_HTTP_PORT}.${plain}"
+        WebPort="${ACME_HTTP_PORT}"
     fi
+    # FORK-END(其他更新)
     echo -e "${green}Using port ${WebPort} for standalone validation.${plain}"
     if [[ "${WebPort}" -ne 80 ]]; then
         echo -e "${yellow}Reminder: Let's Encrypt still connects on port 80; forward external port 80 to ${WebPort}.${plain}"
@@ -734,16 +782,25 @@ ssl_cert_issue() {
         mkdir -p "$certPath"
     fi
 
+    # FORK-BEGIN(其他更新): Default to 65800 and persist it for renewals.
     # get the port number for the standalone server
-    local WebPort=80
-    prompt_or_default WebPort "Please choose which port to use (default is 80): " "80" XUI_ACME_HTTP_PORT
+    local WebPort=${ACME_HTTP_PORT}
+    prompt_or_default WebPort "Please choose which port to use (default is ${ACME_HTTP_PORT}): " "${ACME_HTTP_PORT}" XUI_ACME_HTTP_PORT
     if [[ -z ${WebPort} ]]; then
-        WebPort=80
+        WebPort=${ACME_HTTP_PORT}
     elif [[ ! ${WebPort} =~ ^[1-9][0-9]*$ || ${WebPort} -gt 65535 ]]; then
-        echo -e "${yellow}Your input ${WebPort} is invalid, will use default port 80.${plain}"
-        WebPort=80
+        echo -e "${yellow}Your input ${WebPort} is invalid, will use default port ${ACME_HTTP_PORT}.${plain}"
+        WebPort=${ACME_HTTP_PORT}
     fi
-    echo -e "${green}Will use port: ${WebPort} to issue certificates. Please make sure this port is open.${plain}"
+    echo -e "${green}Will use port: ${WebPort} to issue certificates. External port 80 must forward to it.${plain}"
+    if [[ "${WebPort}" -ne 80 ]]; then
+        echo -e "${yellow}Reminder: Let's Encrypt still connects on port 80; forward external port 80 to ${WebPort}.${plain}"
+    fi
+    if [[ ${cert_exists} -eq 1 ]]; then
+        acme_set_http_port "${domain}" "${WebPort}"
+        echo -e "${green}Renewal listener port set to ${WebPort} for ${domain}.${plain}"
+    fi
+    # FORK-END(其他更新)
 
     # Stop panel temporarily
     echo -e "${yellow}Stopping panel temporarily...${plain}"
@@ -883,7 +940,8 @@ prompt_and_setup_ssl() {
     echo -e "${green}2.${plain} Let's Encrypt for IP Address (6-day validity, auto-renews)"
     echo -e "${green}3.${plain} Custom SSL Certificate (Path to existing files)"
     echo -e "${green}4.${plain} Skip SSL (advanced — behind reverse proxy / SSH tunnel only)"
-    echo -e "${blue}Note:${plain} Options 1 & 2 require port 80 open. Option 3 requires manual paths."
+    # FORK(其他更新): Validation still enters on external port 80.
+    echo -e "${blue}Note:${plain} Options 1 & 2 need external port 80 forwarded to the ACME listener (default ${ACME_HTTP_PORT}). Option 3 requires manual paths."
     echo -e "${blue}Note:${plain} Option 4 serves the panel over plain HTTP — only safe behind nginx/Caddy or an SSH tunnel."
     if [[ "$NONINTERACTIVE" == "1" ]]; then
         case "${XUI_SSL_MODE:-none}" in
@@ -966,7 +1024,8 @@ prompt_and_setup_ssl() {
                 SSL_HOST="${server_ip}"
                 echo -e "${green}✓ Let's Encrypt IP certificate configured successfully${plain}"
             else
-                echo -e "${red}✗ IP certificate setup failed. Please check port 80 is open.${plain}"
+                # FORK(其他更新): The failure is the external port, not the local one.
+                echo -e "${red}✗ IP certificate setup failed. Please check external port 80 forwards to the ACME listener.${plain}"
                 SSL_HOST="${server_ip}"
             fi
             ;;

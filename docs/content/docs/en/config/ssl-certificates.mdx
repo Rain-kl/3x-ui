@@ -48,11 +48,15 @@ server's public IP. Validation fails until DNS has propagated.
 </Step>
 
 <Step>
-### Free up port 80
+### Forward port 80 to the ACME listener
 
-HTTP validation needs **port 80** reachable from the internet and not already in
-use. Stop anything bound to it for the duration, and allow it through the
-[firewall](/docs/reference/ports-firewall).
+HTTP validation always reaches the server on **port 80**. The panel's acme.sh
+listener defaults to **65800** (override with `XUI_ACME_HTTP_PORT`), so external
+port 80 must forward to it — via a firewall/router port mapping or a reverse
+proxy that passes `/.well-known/acme-challenge/` to `127.0.0.1:65800`. If port
+80 is already taken by Docker or another service, update that mapping first;
+otherwise issuance and automatic renewal fail because the CA cannot reach the
+listener on 65800.
 </Step>
 
 <Step>
@@ -157,7 +161,8 @@ runs on a systemd timer by default.
   Certbot both renew automatically, but the panel keeps reading the **files** at
   their fixed paths — so renew **in place** rather than moving the files, and the
   panel picks up the new cert on its next restart. **Force Renew** (menu `20`)
-  triggers a renewal on demand.
+  triggers a renewal on demand and rewrites the saved ACME listener port to the
+  configured value (default `65800`), so existing certificates switch too.
 </Callout>
 
 ## Next steps

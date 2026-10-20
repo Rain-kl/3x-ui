@@ -6,6 +6,15 @@ blue='\033[0;34m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
+# FORK-BEGIN(其他更新): ACME listener port is a product default, not upstream's 80.
+# Default local port for acme.sh's standalone HTTP-01 listener; external port 80
+# must forward here because Let's Encrypt always validates on port 80.
+ACME_HTTP_PORT="${XUI_ACME_HTTP_PORT:-65800}"
+if ! [[ "${ACME_HTTP_PORT}" =~ ^[0-9]+$ ]] || ((ACME_HTTP_PORT < 1 || ACME_HTTP_PORT > 65535)); then
+    ACME_HTTP_PORT=65800
+fi
+# FORK-END(其他更新)
+
 #Add some basic function here
 function LOGD() {
     echo -e "${yellow}[DEG] $* ${plain}"
@@ -1359,7 +1368,69 @@ install_acme() {
     return 0
 }
 
+# FORK-BEGIN(其他更新): Persist the non-standard listener port across renewals.
+# acme.sh reads Le_HTTPPort from each cert's conf on renew, so persist the port
+# there; --httpport on the renew command line is overwritten by the conf.
+# Rewrite one conf atomically and keep its permissions (conf may hold DNS tokens).
+acme_write_http_port() {
+    local conf="$1"
+    local port="$2"
+    local tmp="${conf}.tmp.$$"
+    local mode
+    if grep -q '^Le_HTTPPort=' "$conf"; then
+        sed "s/^Le_HTTPPort=.*/Le_HTTPPort='${port}'/" "$conf" > "$tmp" || { rm -f "$tmp"; return 1; }
+    else
+        { cat "$conf"; printf "\nLe_HTTPPort='%s'\n" "${port}"; } > "$tmp" || { rm -f "$tmp"; return 1; }
+    fi
+    if ! chmod --reference="$conf" "$tmp" 2> /dev/null; then
+        mode=$(stat -c '%a' "$conf" 2> /dev/null || stat -f '%Lp' "$conf" 2> /dev/null)
+        [ -n "$mode" ] && chmod "$mode" "$tmp"
+    fi
+    mv -f "$tmp" "$conf"
+}
+
+acme_set_http_port() {
+    local domain="$1"
+    local port="$2"
+    local conf
+    for conf in "$HOME/.acme.sh/${domain}_ecc/${domain}.conf" "$HOME/.acme.sh/${domain}/${domain}.conf"; do
+        [ -f "$conf" ] || continue
+        if ! acme_write_http_port "$conf" "$port"; then
+            LOGE "Failed to set ACME listener port in ${conf}"
+        fi
+    done
+}
+
+# Move certs still on acme.sh's default port 80 to the configured listener port;
+# custom per-cert ports are left alone.
+acme_migrate_http_ports() {
+    local port="$1"
+    local conf
+    for conf in "$HOME"/.acme.sh/*/*.conf; do
+        [ -f "$conf" ] || continue
+        case "$conf" in
+            *.csr.conf | *tls.validation.conf) continue ;;
+        esac
+        if grep -q "^Le_HTTPPort=['\"]*80['\"]*$" "$conf"; then
+            if acme_write_http_port "$conf" "$port"; then
+                LOGI "Auto-renewal listener port set to ${port}: ${conf}"
+            else
+                LOGE "Failed to set ACME listener port in ${conf}"
+            fi
+        elif ! grep -q '^Le_HTTPPort=' "$conf"; then
+            if acme_write_http_port "$conf" "$port"; then
+                LOGI "Auto-renewal listener port set to ${port}: ${conf}"
+            else
+                LOGE "Failed to set ACME listener port in ${conf}"
+            fi
+        fi
+    done
+}
+# FORK-END(其他更新)
+
 ssl_cert_issue_main() {
+    # FORK(其他更新): Existing auto-renewals must switch to the new listener port.
+    acme_migrate_http_ports "${ACME_HTTP_PORT}"
     echo -e "${green}\t1.${plain} Get SSL (Domain)"
     echo -e "${green}\t2.${plain} Revoke & Remove"
     echo -e "${green}\t3.${plain} Force Renew"
@@ -1427,6 +1498,9 @@ ssl_cert_issue_main() {
                 echo "$domains"
                 read -rp "Please enter a domain from the list to renew the SSL certificate: " domain
                 if echo "$domains" | grep -qw "$domain"; then
+                    # FORK(其他更新): Force Renew must write the listener port into the conf.
+                    acme_set_http_port "${domain}" "${ACME_HTTP_PORT}"
+                    LOGI "Renewal listener port: ${ACME_HTTP_PORT} (external port 80 must forward to it)."
                     ~/.acme.sh/acme.sh --renew -d ${domain} --force
                     LOGI "Certificate forcefully renewed for domain: $domain"
                 else
@@ -1526,7 +1600,8 @@ ssl_cert_issue_main() {
             echo -e "${yellow}Let's Encrypt SSL Certificate for IP Address${plain}"
             echo -e "This will obtain a certificate for your server's IP using the shortlived profile."
             echo -e "${yellow}Certificate valid for ~6 days, auto-renews via acme.sh cron job.${plain}"
-            echo -e "${yellow}Port 80 must be open and accessible from the internet.${plain}"
+            # FORK(其他更新): HTTP-01 still enters on the standard external port.
+            echo -e "${yellow}External port 80 must reach the ACME listener (default ${ACME_HTTP_PORT}).${plain}"
             confirm "Do you want to proceed?" "y"
             if [[ $? == 0 ]]; then
                 ssl_cert_issue_for_ip
@@ -1643,14 +1718,16 @@ ssl_cert_issue_for_ip() {
         LOGI "Including IPv6 address: ${ipv6_addr}"
     fi
 
-    # Choose port for HTTP-01 listener (default 80, allow override)
+    # FORK-BEGIN(其他更新): Default to the non-standard ACME listener port.
+    # Choose port for HTTP-01 listener (default 65800, allow override)
     local WebPort=""
-    read -rp "Port to use for ACME HTTP-01 listener (default 80): " WebPort
-    WebPort="${WebPort:-80}"
+    read -rp "Port to use for ACME HTTP-01 listener (default ${ACME_HTTP_PORT}): " WebPort
+    WebPort="${WebPort:-${ACME_HTTP_PORT}}"
     if ! [[ "${WebPort}" =~ ^[0-9]+$ ]] || ((WebPort < 1 || WebPort > 65535)); then
-        LOGE "Invalid port provided. Falling back to 80."
-        WebPort=80
+        LOGE "Invalid port provided. Falling back to ${ACME_HTTP_PORT}."
+        WebPort="${ACME_HTTP_PORT}"
     fi
+    # FORK-END(其他更新)
     LOGI "Using port ${WebPort} to issue certificate for IP: ${server_ip}"
     if [[ "${WebPort}" -ne 80 ]]; then
         LOGI "Reminder: Let's Encrypt still reaches port 80; forward external port 80 to ${WebPort} for validation."
@@ -1861,16 +1938,26 @@ ssl_cert_issue() {
         mkdir -p "$certPath"
     fi
 
+    # FORK-BEGIN(其他更新): Default to 65800 and persist it for renewals.
     # get the port number for the standalone server
-    local WebPort=80
-    read -rp "Please choose which port to use (default is 80): " WebPort
+    local WebPort="${ACME_HTTP_PORT}"
+    read -rp "Please choose which port to use (default is ${ACME_HTTP_PORT}): " WebPort
     if [[ -z ${WebPort} ]]; then
-        WebPort=80
+        WebPort="${ACME_HTTP_PORT}"
     elif [[ ! ${WebPort} =~ ^[1-9][0-9]*$ || ${WebPort} -gt 65535 ]]; then
-        LOGE "Your input ${WebPort} is invalid, will use default port 80."
-        WebPort=80
+        LOGE "Your input ${WebPort} is invalid, will use default port ${ACME_HTTP_PORT}."
+        WebPort="${ACME_HTTP_PORT}"
     fi
-    LOGI "Will use port: ${WebPort} to issue certificates. Please make sure this port is open."
+    LOGI "Will use port: ${WebPort} to issue certificates. External port 80 must forward to it."
+    if [[ "${WebPort}" -ne 80 ]]; then
+        LOGI "Reminder: Let's Encrypt still connects on port 80; forward external port 80 to ${WebPort}."
+    fi
+
+    if [[ ${cert_exists} -eq 1 ]]; then
+        acme_set_http_port "${domain}" "${WebPort}"
+        LOGI "Renewal listener port set to ${WebPort} for ${domain}."
+    fi
+    # FORK-END(其他更新)
 
     if [[ ${cert_exists} -eq 0 ]]; then
         # issue the certificate
