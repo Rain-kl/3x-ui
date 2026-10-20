@@ -89,3 +89,15 @@ admin messages and edits accept Markdown. Update the existing report fixture
 expectation to HTML and compare decoded content so Unicode coverage remains.
 No real Telegram messages were sent. Checks/tests and hooks are skipped per
 the user's prior instruction; dependency maintenance/formatting only.
+
+## Telegram table readability
+
+The generic HTML walk emitted formatting whitespace between table elements
+and inserted separators by NextSibling, which included whitespace text nodes.
+Telegram has no table entity, so columns broke into lines with large blank
+areas. Handle table rows/cells as a unit, ignoring structural whitespace.
+Render the first cell as an entry title and remaining cells with header labels,
+one blank line between entries, preserving each cell's inline rendering.
+Empty cells use a dash; header-only tables still show their column names.
+Keep existing escaped HTML output and balanced long-message chunking.
+No checks, tests, build or Git hooks run, per the standing user instruction.

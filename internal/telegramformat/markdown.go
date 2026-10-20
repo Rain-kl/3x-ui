@@ -26,8 +26,8 @@ func Markdown(text string) string {
 		return html.EscapeString(text)
 	}
 	var output strings.Builder
-	var walk func(*nethtml.Node, bool)
-	walk = func(node *nethtml.Node, quoted bool) {
+	var walk func(*nethtml.Node, bool, *strings.Builder)
+	walk = func(node *nethtml.Node, quoted bool, output *strings.Builder) {
 		if node.Type == nethtml.TextNode {
 			output.WriteString(html.EscapeString(node.Data))
 			return
@@ -63,6 +63,15 @@ func Markdown(text string) string {
 					open, close = `<a href="`+html.EscapeString(attr.Val)+`">`, "</a>"
 				}
 			}
+		case "table":
+			renderTable(node, output, func(cell *nethtml.Node) string {
+				var content strings.Builder
+				for child := cell.FirstChild; child != nil; child = child.NextSibling {
+					walk(child, quoted, &content)
+				}
+				return strings.TrimSpace(content.String())
+			})
+			return
 		case "br":
 			output.WriteByte('\n')
 		case "hr":
@@ -88,19 +97,15 @@ func Markdown(text string) string {
 		}
 		output.WriteString(open)
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child, quoted || node.Data == "blockquote")
+			walk(child, quoted || node.Data == "blockquote", output)
 		}
 		output.WriteString(close)
 		switch node.Data {
-		case "p", "pre", "blockquote", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6":
+		case "p", "pre", "blockquote", "li", "h1", "h2", "h3", "h4", "h5", "h6":
 			output.WriteByte('\n')
-		case "th", "td":
-			if node.NextSibling != nil {
-				output.WriteString(" | ")
-			}
 		}
 	}
-	walk(doc, false)
+	walk(doc, false, &output)
 	result := strings.Trim(output.String(), "\n")
 	if result == "" && text != "" {
 		return html.EscapeString(text)
