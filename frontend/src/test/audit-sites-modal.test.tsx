@@ -112,6 +112,17 @@ describe('Audit full site rankings', () => {
         } as never;
       if (url.endsWith('/audit/settings'))
         return { success: true, obj: { detailHours: 24, summaryDays: 30 } } as never;
+      if (url.endsWith('/clients/list/paged'))
+        return {
+          success: true,
+          obj: {
+            items: [{ email: 'alice' }],
+            total: 1,
+            filtered: 1,
+            page: 1,
+            pageSize: 50,
+          },
+        } as never;
       if (url.endsWith('/audit/summary'))
         return {
           success: true,
@@ -136,10 +147,13 @@ describe('Audit full site rankings', () => {
     const more = await screen.findByRole('button', { name: /^more$/i });
     expect(more.closest('.ant-card-extra')).toBeTruthy();
     expect(get.mock.calls.some(([url]) => url.endsWith('/audit/sites'))).toBe(false);
-    const client = screen.getByPlaceholderText('Filter client email');
+    const client = screen.getByRole('combobox', { name: 'Filter client email' });
+    fireEvent.mouseDown(client);
     fireEvent.change(client, { target: { value: 'alice' } });
-    fireEvent.keyDown(client, { key: 'Enter', code: 'Enter' });
-    const site = screen.getByPlaceholderText('Filter site');
+    fireEvent.click(
+      await screen.findByText('alice', { selector: '.ant-select-item-option-content' }),
+    );
+    const site = screen.getByPlaceholderText('Search sites (partial match)');
     fireEvent.change(site, { target: { value: 'example.com' } });
     fireEvent.keyDown(site, { key: 'Enter', code: 'Enter' });
     await waitFor(() =>

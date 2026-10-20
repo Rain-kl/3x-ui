@@ -25,6 +25,7 @@ type AuditFilter struct {
 	Client string
 	Site   string
 	Offset int
+	Sort   string
 }
 
 // FORK(audit-workbench): Keep ranking API examples derived from the response contract.
@@ -80,7 +81,8 @@ func auditDimensions(db *gorm.DB, f AuditFilter) *gorm.DB {
 		db = db.Where("client = ?", f.Client)
 	}
 	if f.Site != "" {
-		db = db.Where("site = ?", strings.ToLower(f.Site))
+		// FORK(audit-workbench): Literal substring matching must agree across detail and aggregate queries.
+		db = db.Where("LOWER(site) LIKE ? ESCAPE '\\'", "%"+escapeLikeLiteral(strings.ToLower(strings.TrimSpace(f.Site)))+"%")
 	}
 	return db
 }

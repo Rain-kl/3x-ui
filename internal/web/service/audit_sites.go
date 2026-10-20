@@ -27,6 +27,9 @@ func (AuditService) QuerySites(f AuditFilter, page, pageSize int) (*AuditSitesPa
 
 // FORK(audit-workbench): Complete client rankings need bounded database pages, not a top-20 slice.
 func (AuditService) QueryClients(f AuditFilter, page, pageSize int) (*AuditSitesPage, error) {
+	if f.Sort != "" && f.Sort != "connections" && f.Sort != "traffic" {
+		return nil, fmt.Errorf("audit sort must be connections or traffic")
+	}
 	return queryAuditRanking(f, page, pageSize, "client")
 }
 
@@ -64,7 +67,11 @@ func queryAuditRanking(f AuditFilter, page, pageSize int, dimension string) (*Au
 		// FORK(audit-workbench): Stable ordering keeps equal-count clients on deterministic pages.
 		ranking := auditSiteRanking(base())
 		if dimension == "client" {
-			ranking = base().Select("client AS name, SUM(connections) AS connections, COALESCE(SUM(uplink),0) AS uplink, COALESCE(SUM(downlink),0) AS downlink, SUM(measured) AS measured, COUNT(DISTINCT site) AS unique_sites").Group("client").Order("SUM(connections) DESC, client ASC")
+			order := "SUM(connections) DESC, client ASC"
+			if f.Sort == "traffic" {
+				order = "COALESCE(SUM(uplink),0) + COALESCE(SUM(downlink),0) DESC, client ASC"
+			}
+			ranking = base().Select("client AS name, SUM(connections) AS connections, COALESCE(SUM(uplink),0) AS uplink, COALESCE(SUM(downlink),0) AS downlink, SUM(measured) AS measured, COUNT(DISTINCT site) AS unique_sites").Group("client").Order(order)
 		}
 		if err := ranking.Limit(pageSize).Offset((page - 1) * pageSize).Scan(&result.Items).Error; err != nil {
 			return fmt.Errorf("query audit %s page: %w", dimension, err)

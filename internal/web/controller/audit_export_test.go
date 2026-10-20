@@ -39,7 +39,7 @@ func TestAuditExportNativeDownload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(archive.File) != 10 {
-		t.Fatalf("archive files=%d, want 10", len(archive.File))
+	if len(archive.File) != 11 {
+		t.Fatalf("archive files=%d, want 11", len(archive.File))
 	}
 }

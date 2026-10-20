@@ -48,6 +48,7 @@ import AuditRateChart from './AuditRateChart';
 import AuditBandwidthCard from './AuditBandwidthCard';
 // FORK(audit-workbench): All clients need independently paged rankings instead of the hourly graph.
 import AuditClientsCard from './AuditClientsCard';
+import AuditClientFilter from './AuditClientFilter';
 import { formatAuditBytes as bytes } from './format';
 import { buildAuditInboundRemarks } from './inboundRemarks';
 import './AuditPage.css';
@@ -78,7 +79,6 @@ export default function AuditPage() {
       : requestedHours;
   const [day, setDay] = useState('');
   const [nodeId, setNodeId] = useState(0);
-  const [clientInput, setClientInput] = useState('');
   const [client, setClient] = useState('');
   const [siteInput, setSiteInput] = useState('');
   const [site, setSite] = useState('');
@@ -146,11 +146,10 @@ export default function AuditPage() {
   const suspicious = rates.data?.alerts ?? [];
   const chooseClient = (value: string) => {
     setClient(value);
-    setClientInput(value);
     setOffset(0);
   };
   const chooseSite = (value: string) => {
-    setSite(value);
+    setSite(value.trim());
     setSiteInput(value);
     setOffset(0);
   };
@@ -279,17 +278,7 @@ export default function AuditPage() {
                     ]}
                     style={{ minWidth: 150 }}
                   />
-                  <Input.Search
-                    value={clientInput}
-                    onChange={(e) => {
-                      setClientInput(e.target.value);
-                      if (!e.target.value) chooseClient('');
-                    }}
-                    onSearch={chooseClient}
-                    placeholder={t('pages.audit.clientFilter')}
-                    allowClear
-                    style={{ width: 210 }}
-                  />
+                  <AuditClientFilter value={client} onChange={chooseClient} />
                   <Input.Search
                     value={siteInput}
                     onChange={(e) => {

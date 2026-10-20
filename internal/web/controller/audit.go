@@ -138,7 +138,7 @@ func newAuditController(g *gin.RouterGroup) {
 		}
 		hours, _ := strconv.Atoi(c.Query("hours"))
 		nodeID, _ := strconv.Atoi(c.Query("nodeId"))
-		result, err := (service.AuditService{}).QueryClients(service.AuditFilter{Hours: hours, NodeID: nodeID, Client: c.Query("client"), Site: c.Query("site"), Day: c.Query("day")}, page, pageSize)
+		result, err := (service.AuditService{}).QueryClients(service.AuditFilter{Sort: c.Query("sort"), Hours: hours, NodeID: nodeID, Client: c.Query("client"), Site: c.Query("site"), Day: c.Query("day")}, page, pageSize)
 		jsonObj(c, result, err)
 	})
 	g.GET("/summary", func(c *gin.Context) {

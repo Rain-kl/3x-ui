@@ -144,7 +144,7 @@
       "retentionHint": "详细记录滚动保留 {hours} 小时；按 UTC 日期、节点、客户端和网站汇总，保留最近 {days} 个日期（含今天）。",
       "allNodes": "所有节点",
       "clientFilter": "筛选客户端邮箱",
-      "siteFilter": "筛选网站",
+      "siteFilter": "搜尋網站（支援模糊搜尋）",
       "connections": "连接数",
       "upload": "上传",
       "download": "下载",

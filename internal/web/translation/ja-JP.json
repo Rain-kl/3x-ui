@@ -144,7 +144,7 @@
       "retentionHint": "Keep individual visits for {hours} rolling hours; daily node/client/site totals cover the latest {days} UTC dates, including today.",
       "allNodes": "All nodes",
       "clientFilter": "Filter client email",
-      "siteFilter": "Filter site",
+      "siteFilter": "サイトを検索（部分一致）",
       "connections": "Connections",
       "upload": "Upload",
       "download": "Download",

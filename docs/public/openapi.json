@@ -10889,7 +10889,7 @@
             "name": "site",
             "in": "query",
             "required": false,
-            "description": "",
+            "description": "Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.",
             "schema": {
               "type": "string"
             }
@@ -10969,7 +10969,7 @@
             "name": "site",
             "in": "query",
             "required": false,
-            "description": "",
+            "description": "Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.",
             "schema": {
               "type": "string"
             }
@@ -11064,7 +11064,7 @@
             "name": "site",
             "in": "query",
             "required": false,
-            "description": "",
+            "description": "Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.",
             "schema": {
               "type": "string"
             }
@@ -11144,7 +11144,7 @@
         "tags": [
           "Audit"
         ],
-        "summary": "Paginate all clients by connection count using the dashboard filters. Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100. Equal connection counts are ordered by client name.",
+        "summary": "Paginate all clients by connections (default) or total traffic using the dashboard filters. Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100. Equal values are ordered by client name.",
         "operationId": "get_panel_api_audit_clients",
         "parameters": [
           {
@@ -11187,9 +11187,23 @@
             "name": "site",
             "in": "query",
             "required": false,
-            "description": "",
+            "description": "Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "",
+            "schema": {
+              "type": "string",
+              "default": "connections",
+              "enum": [
+                "connections",
+                "traffic"
+              ]
             }
           },
           {
@@ -11521,7 +11535,7 @@
             "name": "site",
             "in": "query",
             "required": false,
-            "description": "",
+            "description": "Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.",
             "schema": {
               "type": "string"
             }

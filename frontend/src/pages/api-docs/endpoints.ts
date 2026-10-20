@@ -978,7 +978,13 @@ export const sections: readonly Section[] = [
             desc: '0 for all nodes; -1 for local; positive for one child.',
           },
           { name: 'client', in: 'query', type: 'string', optional: true },
-          { name: 'site', in: 'query', type: 'string', optional: true },
+          {
+            name: 'site',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.',
+          },
         ],
       },
       {
@@ -996,7 +1002,13 @@ export const sections: readonly Section[] = [
             desc: '0 for all nodes; -1 for local; positive for one child.',
           },
           { name: 'client', in: 'query', type: 'string', optional: true },
-          { name: 'site', in: 'query', type: 'string', optional: true },
+          {
+            name: 'site',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.',
+          },
         ],
       },
       {
@@ -1022,7 +1034,13 @@ export const sections: readonly Section[] = [
             desc: '0 for all nodes; -1 for local; positive for one child.',
           },
           { name: 'client', in: 'query', type: 'string', optional: true },
-          { name: 'site', in: 'query', type: 'string', optional: true },
+          {
+            name: 'site',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.',
+          },
           { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
           {
             name: 'pageSize',
@@ -1039,7 +1057,7 @@ export const sections: readonly Section[] = [
         method: 'GET',
         path: '/panel/api/audit/clients',
         summary:
-          'Paginate all clients by connection count using the dashboard filters. Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100. Equal connection counts are ordered by client name.',
+          'Paginate all clients by connections (default) or total traffic using the dashboard filters. Defaults to page 1 and 20 items; allowed sizes are 20, 50 and 100. Equal values are ordered by client name.',
         responseSchema: 'AuditSitesPage',
         params: [
           { name: 'hours', in: 'query', type: 'integer', optional: true },
@@ -1058,7 +1076,21 @@ export const sections: readonly Section[] = [
             desc: '0 for all nodes; -1 for local; positive for one child.',
           },
           { name: 'client', in: 'query', type: 'string', optional: true },
-          { name: 'site', in: 'query', type: 'string', optional: true },
+          {
+            name: 'site',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.',
+          },
+          {
+            name: 'sort',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            defaultValue: 'connections',
+            enum: ['connections', 'traffic'],
+          },
           { name: 'page', in: 'query', type: 'integer', optional: true, defaultValue: 1 },
           {
             name: 'pageSize',
@@ -1128,7 +1160,13 @@ export const sections: readonly Section[] = [
             desc: '0 for all nodes; -1 for the local node; a positive ID for one child.',
           },
           { name: 'client', in: 'query', type: 'string', optional: true },
-          { name: 'site', in: 'query', type: 'string', optional: true },
+          {
+            name: 'site',
+            in: 'query',
+            type: 'string',
+            optional: true,
+            desc: 'Case-insensitive literal substring of the normalized site; SQL wildcards are treated literally.',
+          },
           { name: 'offset', in: 'query', type: 'integer', optional: true },
         ],
       },

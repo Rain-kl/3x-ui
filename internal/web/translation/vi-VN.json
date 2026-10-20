@@ -144,7 +144,7 @@
       "retentionHint": "Keep individual visits for {hours} rolling hours; daily node/client/site totals cover the latest {days} UTC dates, including today.",
       "allNodes": "All nodes",
       "clientFilter": "Filter client email",
-      "siteFilter": "Filter site",
+      "siteFilter": "Tìm trang web (khớp một phần)",
       "connections": "Connections",
       "upload": "Upload",
       "download": "Download",

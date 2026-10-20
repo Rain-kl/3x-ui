@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Card, Pagination, Table } from 'antd';
+import { Alert, Button, Card, Pagination, Select, Table } from 'antd';
 
 import { HttpUtil } from '@/utils';
 import { AuditSitesPageSchema } from '@/schemas/audit';
@@ -14,17 +14,18 @@ interface Props {
 
 export default function AuditClientsCard({ filters, onChooseClient }: Props) {
   const { t } = useTranslation();
-  const filterKey = JSON.stringify(filters);
+  const [sort, setSort] = useState<'connections' | 'traffic'>('connections');
+  const filterKey = JSON.stringify({ ...filters, sort });
   const [position, setPosition] = useState({ filterKey, page: 1 });
   const [pageSize, setPageSize] = useState<20 | 50 | 100>(20);
   const page = position.filterKey === filterKey ? position.page : 1;
   if (position.filterKey !== filterKey) setPosition({ filterKey, page: 1 });
   const { data, isFetching, error, refetch } = useQuery({
-    queryKey: ['audit', 'clients', filters, page, pageSize],
+    queryKey: ['audit', 'clients', filters, sort, page, pageSize],
     queryFn: async () => {
       const response = await HttpUtil.get(
         '/panel/api/audit/clients',
-        { ...filters, page, pageSize },
+        { ...filters, sort, page, pageSize },
         { silent: true },
       );
       if (!response.success) throw new Error(response.msg || t('pages.audit.operationFailed'));
@@ -34,7 +35,23 @@ export default function AuditClientsCard({ filters, onChooseClient }: Props) {
   });
 
   return (
-    <Card size="small" className="audit-overview-card" title={t('pages.audit.clientRanking')}>
+    <Card
+      size="small"
+      className="audit-overview-card"
+      title={t('pages.audit.clientRanking')}
+      extra={
+        <Select
+          value={sort}
+          onChange={setSort}
+          aria-label={t('pages.audit.clientRanking')}
+          options={[
+            { value: 'connections', label: t('pages.audit.connections') },
+            { value: 'traffic', label: t('pages.audit.traffic') },
+          ]}
+          style={{ minWidth: 110 }}
+        />
+      }
+    >
       {error && (
         <Alert
           type="error"
