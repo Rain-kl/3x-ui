@@ -35,6 +35,11 @@ func BuildAuditExport(parent context.Context, kind, client string) (*os.File, er
 	}
 	ctx, cancel := context.WithTimeout(parent, 5*time.Minute)
 	defer cancel()
+	if kind == "database" {
+		if err := auditBandwidth.restoreRecent(time.Now().UTC()); err != nil {
+			return nil, err
+		}
+	}
 	file, err := os.CreateTemp("", "xui-audit-*.zip")
 	if err != nil {
 		return nil, fmt.Errorf("create audit export file: %w", err)
@@ -81,6 +86,21 @@ func BuildAuditExport(parent context.Context, kind, client string) (*os.File, er
 				}
 				counts[table.name+".jsonl"] = count
 			}
+			writer, err := archive.Create("audit_bandwidth_recent.jsonl")
+			if err != nil {
+				return fmt.Errorf("create recent bandwidth export: %w", err)
+			}
+			rows := auditBandwidth.recentRows(now, policy.ClearBefore)
+			encoder := json.NewEncoder(writer)
+			for _, row := range rows {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				if err := encoder.Encode(row); err != nil {
+					return fmt.Errorf("export recent bandwidth: %w", err)
+				}
+			}
+			counts["audit_bandwidth_recent.jsonl"] = int64(len(rows))
 		} else {
 			filter := AuditFilter{Hours: policy.SummaryDays * 24}
 			if kind == "client" {

@@ -91,6 +91,14 @@ export default function AuditBandwidthCard({ nodeId, client }: { nodeId: number;
           ]}
         />
       </Space>
+      {mode === 'live' && !!recent.data?.availableFrom && (
+        <Typography.Paragraph type="secondary">
+          {t('pages.audit.bandwidthCoverage', {
+            from: new Date(recent.data.availableFrom * 1000).toLocaleString(),
+            to: new Date(recent.data.sampledUntil * 1000).toLocaleString(),
+          })}
+        </Typography.Paragraph>
+      )}
       {error && <Alert type="error" title={error.message} />}
       {(!current.data?.fresh || current.isError || !!current.data.staleNodes) && (
         <Alert type="info" title={t('pages.audit.bandwidthMissing')} style={{ marginBottom: 12 }} />

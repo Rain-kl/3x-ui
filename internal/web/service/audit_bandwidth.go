@@ -23,7 +23,9 @@ type AuditBandwidthPoint struct {
 	CoveredSeconds float64 `json:"coveredSeconds"`
 }
 type AuditBandwidthHistory struct {
-	Points []AuditBandwidthPoint `json:"points"`
+	Points        []AuditBandwidthPoint `json:"points"`
+	AvailableFrom int64                 `json:"availableFrom"`
+	SampledUntil  int64                 `json:"sampledUntil"`
 }
 
 func (AuditService) QueryBandwidth(f AuditFilter) (*AuditBandwidthCurrent, error) {
@@ -138,6 +140,9 @@ func (AuditService) QueryBandwidthRecent(f AuditFilter) (*AuditBandwidthHistory,
 	if f.NodeID < -1 {
 		return nil, fmt.Errorf("invalid bandwidth node")
 	}
+	if err := auditBandwidth.restoreRecent(time.Now().UTC()); err != nil {
+		return nil, err
+	}
 	result := &AuditBandwidthHistory{Points: []AuditBandwidthPoint{}}
 	err := auditReadSnapshot(func(tx *gorm.DB) error {
 		state, err := readAuditControl(tx)
@@ -160,9 +165,14 @@ func (AuditService) QueryBandwidthRecent(f AuditFilter) (*AuditBandwidthHistory,
 			nodeBuckets := map[int64]AuditBandwidthPoint{}
 			for _, sample := range samples {
 				slot := sample.At.Unix() / 5 * 5
-				if slot < start || sample.From.Before(state.ClearBefore) {
+				if slot < start || slot > end || sample.From.Before(state.ClearBefore) {
 					continue
 				}
+				from := max(start, sample.From.Unix())
+				if result.AvailableFrom == 0 || from < result.AvailableFrom {
+					result.AvailableFrom = from
+				}
+				result.SampledUntil = max(result.SampledUntil, sample.At.Unix())
 				point := AuditBandwidthPoint{Time: slot, CoveredSeconds: 5}
 				if f.Client != "" {
 					rate := sample.Rates[f.Client]

@@ -19,3 +19,45 @@
 ## 2026-10-18 刷新前后精度一致
 
 移除浏览器临时样本与分钟均值拼接。采集器为每节点保存最近一小时最多 901 次实际采样，只保留非零客户端速率并预计算节点合计；最近一小时接口按五秒桶返回覆盖/断点，按客户端筛选为哈希查找，全节点合计不逐客户端重复求和。浏览器刷新读取同一缓存，24 小时均值仍独立持久化；面板进程重启与清理后不伪造细粒度历史。
+
+## 2026-10-20 bbolt rolling-hour samples
+
+The current window already slides by now minus 3600 seconds; loss of the whole
+preceding segment could not be attributed to a restart because uptime evidence
+was unavailable. The confirmed durability gap was memory-only fine samples.
+The user selected bbolt to close it. Store per-node sparse samples in an ordered
+samples-v1 bucket alongside the SQLite file (or the configured PostgreSQL panel
+data directory), outside the replaceable install directory, with 0600 mode.
+
+Keep the sampling/query fast path in RAM, lazily restore once per database
+instance, merge/deduplicate timestamps and retain at most 901 per node. Do not
+restore raw counter baselines or replay samples into minute totals. A fresh
+process therefore leaves a genuine sampling gap, not an artificial spike.
+The existing 30-second/shutdown flush opens bbolt with a one-second lock timeout,
+writes only new samples in one synced transaction and closes it. Only advance
+save watermarks on success. Ordered prefix pruning visits expired keys; a new
+cleanup watermark also removes crossing intervals. Free pages are reused,
+physical file shrinking is not promised. Storage errors remain visible.
+
+Clear commits the SQL cleanup watermark before synchronously removing bbolt and
+RAM history; SQL watermark filtering prevents delayed writes/restoration from
+resurrecting deleted samples. Restore happens before dashboard SQL snapshots,
+so even a one-connection SQL pool cannot deadlock on a second pooled read.
+Independent locks serialize store I/O, short memory locks protect snapshots;
+ready sampling does not wait for disk I/O. Full audit export includes valid
+recent samples as JSONL without exposing raw bbolt free pages. Coverage metadata
+shows actual collected bounds; live chart bounds use server timestamps to avoid
+browser clock skew. No new GORM model or SQL migration is needed.
+
+Per standing user instruction, no checks/tests/build/hooks were run. Generation
+and formatting are maintenance steps only; crash recovery and live deployment
+behavior have not been runtime verified.
+
+A bbolt open/write failure does not suppress the independent SQL minute flush:
+finish both paths and aggregate errors, advancing each save watermark only for
+its successful transaction. This prevents a cache durability fault from causing
+unrelated 24-hour metric loss.
+
+Pruning collects copied keys before deleting them, avoiding bbolt cursor index
+shifts skipping adjacent expired records. PostgreSQL deployments still require
+a persistent, writable panel data directory for this local bbolt file.

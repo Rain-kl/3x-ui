@@ -32,8 +32,8 @@ export default function AuditBandwidthPlot({
             time: true,
             ...(windowSeconds
               ? {
-                  range: (): [number, number] => {
-                    const now = Date.now() / 1000;
+                  range: (plot: uPlot): [number, number] => {
+                    const now = plot.data[0].at(-1) ?? Date.now() / 1000;
                     return [now - windowSeconds, now];
                   },
                 }

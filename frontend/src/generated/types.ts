@@ -523,7 +523,9 @@ export interface AuditBandwidthCurrent {
 }
 
 export interface AuditBandwidthHistory {
+  availableFrom: number;
   points: AuditBandwidthPoint[];
+  sampledUntil: number;
 }
 
 export interface AuditBandwidthPoint {

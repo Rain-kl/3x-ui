@@ -2081,15 +2081,25 @@ export const SCHEMAS: Record<string, unknown> = {
   },
   "AuditBandwidthHistory": {
     "properties": {
+      "availableFrom": {
+        "format": "int64",
+        "type": "integer"
+      },
       "points": {
         "items": {
           "$ref": "#/components/schemas/AuditBandwidthPoint"
         },
         "type": "array"
+      },
+      "sampledUntil": {
+        "format": "int64",
+        "type": "integer"
       }
     },
     "required": [
-      "points"
+      "availableFrom",
+      "points",
+      "sampledUntil"
     ],
     "type": "object"
   },

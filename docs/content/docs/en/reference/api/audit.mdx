@@ -12,9 +12,11 @@ _openapi:
         indicates missing data. Website and date filters do not apply.
       url: '#current-raw-uploaddownload-bytes-per-second-from-committed-per-inbound-counters-about-5-second-sampling-excludes-billing-ratios-freshfalse-indicates-missing-data-website-and-date-filters-do-not-apply'
     - depth: 2
-      title: Get the last hour of five-second server bandwidth samples. Missing
-        samples remain gaps; process restart clears this bounded cache.
-      url: '#get-the-last-hour-of-five-second-server-bandwidth-samples-missing-samples-remain-gaps-process-restart-clears-this-bounded-cache'
+      title: Get a rolling hour of five-second bandwidth samples, restored from bbolt
+        after restart. availableFrom and sampledUntil are Unix seconds
+        describing collected coverage. Batches are persisted every 30 seconds;
+        missing samples remain gaps.
+      url: '#get-a-rolling-hour-of-five-second-bandwidth-samples-restored-from-bbolt-after-restart-availablefrom-and-sampleduntil-are-unix-seconds-describing-collected-coverage-batches-are-persisted-every-30-seconds-missing-samples-remain-gaps'
     - depth: 2
       title: 24 hours of minute average bandwidth in bytes/second, with coveredSeconds
         indicating actual sampling coverage. No coverage is unknown, not zero.
@@ -99,9 +101,11 @@ _openapi:
           Fresh=false indicates missing data. Website and date filters do not
           apply.
         id: current-raw-uploaddownload-bytes-per-second-from-committed-per-inbound-counters-about-5-second-sampling-excludes-billing-ratios-freshfalse-indicates-missing-data-website-and-date-filters-do-not-apply
-      - content: Get the last hour of five-second server bandwidth samples. Missing
-          samples remain gaps; process restart clears this bounded cache.
-        id: get-the-last-hour-of-five-second-server-bandwidth-samples-missing-samples-remain-gaps-process-restart-clears-this-bounded-cache
+      - content: Get a rolling hour of five-second bandwidth samples, restored from
+          bbolt after restart. availableFrom and sampledUntil are Unix seconds
+          describing collected coverage. Batches are persisted every 30 seconds;
+          missing samples remain gaps.
+        id: get-a-rolling-hour-of-five-second-bandwidth-samples-restored-from-bbolt-after-restart-availablefrom-and-sampleduntil-are-unix-seconds-describing-collected-coverage-batches-are-persisted-every-30-seconds-missing-samples-remain-gaps
       - content: 24 hours of minute average bandwidth in bytes/second, with
           coveredSeconds indicating actual sampling coverage. No coverage is
           unknown, not zero. Persisted every 30 seconds; nodeId/client filters

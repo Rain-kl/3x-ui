@@ -77,8 +77,8 @@ func TestAuditExportSnapshotAndClientScope(t *testing.T) {
 		}
 	}
 	data := read("database", "")
-	if len(data) != 10 {
-		t.Fatalf("archive entries = %d, want 10", len(data))
+	if len(data) != 11 {
+		t.Fatalf("archive entries = %d, want 11", len(data))
 	}
 	if !strings.Contains(string(data["audit_events.jsonl"]), `"client":"bob"`) {
 		t.Fatalf("raw export missing bob: %s", data["audit_events.jsonl"])

@@ -215,7 +215,7 @@
 ## 审计实时带宽曲线 (audit-bandwidth)
 
 - **需求背景**：连接结束才入库的访问日志无法判断长连接是否持续占用带宽，需要观察客户端的实际上传、下载速率。
-- **修改内容**：日志审计新增带宽图表，每5秒刷新当前速率，支持按节点、客户端筛选；可切换最近1小时实时曲线和24小时分钟趋势；后端保存最近1小时细粒度采样，5秒刷新，浏览器刷新保留峰值；不再拼接分钟均值，面板进程重启或审计清理后重新采样。使用原始流量计数及实际采样间隔，不受计费倍率影响。清零、重启或同步中断时重新采样，缺失画为断点。卡片明确说明网站和访问日期筛选不影响带宽。
+- **修改内容**：日志审计新增带宽图表，每5秒刷新当前速率，支持按节点、客户端筛选；可切换最近1小时实时曲线和24小时分钟趋势；后端保存最近1小时细粒度采样，5秒刷新，浏览器刷新保留峰值；不再拼接分钟均值，细粒度样本使用 bbolt 每30秒增量保存，刷新及重启后恢复已保存峰值，审计清理同步删除，并显示窗口内实际采样范围。使用原始流量计数及实际采样间隔，不受计费倍率影响。清零、重启或同步中断时重新采样，缺失画为断点。卡片明确说明网站和访问日期筛选不影响带宽。
 - **性能与维护**：复用既有本地及子节点流量同步，不新增节点请求；每节点至多4秒批量读取一次，不逐用户查询。分钟数据每30秒批量持久化，固定保留24小时，完整 ZIP 导出和日志清理覆盖新表；AI 审计工具也可查询当前带宽与历史趋势。
 - **修改文件**：新增 `internal/web/service/audit_bandwidth*.go`、`internal/database/model/audit_bandwidth.go`、`frontend/src/pages/audit/AuditBandwidth*.tsx`；接入流量同步、模型注册及跨库迁移、审计 API/导出/清理、Web 生命周期、AI 工具、接口文档与13种语言词条。
 - **上游改动标记**：`FORK(audit-bandwidth)`。
@@ -260,3 +260,5 @@
 - 2026-10-19：Telegram 用户 Bot、管理员文本和 AI 报告支持 Markdown 富文本；统一转换为 Telegram HTML，长报告按解析后的字符数分段并保持标签闭合，既有管理员 HTML 模板继续正常显示。（internal/telegramformat/、internal/telegramuser/api.go、internal/telegramuser/report.go、internal/web/service/tgbot/；FORK(telegram-user-bot)；docs/specs/telegram-user-bot.md）
 
 - 2026-10-20：修复 Telegram Markdown 表格列拆散和大量空行，按行转换为紧凑条目并以表头标注字段，保留单元格内富文本和长消息分段。（internal/telegramformat/；docs/specs/telegram-user-bot.md）
+
+- 2026-10-20：最近1小时带宽细粒度采样使用 bbolt 持久化，30秒增量批量落盘、启动恢复和滚动清理，审计清空同步删除；界面显示采样范围并使用服务器窗口时间，完整审计 ZIP 包含细粒度样本。（internal/web/service/audit_bandwidth_store.go、audit_bandwidth_capture.go、audit_bandwidth.go、audit_retention_settings.go、audit_export.go、frontend/src/pages/audit/、internal/web/translation/*.json；docs/specs/audit-bandwidth.md）

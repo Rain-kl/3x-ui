@@ -2107,15 +2107,25 @@
       },
       "AuditBandwidthHistory": {
         "properties": {
+          "availableFrom": {
+            "format": "int64",
+            "type": "integer"
+          },
           "points": {
             "items": {
               "$ref": "#/components/schemas/AuditBandwidthPoint"
             },
             "type": "array"
+          },
+          "sampledUntil": {
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
-          "points"
+          "availableFrom",
+          "points",
+          "sampledUntil"
         ],
         "type": "object"
       },
@@ -10417,7 +10427,7 @@
         "tags": [
           "Audit"
         ],
-        "summary": "Get the last hour of five-second server bandwidth samples. Missing samples remain gaps; process restart clears this bounded cache.",
+        "summary": "Get a rolling hour of five-second bandwidth samples, restored from bbolt after restart. availableFrom and sampledUntil are Unix seconds describing collected coverage. Batches are persisted every 30 seconds; missing samples remain gaps.",
         "operationId": "get_panel_api_audit_bandwidth_recent",
         "parameters": [
           {
@@ -10461,6 +10471,7 @@
                 "example": {
                   "success": true,
                   "obj": {
+                    "availableFrom": 0,
                     "points": [
                       {
                         "coveredSeconds": 0,
@@ -10468,7 +10479,8 @@
                         "time": 0,
                         "upload": 0
                       }
-                    ]
+                    ],
+                    "sampledUntil": 0
                   }
                 }
               }
@@ -10526,6 +10538,7 @@
                 "example": {
                   "success": true,
                   "obj": {
+                    "availableFrom": 0,
                     "points": [
                       {
                         "coveredSeconds": 0,
@@ -10533,7 +10546,8 @@
                         "time": 0,
                         "upload": 0
                       }
-                    ]
+                    ],
+                    "sampledUntil": 0
                   }
                 }
               }

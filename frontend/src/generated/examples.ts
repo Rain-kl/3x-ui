@@ -577,6 +577,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "upload": 0
   },
   "AuditBandwidthHistory": {
+    "availableFrom": 0,
     "points": [
       {
         "coveredSeconds": 0,
@@ -584,7 +585,8 @@ export const EXAMPLES: Record<string, unknown> = {
         "time": 0,
         "upload": 0
       }
-    ]
+    ],
+    "sampledUntil": 0
   },
   "AuditBandwidthPoint": {
     "coveredSeconds": 0,

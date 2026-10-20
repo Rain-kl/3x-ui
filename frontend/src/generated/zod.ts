@@ -560,7 +560,9 @@ export const AuditBandwidthCurrentSchema = z.object({
 export type AuditBandwidthCurrent = z.infer<typeof AuditBandwidthCurrentSchema>;
 
 export const AuditBandwidthHistorySchema = z.object({
+  availableFrom: z.number().int(),
   points: z.array(z.lazy(() => AuditBandwidthPointSchema)),
+  sampledUntil: z.number().int(),
 });
 export type AuditBandwidthHistory = z.infer<typeof AuditBandwidthHistorySchema>;
 

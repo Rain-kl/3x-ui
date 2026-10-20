@@ -881,7 +881,7 @@ export const sections: readonly Section[] = [
         method: 'GET',
         path: '/panel/api/audit/bandwidth/recent',
         summary:
-          'Get the last hour of five-second server bandwidth samples. Missing samples remain gaps; process restart clears this bounded cache.',
+          'Get a rolling hour of five-second bandwidth samples, restored from bbolt after restart. availableFrom and sampledUntil are Unix seconds describing collected coverage. Batches are persisted every 30 seconds; missing samples remain gaps.',
         responseSchema: 'AuditBandwidthHistory',
         params: [
           { name: 'nodeId', in: 'query', type: 'integer', optional: true },

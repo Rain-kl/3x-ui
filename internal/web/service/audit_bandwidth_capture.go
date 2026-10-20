@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
@@ -44,22 +46,30 @@ type bandwidthRecent struct {
 }
 
 type bandwidthCapture struct {
-	mu       sync.Mutex
-	epoch    string
-	attempts map[int]time.Time
-	nodes    map[int]bandwidthNode
-	minutes  map[bandwidthKey]model.AuditBandwidthMinute
-	recent   map[int][]bandwidthRecent
+	diskMu           sync.Mutex
+	diskOwner        *gorm.DB
+	diskPath         string
+	savedRecent      map[int]time.Time
+	savedClearBefore time.Time
+	mu               sync.Mutex
+	epoch            string
+	attempts         map[int]time.Time
+	nodes            map[int]bandwidthNode
+	minutes          map[bandwidthKey]model.AuditBandwidthMinute
+	recent           map[int][]bandwidthRecent
 }
 
 func newBandwidthCapture() *bandwidthCapture {
-	return &bandwidthCapture{epoch: uuid.NewString(), recent: map[int][]bandwidthRecent{}, attempts: map[int]time.Time{}, nodes: map[int]bandwidthNode{}, minutes: map[bandwidthKey]model.AuditBandwidthMinute{}}
+	return &bandwidthCapture{savedRecent: map[int]time.Time{}, epoch: uuid.NewString(), recent: map[int][]bandwidthRecent{}, attempts: map[int]time.Time{}, nodes: map[int]bandwidthNode{}, minutes: map[bandwidthKey]model.AuditBandwidthMinute{}}
 }
 
 var auditBandwidth = newBandwidthCapture()
 
 func captureAuditBandwidth(nodeID int) {
 	now := time.Now().UTC()
+	if err := auditBandwidth.restoreRecent(now); err != nil {
+		logger.Warningf("restore audit bandwidth: %v", err)
+	}
 	auditBandwidth.mu.Lock()
 	if now.Sub(auditBandwidth.attempts[nodeID]) < 4*time.Second {
 		auditBandwidth.mu.Unlock()
@@ -166,9 +176,10 @@ func FlushAuditBandwidth() {
 func (s *bandwidthCapture) flush(now time.Time) error {
 	auditRetentionMu.Lock()
 	defer auditRetentionMu.Unlock()
+	restoreErr := s.restoreRecent(now)
 	control, err := readAuditControl(database.GetDB())
 	if err != nil {
-		return err
+		return errors.Join(restoreErr, err)
 	}
 	cutoff := now.Add(-24 * time.Hour).Truncate(time.Minute).Unix()
 	if control.ClearBefore.Unix() > cutoff {
@@ -204,6 +215,10 @@ func (s *bandwidthCapture) flush(now time.Time) error {
 		}
 	}
 	s.mu.Unlock()
+	var storeErr error
+	if restoreErr == nil {
+		storeErr = s.persistRecent(now, control.ClearBefore)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	err = submitTrafficWrite(func() error {
@@ -216,7 +231,7 @@ func (s *bandwidthCapture) flush(now time.Time) error {
 		return db.Where("minute < ?", cutoff).Delete(&model.AuditBandwidthMinute{}).Error
 	})
 	if err != nil {
-		return err
+		return errors.Join(restoreErr, storeErr, err)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -227,5 +242,5 @@ func (s *bandwidthCapture) flush(now time.Time) error {
 			delete(s.minutes, key)
 		}
 	}
-	return nil
+	return errors.Join(restoreErr, storeErr)
 }

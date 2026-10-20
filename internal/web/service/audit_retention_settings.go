@@ -234,10 +234,11 @@ func (svc AuditService) Clear(olderThanDays int) error {
 			return err
 		}
 		committed = true
-		if err := audit.Local().Prune(time.Time{}, state.ClearBefore); err != nil {
-			return fmt.Errorf("master audit cleanup saved; remove local spool: %w", err)
+		spoolErr := audit.Local().Prune(time.Time{}, state.ClearBefore)
+		if spoolErr != nil {
+			spoolErr = fmt.Errorf("master audit cleanup saved; remove local spool: %w", spoolErr)
 		}
-		return nil
+		return errors.Join(spoolErr, auditBandwidth.clearRecent(time.Now().UTC(), state.ClearBefore))
 	}()
 	auditRetentionMu.Unlock()
 	// Persisted desired state is retried even if removing the local spool failed.

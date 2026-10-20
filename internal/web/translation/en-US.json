@@ -222,7 +222,8 @@
       "bandwidthDownload": "Download rate",
       "bandwidthLive": "Last hour (refreshes every 5s)",
       "bandwidthDay": "Last 24 hours (minute averages)",
-      "bandwidthHelp": "Uses raw traffic counters for active connections, independent of billing multipliers. Follows node and client filters. The last hour uses server-side fine-grained samples refreshed every 5 seconds, preserving peaks across page reloads. Process restart or audit cleanup starts new samples. The last 24 hours shows persisted minute averages.",
+      "bandwidthHelp": "Uses raw traffic counters for active connections, independent of billing multipliers. Follows node and client filters. The rolling last hour refreshes every 5 seconds and preserves saved peaks across reloads and restarts. Samples are persisted in 30-second batches; a crash may lose the latest batch. Audit cleanup removes saved samples. The last 24 hours shows minute averages.",
+      "bandwidthCoverage": "Collected interval in this window: {from} – {to}",
       "bandwidthMissing": "Some samples are not ready or have become stale. Missing periods do not mean zero traffic; node synchronization delays also affect observation times."
     },
     "login": {
