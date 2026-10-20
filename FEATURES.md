@@ -263,3 +263,5 @@
 - 2026-10-20：修复 Telegram Markdown 表格列拆散和大量空行，按行转换为紧凑条目并以表头标注字段，保留单元格内富文本和长消息分段。（internal/telegramformat/；docs/specs/telegram-user-bot.md）
 
 - 2026-10-20：最近1小时带宽细粒度采样使用 bbolt 持久化，30秒增量批量落盘、启动恢复和滚动清理，审计清空同步删除；界面显示采样范围并使用服务器窗口时间，完整审计 ZIP 包含细粒度样本。（internal/web/service/audit_bandwidth_store.go、audit_bandwidth_capture.go、audit_bandwidth.go、audit_retention_settings.go、audit_export.go、frontend/src/pages/audit/、internal/web/translation/*.json；docs/specs/audit-bandwidth.md）
+
+- 2026-10-20：新增客户端时，若所选入站支持 XTLS 流控，Flow 默认选中 `xtls-rprx-vision`，用户仍可显式改为无；编辑既有客户端不改变其流控，API 省略 flow 时仍为空。（frontend/src/pages/clients/ClientFormModal.tsx、ClientBulkAddModal.tsx；FORK(其他更新)；docs/specs/client-vision-default-flow.md）
