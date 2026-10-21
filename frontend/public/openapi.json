@@ -3275,6 +3275,9 @@
       "Control": {
         "description": "Control is a complete authoritative snapshot, including an explicitly empty rule list.",
         "properties": {
+          "balancing": {
+            "nullable": true
+          },
           "revision": {
             "format": "int64",
             "type": "integer"
@@ -13791,7 +13794,7 @@
         "tags": [
           "Server"
         ],
-        "summary": "Apply a versioned parent routing snapshot, preserving local rules and immediately reconciling running Xray. Requires admin or node-sync scope.",
+        "summary": "Apply a versioned parent routing and balancing snapshot, preserving local rules and immediately reconciling running Xray. Requires admin or node-sync scope.",
         "operationId": "post_panel_api_server_routing_sync",
         "requestBody": {
           "required": true,
@@ -13816,6 +13819,26 @@
                     "type": "array",
                     "items": {
                       "type": "object"
+                    }
+                  },
+                  "balancing": {
+                    "type": "object",
+                    "required": [
+                      "balancers"
+                    ],
+                    "properties": {
+                      "balancers": {
+                        "type": "array",
+                        "items": {
+                          "type": "object"
+                        }
+                      },
+                      "observatory": {
+                        "type": "object"
+                      },
+                      "burstObservatory": {
+                        "type": "object"
+                      }
                     }
                   }
                 }
@@ -13842,7 +13865,9 @@
                 },
                 "example": {
                   "success": true,
-                  "msg": "apply synchronized routing rules"
+                  "obj": {
+                    "balancingApplied": true
+                  }
                 }
               }
             }

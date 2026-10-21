@@ -27,10 +27,11 @@ const (
 var xrayTemplateMu sync.Mutex
 
 type routingReceipt struct {
-	Source   string `json:"source"`
-	Revision int64  `json:"revision"`
-	Hash     string `json:"hash"`
-	Applied  bool   `json:"applied"`
+	Source    string                 `json:"source"`
+	Revision  int64                  `json:"revision"`
+	Hash      string                 `json:"hash"`
+	Applied   bool                   `json:"applied"`
+	Balancing *routingsync.Balancing `json:"balancing,omitempty"`
 }
 
 type RoutingSyncService struct{}
@@ -112,14 +113,21 @@ func validateSyncRuleSet(rules []map[string]any) error {
 	return nil
 }
 
-func persistRoutingDesired(tx *gorm.DB, rules []map[string]any, source string) error {
-	var state routingsync.Control
-	found, err := readRoutingValue(tx, routingSyncDesiredKey, &state)
-	if err != nil || (!found && len(rules) == 0) {
+func persistRoutingDesired(tx *gorm.DB, rules []map[string]any, balancing *routingsync.Balancing, source string) error {
+	var receipt routingReceipt
+	if _, err := readRoutingValue(tx, routingSyncReceivedKey, &receipt); err != nil {
 		return err
 	}
-	old, _ := json.Marshal(state.Rules)
-	next, _ := json.Marshal(rules)
+	if receipt.Source != "" {
+		return nil
+	}
+	var state routingsync.Control
+	found, err := readRoutingValue(tx, routingSyncDesiredKey, &state)
+	if err != nil || (!found && len(rules) == 0 && len(balancing.Balancers) == 0) {
+		return err
+	}
+	old := routingSnapshotContent(state)
+	next := routingSnapshotContent(routingsync.Control{Rules: rules, Balancing: balancing})
 	if found && string(old) == string(next) {
 		return nil
 	}
@@ -131,11 +139,21 @@ func persistRoutingDesired(tx *gorm.DB, rules []map[string]any, source string) e
 	}
 	state.Revision++
 	state.Rules = rules
+	state.Balancing = balancing
 	return saveRoutingJSON(tx, routingSyncDesiredKey, state)
 }
 
 // keepManagedRouting preserves authoritative copies across local or legacy remote saves.
 func keepManagedRouting(oldTemplate, template string) (string, error) {
+	var receipt routingReceipt
+	if _, err := readRoutingValue(database.GetDB(), routingSyncReceivedKey, &receipt); err != nil {
+		return "", err
+	}
+	var err error
+	template, err = installBalancing(template, receipt.Balancing, receipt.Source)
+	if err != nil {
+		return "", err
+	}
 	oldRules, err := GetRoutingRulesFromTemplate(oldTemplate)
 	if err != nil {
 		return "", err
@@ -176,8 +194,8 @@ func keepManagedRouting(oldTemplate, template string) (string, error) {
 	return updated, err
 }
 
-func validateSyncTargets(rules []map[string]any) error {
-	if len(rules) == 0 {
+func validateSyncTargets(rules []map[string]any, template string, balancing *routingsync.Balancing) error {
+	if len(rules) == 0 && balancing == nil {
 		return nil
 	}
 	cfg, err := (&XrayService{}).GetXrayConfig()
@@ -197,13 +215,43 @@ func validateSyncTargets(rules []map[string]any) error {
 	for _, outbound := range obs {
 		outbounds[outbound.Tag] = true
 	}
+	oldTemplate, err := (&SettingService{}).GetXrayConfigTemplate()
+	if err != nil {
+		return err
+	}
+	oldTags, err := GetOutboundTagsFromTemplate(oldTemplate)
+	if err != nil {
+		return err
+	}
+	for _, tag := range oldTags {
+		delete(outbounds, tag)
+	}
+	newTags, err := GetOutboundTagsFromTemplate(template)
+	if err != nil {
+		return err
+	}
+	for _, tag := range newTags {
+		outbounds[tag] = true
+		if strings.HasPrefix(tag, "_bl_") {
+			inbounds[tag] = true
+		}
+	}
+	if err := validateBalancingTargets(balancing, outbounds); err != nil {
+		return err
+	}
+	var candidate struct {
+		Routing json.RawMessage `json:"routing"`
+	}
+	if err := json.Unmarshal([]byte(template), &candidate); err != nil {
+		return err
+	}
 	var routing struct {
 		Script    string `json:"script"`
 		Balancers []struct {
 			Tag string `json:"tag"`
 		} `json:"balancers"`
 	}
-	if err := json.Unmarshal(cfg.RouterConfig, &routing); err != nil {
+	if err := json.Unmarshal(candidate.Routing, &routing); err != nil {
 		return fmt.Errorf("decode node balancers: %w", err)
 	}
 	if routing.Script != "" {
@@ -212,8 +260,20 @@ func validateSyncTargets(rules []map[string]any) error {
 	for _, balancer := range routing.Balancers {
 		balancers[balancer.Tag] = true
 	}
+	if balancing != nil {
+		localRules, err := GetRoutingRulesFromTemplate(template)
+		if err != nil {
+			return err
+		}
+		for _, rule := range localRules {
+			tag, _ := rule["balancerTag"].(string)
+			if tag != "" && rule["enabled"] != false && !balancers[tag] {
+				return fmt.Errorf("node routing rule references missing synchronized balancer %q", tag)
+			}
+		}
+	}
 	for i, rule := range rules {
-		if rule["enabled"] == false {
+		if rule["enabled"] == false || isApiRule(rule) {
 			continue
 		}
 		outbound, _ := rule["outboundTag"].(string)
@@ -261,7 +321,7 @@ func (RoutingSyncService) Apply(state routingsync.Control) error {
 	if receipt.Source != "" && receipt.Source != state.Source {
 		return fmt.Errorf("routing sync is already managed by parent %s", receipt.Source)
 	}
-	encoded, _ := json.Marshal(state.Rules)
+	encoded := routingSnapshotContent(state)
 	hash := fmt.Sprintf("%x", sha256.Sum256(encoded))
 	if state.Revision < receipt.Revision {
 		return nil
@@ -273,9 +333,6 @@ func (RoutingSyncService) Apply(state routingsync.Control) error {
 		if receipt.Applied {
 			return nil
 		}
-	}
-	if err := validateSyncTargets(state.Rules); err != nil {
-		return err
 	}
 	template, err := (&SettingService{}).GetXrayConfigTemplate()
 	if err != nil {
@@ -305,10 +362,24 @@ func (RoutingSyncService) Apply(state routingsync.Control) error {
 	if err != nil {
 		return err
 	}
+	balancing := state.Balancing
+	if balancing == nil {
+		balancing = receipt.Balancing
+	}
+	updated, err = installBalancing(updated, balancing, state.Source)
+	if err != nil {
+		return err
+	}
+	if err := validateSyncTargets(state.Rules, updated, balancing); err != nil {
+		return err
+	}
 	if err := (&XraySettingService{}).CheckXrayConfig(updated); err != nil {
 		return fmt.Errorf("validate synchronized routing: %w", err)
 	}
-	receipt = routingReceipt{Source: state.Source, Revision: state.Revision, Hash: hash}
+	if state.Balancing != nil {
+		receipt.Balancing = state.Balancing
+	}
+	receipt = routingReceipt{Source: state.Source, Revision: state.Revision, Hash: hash, Balancing: receipt.Balancing}
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		if err := saveRoutingValue(tx, "xrayTemplateConfig", updated); err != nil {
 			return err
@@ -378,4 +449,17 @@ func (RoutingSyncService) SyncNodes(ctx context.Context) error {
 		return fmt.Errorf("routing saved locally; node synchronization pending (automatic retry): %w", err)
 	}
 	return nil
+}
+
+// Legacy snapshots retain their original hash so existing pending receipts can be retried.
+func routingSnapshotContent(state routingsync.Control) []byte {
+	var value any = state.Rules
+	if state.Balancing != nil {
+		value = struct {
+			Rules     []map[string]any       `json:"rules"`
+			Balancing *routingsync.Balancing `json:"balancing"`
+		}{state.Rules, state.Balancing}
+	}
+	data, _ := json.Marshal(value)
+	return data
 }

@@ -65,8 +65,13 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 	if err != nil {
 		return err
 	}
+	// FORK(routing-rule-sync): Balancer-only saves must also advance the node snapshot.
+	balancing, err := balancingFromTemplate(newXraySettings)
+	if err != nil {
+		return err
+	}
 	var source string
-	if len(syncRules) > 0 {
+	if len(syncRules) > 0 || len(balancing.Balancers) > 0 {
 		source, err = s.getString("panelGuid")
 		if err != nil {
 			return err
@@ -92,7 +97,7 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 		if err := saveRoutingValue(tx, "xrayTemplateConfig", newXraySettings); err != nil {
 			return err
 		}
-		if err := persistRoutingDesired(tx, syncRules, source); err != nil {
+		if err := persistRoutingDesired(tx, syncRules, balancing, source); err != nil {
 			return err
 		}
 		if outboundsChanged {

@@ -1769,7 +1769,7 @@ export const sections: readonly Section[] = [
         method: 'POST',
         path: '/panel/api/server/routing/sync',
         summary:
-          'Apply a versioned parent routing snapshot, preserving local rules and immediately reconciling running Xray. Requires admin or node-sync scope.',
+          'Apply a versioned parent routing and balancing snapshot, preserving local rules and immediately reconciling running Xray. Requires admin or node-sync scope.',
         requestSchema: {
           type: 'object',
           required: ['source', 'revision', 'rules'],
@@ -1777,9 +1777,18 @@ export const sections: readonly Section[] = [
             source: { type: 'string' },
             revision: { type: 'integer', minimum: 1 },
             rules: { type: 'array', items: { type: 'object' } },
+            balancing: {
+              type: 'object',
+              required: ['balancers'],
+              properties: {
+                balancers: { type: 'array', items: { type: 'object' } },
+                observatory: { type: 'object' },
+                burstObservatory: { type: 'object' },
+              },
+            },
           },
         },
-        response: '{\n  "success": true,\n  "msg": "apply synchronized routing rules"\n}',
+        response: '{\n  "success": true,\n  "obj": { "balancingApplied": true }\n}',
       },
     ],
   },
