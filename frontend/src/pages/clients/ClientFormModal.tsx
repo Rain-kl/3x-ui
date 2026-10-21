@@ -275,6 +275,8 @@ export default function ClientFormModal({
   const { t } = useTranslation();
   const [messageApi, messageContextHolder] = message.useMessage();
   const isEdit = mode === 'edit';
+  // FORK(其他更新): New add-mode clients default to Vision until the user picks a flow.
+  const [flowTouched, setFlowTouched] = useState(false);
 
   const methods = useForm<Values>({ defaultValues: EMPTY });
   const inboundIds = useWatch({ control: methods.control, name: 'inboundIds' });
@@ -372,6 +374,8 @@ export default function ClientFormModal({
 
   useEffect(() => {
     if (!open) return;
+    // FORK(其他更新): Every open starts from the new-client default.
+    setFlowTouched(false);
     setIpsModalOpen(false);
     setHwidsModalOpen(false);
 
@@ -571,16 +575,19 @@ export default function ClientFormModal({
     methods.setValue('secret', generateMtprotoSecret(mtprotoDomain));
   }
 
+  // FORK-BEGIN(其他更新): New clients default to Vision; an explicit "none" must win.
   useEffect(() => {
-    // Only clear the flow once we actually have inbound options to judge
-    // capability from. While the options list is momentarily empty (e.g. the
-    // options query is (re)loading and `inbounds` falls back to `[]`), showFlow
-    // is a false negative, so clearing here would silently drop a valid
-    // xtls-rprx-vision flow the user picked for a Reality/TLS inbound.
-    if (inbounds.length > 0 && !showFlow && flow) {
-      methods.setValue('flow', '');
+    // An empty options list is a reload false-negative, not "flow not supported".
+    if (inbounds.length === 0) return;
+    if (!showFlow) {
+      if (flow) methods.setValue('flow', '');
+      return;
     }
-  }, [inbounds, showFlow, flow, methods]);
+    if (!isEdit && !flowTouched && !flow) {
+      methods.setValue('flow', TLS_FLOW_CONTROL.VISION);
+    }
+  }, [inbounds, showFlow, isEdit, flowTouched, flow, methods]);
+  // FORK-END(其他更新)
 
   useEffect(() => {
     if (!showReverseTag && reverseTag) {
@@ -1416,8 +1423,13 @@ export default function ClientFormModal({
                         </Space.Compact>
                       </Form.Item>
 
+                      {/* FORK(其他更新): Keep an explicit "none" choice instead of re-defaulting. */}
                       {showFlow && (
-                        <FormField name="flow" label={t('pages.clients.flow')}>
+                        <FormField
+                          name="flow"
+                          label={t('pages.clients.flow')}
+                          onAfterChange={() => setFlowTouched(true)}
+                        >
                           <Select
                             options={[
                               { value: '', label: t('none') },

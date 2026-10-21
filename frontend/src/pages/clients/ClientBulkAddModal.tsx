@@ -98,6 +98,8 @@ export default function ClientBulkAddModal({
   const trafficReset = useWatch({ control: methods.control, name: 'trafficReset' });
   const [delayedStart, setDelayedStart] = useState(false);
   const [saving, setSaving] = useState(false);
+  // FORK(其他更新): New add-mode clients default to Vision until the user picks a flow.
+  const [flowTouched, setFlowTouched] = useState(false);
   const fail2ban = useFail2banStatusQuery();
   const limitIpDisabled = !fail2ban.usable;
   const limitIpNotice = getLimitIpNotice(fail2ban, t);
@@ -108,6 +110,8 @@ export default function ClientBulkAddModal({
     if (open) {
       methods.reset(EMPTY);
       setDelayedStart(false);
+      // FORK(其他更新): Every open starts from the new-client default.
+      setFlowTouched(false);
     }
   }
 
@@ -133,11 +137,19 @@ export default function ClientBulkAddModal({
     return '';
   }, [inboundIds, inbounds]);
 
+  // FORK-BEGIN(其他更新): New clients default to Vision; an explicit "none" must win.
   useEffect(() => {
-    if (!showFlow && flow) {
-      methods.setValue('flow', '');
+    // An empty options list is a reload false-negative, not "flow not supported".
+    if (inbounds.length === 0) return;
+    if (!showFlow) {
+      if (flow) methods.setValue('flow', '');
+      return;
     }
-  }, [showFlow, flow, methods]);
+    if (!flowTouched && !flow) {
+      methods.setValue('flow', TLS_FLOW_CONTROL.VISION);
+    }
+  }, [inbounds, showFlow, flowTouched, flow, methods]);
+  // FORK-END(其他更新)
 
   const inboundOptions = useMemo(
     () =>
@@ -366,8 +378,13 @@ export default function ClientBulkAddModal({
               <Input />
             </FormField>
 
+            {/* FORK(其他更新): Keep an explicit "none" choice instead of re-defaulting. */}
             {showFlow && (
-              <FormField name="flow" label={t('pages.clients.flow')}>
+              <FormField
+                name="flow"
+                label={t('pages.clients.flow')}
+                onAfterChange={() => setFlowTouched(true)}
+              >
                 <Select
                   style={{ width: 220 }}
                   options={[
