@@ -328,9 +328,14 @@ func (RoutingSyncService) Apply(state routingsync.Control) error {
 	}
 	if state.Revision == receipt.Revision {
 		if hash != receipt.Hash {
-			return fmt.Errorf("routing sync revision %d has conflicting content", state.Revision)
-		}
-		if receipt.Applied {
+			legacy := state
+			legacy.Balancing = nil
+			legacyHash := fmt.Sprintf("%x", sha256.Sum256(routingSnapshotContent(legacy)))
+			// Older children acknowledge only the rules; allow their exact receipt to acquire balancing once after upgrade.
+			if state.Balancing == nil || receipt.Balancing != nil || receipt.Hash != legacyHash {
+				return fmt.Errorf("routing sync revision %d has conflicting content", state.Revision)
+			}
+		} else if receipt.Applied {
 			return nil
 		}
 	}

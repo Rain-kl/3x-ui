@@ -182,3 +182,36 @@ func TestRoutingSyncBalancerChangesParticipateInReceiptHash(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRoutingSyncUpgradedChildRetriesIgnoredBalancingAtSameRevision(t *testing.T) {
+	initTrafficTestDB(t)
+	t.Cleanup(SetXrayProcessForTest(nil))
+	settings := &XraySettingService{}
+	if err := settings.SaveXraySetting(syncTemplate); err != nil {
+		t.Fatal(err)
+	}
+	state := routingsync.Control{Source: "master", Revision: 1, Rules: []map[string]any{syncRule("domain:shared.example")}}
+	// The old child stored a successful rules-only receipt after ignoring the unknown balancing field.
+	if err := (RoutingSyncService{}).Apply(state); err != nil {
+		t.Fatal(err)
+	}
+	state.Balancing = &routingsync.Balancing{Balancers: []map[string]any{testBalancer("pool", "direct")}}
+	for range 2 {
+		if err := (RoutingSyncService{}).Apply(state); err != nil {
+			t.Fatalf("upgraded child cannot retry parent snapshot: %v", err)
+		}
+	}
+	template, err := settings.GetXrayConfigTemplate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	balancing, err := balancingFromTemplate(template)
+	if err != nil || len(balancing.Balancers) != 1 {
+		t.Fatalf("upgrade omitted balancing: %+v %v", balancing, err)
+	}
+	// Once upgraded, conflicting balancing at this revision is still rejected.
+	state.Balancing.Balancers[0]["selector"] = []string{"blocked"}
+	if err := (RoutingSyncService{}).Apply(state); err == nil || !strings.Contains(err.Error(), "conflicting content") {
+		t.Fatalf("upgrade relaxed later conflict protection: %v", err)
+	}
+}
