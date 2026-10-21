@@ -6,12 +6,14 @@ import { telegramApi } from './api';
 // FORK(telegram-invite-management): Invitation history must remain visible after the creation dialog closes.
 import TelegramInvitations from './TelegramInvitations';
 import TelegramInvitationModal from './TelegramInvitationModal';
+import TelegramManualBindingModal from './TelegramManualBindingModal';
 
 export default function TelegramBindings({ onChat }: { onChat: (tgId: number) => void }) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [messageApi, messageHolder] = message.useMessage();
   const bindings = useQuery({
     queryKey: ['telegram', 'bindings', page],
@@ -23,13 +25,12 @@ export default function TelegramBindings({ onChat }: { onChat: (tgId: number) =>
       size="small"
       title={t('pages.telegram.bindings')}
       extra={
-        <Button
-          onClick={() => {
-            setOpen(true);
-          }}
-        >
-          {t('pages.telegram.createCode')}
-        </Button>
+        <Space wrap>
+          <Button onClick={() => setOpen(true)}>{t('pages.telegram.createCode')}</Button>
+          <Button type="primary" onClick={() => setManualOpen(true)}>
+            {t('pages.telegram.manualBind')}
+          </Button>
+        </Space>
       }
     >
       {messageHolder}
@@ -85,6 +86,7 @@ export default function TelegramBindings({ onChat }: { onChat: (tgId: number) =>
           showSizeChanger: false,
         }}
       />
+      {manualOpen && <TelegramManualBindingModal onClose={() => setManualOpen(false)} />}
       <TelegramInvitations />
       {open && <TelegramInvitationModal onClose={() => setOpen(false)} />}
     </Card>

@@ -329,6 +329,14 @@ export const sections: readonly Section[] = [
         responseSchema: 'TelegramBindingPage',
       },
       {
+        method: 'POST',
+        path: '/panel/api/telegram/bindings',
+        summary: 'Bind a numeric Telegram account ID to a client as an administrator.',
+        description:
+          'Does not require a user-initiated binding command. Both directions are unique; identical bindings are idempotent. Creates a conversation placeholder, consumes invitations and queues visible historical notices atomically. Telegram still requires the user to start the Bot before it can deliver messages.',
+        requestSchema: { $ref: '#/components/schemas/AdminBindInput' },
+      },
+      {
         method: 'GET',
         path: '/panel/api/telegram/clients',
         summary: 'Search lightweight clients for binding-code generation.',

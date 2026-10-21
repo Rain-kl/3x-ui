@@ -141,6 +141,12 @@ export const AITaskPageSchema = z.object({
 });
 export type AITaskPage = z.infer<typeof AITaskPageSchema>;
 
+export const AdminBindInputSchema = z.object({
+  clientId: z.number().int(),
+  tgId: z.number().int(),
+});
+export type AdminBindInput = z.infer<typeof AdminBindInputSchema>;
+
 export const AllSettingSchema = z.object({
   datepicker: z.string(),
   discordAdminIds: z.string(),
@@ -629,6 +635,13 @@ export const AuditSitesPageSchema = z.object({
 });
 export type AuditSitesPage = z.infer<typeof AuditSitesPageSchema>;
 
+export const BalancingSchema = z.object({
+  balancers: z.array(z.record(z.string(), z.unknown())),
+  burstObservatory: z.record(z.string(), z.unknown()).optional(),
+  observatory: z.record(z.string(), z.unknown()).optional(),
+});
+export type Balancing = z.infer<typeof BalancingSchema>;
+
 export const BindCodeSchema = z.object({
   code: z.string(),
   expiresAt: z.number().int(),
@@ -843,6 +856,7 @@ export const ClientsSummarySchema = z.object({
 export type ClientsSummary = z.infer<typeof ClientsSummarySchema>;
 
 export const ControlSchema = z.object({
+  balancing: z.lazy(() => BalancingSchema).nullable().optional(),
   revision: z.number().int(),
   rules: z.array(z.record(z.string(), z.unknown())),
   source: z.string(),

@@ -139,29 +139,8 @@ func Bind(tgID int64, proof string) (model.TelegramBinding, error) {
 				return fmt.Errorf("消息匹配到多个客户端的订阅凭据，请只发送一个或改用绑定码")
 			}
 		}
-		var client model.ClientRecord
-		if err := tx.Select("id", "group_name").First(&client, clientID).Error; err != nil {
-			return fmt.Errorf("binding client no longer exists")
-		}
-		var existing []model.TelegramBinding
-		if err := tx.Where("tg_id = ? OR client_id = ?", tgID, clientID).Find(&existing).Error; err != nil {
-			return fmt.Errorf("check Telegram binding uniqueness: %w", err)
-		}
-		if len(existing) > 0 {
-			if len(existing) == 1 && existing[0].TgID == tgID && existing[0].ClientID == clientID {
-				binding = existing[0]
-				return nil
-			}
-			return fmt.Errorf("account or client is already bound; unbind before changing it")
-		}
-		binding = model.TelegramBinding{ClientID: clientID, TgID: tgID}
-		if err := tx.Create(&binding).Error; err != nil {
-			return fmt.Errorf("claim Telegram binding: %w", err)
-		}
-		if err := tx.Model(&model.TelegramBindCode{}).Where("client_id = ? AND used_at = 0 AND revoked_at = 0", clientID).Update("used_at", time.Now().UnixMilli()).Error; err != nil {
-			return fmt.Errorf("finish invitation lifecycle: %w", err)
-		}
-		_, err := enqueueClientNotifications(tx, binding, client)
+		var err error
+		binding, err = claimBinding(tx, tgID, clientID)
 		return err
 	})
 	return binding, err
@@ -207,6 +186,8 @@ func BoundClient(tgID int64) (*model.ClientRecord, error) {
 }
 
 func Unbind(tgID int64) error {
+	inviteMu.Lock()
+	defer inviteMu.Unlock()
 	return database.GetDB().Transaction(func(tx *gorm.DB) error {
 		var binding model.TelegramBinding
 		if err := tx.Where("tg_id = ?", tgID).First(&binding).Error; err != nil {
@@ -220,4 +201,33 @@ func Unbind(tgID int64) error {
 		}
 		return tx.Delete(&binding).Error
 	})
+}
+
+// claimBinding keeps both administrator and user binding under identical ownership rules.
+func claimBinding(tx *gorm.DB, tgID int64, clientID int) (model.TelegramBinding, error) {
+	var binding model.TelegramBinding
+	var client model.ClientRecord
+	if err := tx.Select("id", "group_name").First(&client, clientID).Error; err != nil {
+		return binding, fmt.Errorf("load binding client %d: %w", clientID, err)
+	}
+	var existing []model.TelegramBinding
+	if err := tx.Where("tg_id = ? OR client_id = ?", tgID, clientID).Find(&existing).Error; err != nil {
+		return binding, fmt.Errorf("check Telegram binding uniqueness: %w", err)
+	}
+	if len(existing) > 0 {
+		if len(existing) == 1 && existing[0].TgID == tgID && existing[0].ClientID == clientID {
+			binding = existing[0]
+			return binding, nil
+		}
+		return binding, fmt.Errorf("account or client is already bound; unbind before changing it")
+	}
+	binding = model.TelegramBinding{ClientID: clientID, TgID: tgID}
+	if err := tx.Create(&binding).Error; err != nil {
+		return binding, fmt.Errorf("claim Telegram binding: %w", err)
+	}
+	if err := tx.Model(&model.TelegramBindCode{}).Where("client_id = ? AND used_at = 0 AND revoked_at = 0", clientID).Update("used_at", time.Now().UnixMilli()).Error; err != nil {
+		return binding, fmt.Errorf("finish invitation lifecycle: %w", err)
+	}
+	_, err := enqueueClientNotifications(tx, binding, client)
+	return binding, err
 }

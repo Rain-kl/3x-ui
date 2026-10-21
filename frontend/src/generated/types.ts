@@ -111,6 +111,11 @@ export interface AITaskPage {
   total: number;
 }
 
+export interface AdminBindInput {
+  clientId: number;
+  tgId: number;
+}
+
 export interface AllSetting {
   datepicker: string;
   discordAdminIds: string;
@@ -583,6 +588,12 @@ export interface AuditSitesPage {
   total: number;
 }
 
+export interface Balancing {
+  balancers: Record<string, unknown>[];
+  burstObservatory?: Record<string, unknown>;
+  observatory?: Record<string, unknown>;
+}
+
 export interface BindCode {
   code: string;
   expiresAt: number;
@@ -784,6 +795,7 @@ export interface ClientsSummary {
 }
 
 export interface Control {
+  balancing?: Balancing | null;
   revision: number;
   rules: Record<string, unknown>[];
   source: string;

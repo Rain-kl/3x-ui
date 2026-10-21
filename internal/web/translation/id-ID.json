@@ -2596,6 +2596,10 @@
       "telegramHelp": "Publishing alone does not send Telegram messages. Use “Publish and send to Telegram” to notify matching bound users. Delivery status is available under Telegram messages and logs."
     },
     "telegram": {
+      "manualBind": "Manual binding",
+      "manualBindHelp": "Bind directly without asking the user to send a code or subscription link. Each account and client can have only one binding. Telegram requires the user to open the Bot and press Start before it can send messages.",
+      "manualBindIdHelp": "Enter the numeric Telegram account ID, not an @username or group ID.",
+      "manualBindInvalidId": "Enter a valid positive numeric Telegram account ID.",
       "messages": "Messages",
       "logs": "Logs",
       "settings": "Settings",

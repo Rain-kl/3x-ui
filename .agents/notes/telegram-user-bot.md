@@ -101,3 +101,9 @@ one blank line between entries, preserving each cell's inline rendering.
 Empty cells use a dash; header-only tables still show their column names.
 Keep existing escaped HTML output and balanced long-message chunking.
 No checks, tests, build or Git hooks run, per the standing user instruction.
+
+## 管理员手动绑定
+
+新增受管理员鉴权的 POST /panel/api/telegram/bindings 和绑定卡片入口，接受 clientId 与数字 tgId，允许没有既有会话的账号。提取 claimBinding 供订阅/邀请码及管理员共用，保持同一事务中的唯一归属校验、邀请码结束和定向历史通知补发；管理员事务追加会话占位与审计日志，失败整体回滚。普通解绑也取得 inviteMu，防止与管理员或用户绑定并发交错。无需新增数据模型。
+
+前端客户端选择按需搜索分页、Telegram ID 校验安全整数；成功刷新绑定、会话及邀请码，错误保留表单供修正。未有消息的会话时间显示破折号。明确说明 Telegram 要求用户先 Start，管理员绑定不能绕过平台发送限制。验证事务回滚、历史通知仅入队一次、与用户绑定的交叉冲突、真实路由鉴权及网页表单交互。

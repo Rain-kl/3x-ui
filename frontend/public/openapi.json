@@ -387,6 +387,24 @@
         ],
         "type": "object"
       },
+      "AdminBindInput": {
+        "properties": {
+          "clientId": {
+            "example": 1,
+            "type": "integer"
+          },
+          "tgId": {
+            "example": 123456789,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clientId",
+          "tgId"
+        ],
+        "type": "object"
+      },
       "AllSetting": {
         "properties": {
           "datepicker": {
@@ -2353,6 +2371,30 @@
         ],
         "type": "object"
       },
+      "Balancing": {
+        "description": "Balancing replaces parent-owned balancers and their probe configuration as one unit.",
+        "properties": {
+          "balancers": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "burstObservatory": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "observatory": {
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "required": [
+          "balancers"
+        ],
+        "type": "object"
+      },
       "BindCode": {
         "properties": {
           "code": {
@@ -3276,6 +3318,11 @@
         "description": "Control is a complete authoritative snapshot, including an explicitly empty rule list.",
         "properties": {
           "balancing": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Balancing"
+              }
+            ],
             "nullable": true
           },
           "revision": {
@@ -7231,6 +7278,45 @@
                       }
                     ],
                     "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Bind a numeric Telegram account ID to a client as an administrator.",
+        "operationId": "post_panel_api_telegram_bindings",
+        "description": "Does not require a user-initiated binding command. Both directions are unique; identical bindings are idempotent. Creates a conversation placeholder, consumes invitations and queues visible historical notices atomically. Telegram still requires the user to start the Bot before it can deliver messages.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminBindInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
                   }
                 }
               }

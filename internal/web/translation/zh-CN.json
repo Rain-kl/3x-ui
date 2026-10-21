@@ -2596,6 +2596,10 @@
       "telegramHelp": "普通发布不主动发送 Telegram。点击“发布并推送 TG”才向匹配且已绑定的用户发送，投递状态可在 Telegram 消息和日志中查看。"
     },
     "telegram": {
+      "manualBind": "手动绑定",
+      "manualBindHelp": "管理员直接绑定，无需用户发送绑定码或订阅链接。一个账号和一个客户端只能有一个绑定；Telegram 仍要求用户先打开 Bot 点击 Start，才能接收消息。",
+      "manualBindIdHelp": "填写用户的数字 Telegram ID，不能填写 @用户名或群组 ID。",
+      "manualBindInvalidId": "请输入有效的正整数 Telegram 用户 ID。",
       "messages": "消息",
       "logs": "日志",
       "settings": "设置",
