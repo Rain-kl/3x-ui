@@ -110,7 +110,7 @@ func userTelegramUsage(clientID int) (string, error) {
 	} else if record.TotalGB > 0 && used >= record.TotalGB {
 		status = "流量已用尽"
 	}
-	return fmt.Sprintf("客户端：%s\n状态：%s\n剩余流量：%s\n已用流量：%.2f GiB\n剩余时间：%s", record.Email, status, remaining, float64(used)/(1<<30), days), nil
+	return fmt.Sprintf("客户端：%s\n状态：%s\n剩余流量：%s\n已用流量：%.2f GiB\n剩余时间：%s\n注：面板仅统计单向流量，实际双向流量需 ×2 计算。", record.Email, status, remaining, float64(used)/(1<<30), days), nil
 }
 
 // FORK(telegram-subscription-details): Depend on the registered subscription renderer to preserve protocol-specific behavior.
