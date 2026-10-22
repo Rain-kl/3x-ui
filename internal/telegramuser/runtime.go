@@ -400,21 +400,13 @@ func (r *receiver) command(tgID int64, text string) {
 			r.bind(tgID, parts[1])
 			return
 		}
-		// FORK(telegram-invite-management): Missing deep-link payloads need an explicit, logged diagnosis.
-		if command == "/start" {
-			if _, err := BoundClient(tgID); err != nil {
-				r.log(tgID, 0, "binding.start.missing", "Telegram delivered /start without a binding parameter")
-				r.reply(tgID, "当前尚未绑定。请重新打开管理员提供的完整绑定链接并点击开始，或直接发送绑定码。此次 /start 未携带绑定参数。", nil)
-				return
-			}
-		}
-		r.reply(tgID, "欢迎使用订阅助手。发送订阅链接或绑定码即可绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", nil)
+		r.reply(tgID, "欢迎使用订阅助手。请先使用/bind指令完成客户端绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", nil)
 	case "/bind":
 		if len(parts) > 1 {
 			r.bind(tgID, parts[1])
 		} else {
 			r.await[tgID] = awaiting{action: "bind", until: time.Now().Add(5 * time.Minute)}
-			r.reply(tgID, "请发送管理员提供的完整订阅链接或一次性绑定码。", nil)
+			r.reply(tgID, "请发送节点订阅链接或绑定码(bind_xxxx)。", nil)
 		}
 	case "/unbind":
 		var binding model.TelegramBinding
