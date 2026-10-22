@@ -402,6 +402,9 @@ func (r *receiver) command(tgID int64, text string) {
 		}
 		r.reply(tgID, "欢迎使用订阅助手。请先使用/bind指令完成客户端绑定；绑定后可查询订阅和剩余用量。输入 / 查看可用指令。", nil)
 	case "/bind":
+		if r.alreadyBound(tgID) {
+			return
+		}
 		if len(parts) > 1 {
 			r.bind(tgID, parts[1])
 		} else {
@@ -472,15 +475,22 @@ func (r *receiver) command(tgID int64, text string) {
 	}
 }
 
-func (r *receiver) bind(tgID int64, proof string) {
+func (r *receiver) alreadyBound(tgID int64) bool {
 	var existing model.TelegramBinding
 	if err := database.GetDB().Where("tg_id = ?", tgID).First(&existing).Error; err == nil {
 		r.reply(tgID, "你已经绑定成功。输入 / 选择指令，查询订阅和用量。", nil)
 		r.log(tgID, int64(existing.ClientID), "binding.already_bound", "repeated binding request")
-		return
+		return true
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		r.reply(tgID, "检查绑定状态失败，请稍后重试。", nil)
 		r.log(tgID, 0, "binding.check.failed", err.Error())
+		return true
+	}
+	return false
+}
+
+func (r *receiver) bind(tgID int64, proof string) {
+	if r.alreadyBound(tgID) {
 		return
 	}
 	allowed, attempts := allowBindAttempt(tgID)
