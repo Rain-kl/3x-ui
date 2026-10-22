@@ -197,7 +197,7 @@ func TestRoutingSyncBroadcastPartialFailureAndRecovery(t *testing.T) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
-		_, _ = w.Write([]byte(`{"success":true}`))
+		_, _ = w.Write([]byte(`{"success":true,"obj":{"balancingApplied":true}}`))
 	}))
 	defer server.Close()
 	host, portText, _ := net.SplitHostPort(strings.TrimPrefix(server.URL, "http://"))
@@ -215,7 +215,8 @@ func TestRoutingSyncBroadcastPartialFailureAndRecovery(t *testing.T) {
 	if err := db.Model(&disabled).Update("enable", false).Error; err != nil {
 		t.Fatal(err)
 	}
-	template, _, _ := ReplaceRoutingRulesInTemplate(syncTemplate, []map[string]any{syncRule("domain:shared.example")})
+	balancedTemplate := strings.Replace(syncTemplate, `"domainStrategy":`, `"balancers":[{"tag":"pool","selector":["direct"]}],"domainStrategy":`, 1)
+	template, _, _ := ReplaceRoutingRulesInTemplate(balancedTemplate, []map[string]any{syncRule("domain:shared.example")})
 	if err := (&XraySettingService{}).SaveXraySetting(template); err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +246,7 @@ func TestRoutingSyncBroadcastPartialFailureAndRecovery(t *testing.T) {
 		t.Fatalf("disabled node contacted or enabled node skipped: %d requests", len(received))
 	}
 	for _, state := range received {
-		if !reflect.DeepEqual(state, received[0]) || state.Revision != 1 {
+		if !reflect.DeepEqual(state, received[0]) || state.Revision != 1 || state.Balancing == nil || len(state.Balancing.Balancers) != 1 {
 			t.Fatalf("retry lost desired revision: %+v", state)
 		}
 	}

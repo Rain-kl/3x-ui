@@ -197,6 +197,16 @@ func newTelegramUserController(g *gin.RouterGroup) {
 		result, err := telegramuser.Bindings(page, size)
 		jsonObj(c, result, err)
 	})
+	// FORK(telegram-user-bot): Administrators can associate accounts without a user-initiated binding command.
+	g.POST("/bindings", func(c *gin.Context) {
+		var body telegramuser.AdminBindInput
+		if err := c.ShouldBindJSON(&body); err != nil {
+			jsonObj(c, nil, fmt.Errorf("decode administrator Telegram binding: %w", err))
+			return
+		}
+		result, err := telegramuser.AdminBind(body)
+		jsonObj(c, result, err)
+	})
 	g.GET("/clients", func(c *gin.Context) {
 		page, size := notificationPaging(c)
 		result, err := (service.NotificationService{}).Clients(c.Query("search"), nil, page, size)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/mymmrac/telego"
+	"gorm.io/gorm"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database"
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
@@ -480,6 +481,16 @@ func (r *receiver) command(tgID int64, text string) {
 }
 
 func (r *receiver) bind(tgID int64, proof string) {
+	var existing model.TelegramBinding
+	if err := database.GetDB().Where("tg_id = ?", tgID).First(&existing).Error; err == nil {
+		r.reply(tgID, "你已经绑定成功。输入 / 选择指令，查询订阅和用量。", nil)
+		r.log(tgID, int64(existing.ClientID), "binding.already_bound", "repeated binding request")
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		r.reply(tgID, "检查绑定状态失败，请稍后重试。", nil)
+		r.log(tgID, 0, "binding.check.failed", err.Error())
+		return
+	}
 	allowed, attempts := allowBindAttempt(tgID)
 	if !allowed {
 		reason := fmt.Sprintf("bind attempts exceeded: %d in %s", attempts, bindAttemptWindow)

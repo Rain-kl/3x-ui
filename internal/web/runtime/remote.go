@@ -1138,6 +1138,17 @@ func (r *Remote) PushRoutingRules(ctx context.Context, rules []map[string]any) e
 
 // FORK(routing-rule-sync): Parent snapshots need merge semantics rather than the legacy full replacement RPC.
 func (r *Remote) SyncRouting(ctx context.Context, state routingsync.Control) error {
-	_, err := r.do(ctx, http.MethodPost, "panel/api/server/routing/sync", state)
-	return err
+	response, err := r.do(ctx, http.MethodPost, "panel/api/server/routing/sync", state)
+	if err != nil {
+		return err
+	}
+	if state.Balancing != nil {
+		var ack struct {
+			BalancingApplied bool `json:"balancingApplied"`
+		}
+		if err := json.Unmarshal(response.Obj, &ack); err != nil || !ack.BalancingApplied {
+			return fmt.Errorf("node did not acknowledge balancing synchronization; upgrade the child panel")
+		}
+	}
+	return nil
 }

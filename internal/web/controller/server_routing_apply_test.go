@@ -172,6 +172,36 @@ func TestRemoteRoutingSaveImmediatelyAppliesToRunningCore(t *testing.T) {
 	if tag, err := route(); err != nil || tag != "blocked" {
 		t.Fatalf("withdrawal did not restore local rule: %s %v", tag, err)
 	}
+
+	// FORK(routing-rule-sync): Exercise balancer creation, isolated edits and withdrawal through the actual RPC and running core.
+	snapshot.Revision = 3
+	snapshot.Rules = []map[string]any{{"type": "field", "domain": []string{"domain:example.com"}, "balancerTag": "pool"}}
+	balancer := map[string]any{"tag": "pool", "selector": []string{"blocked"}, "strategy": map[string]any{"type": "roundRobin"}}
+	snapshot.Balancing = &routingsync.Balancing{Balancers: []map[string]any{balancer}}
+	if err := remote.SyncRouting(context.Background(), snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if tag, err := route(); err != nil || tag != "blocked" {
+		t.Fatalf("synchronized balancer inactive: %s %v", tag, err)
+	}
+	snapshot.Revision = 4
+	balancer["selector"] = []string{"direct"}
+	if err := remote.SyncRouting(context.Background(), snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if tag, err := route(); err != nil || tag != "direct" {
+		t.Fatalf("balancer-only edit inactive: %s %v", tag, err)
+	}
+	snapshot.Revision = 5
+	snapshot.Rules = []map[string]any{}
+	snapshot.Balancing = &routingsync.Balancing{Balancers: []map[string]any{}}
+	if err := remote.SyncRouting(context.Background(), snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if tag, err := route(); err != nil || tag != "blocked" {
+		t.Fatalf("balancer withdrawal lost local routing: %s %v", tag, err)
+	}
+
 	// A pending listener conflict must be visible to the master, including on retry.
 	saved, err := (&service.SettingService{}).GetXrayConfigTemplate()
 	if err != nil {
@@ -193,7 +223,7 @@ func TestRemoteRoutingSaveImmediatelyAppliesToRunningCore(t *testing.T) {
 		}
 	}
 
-	snapshot.Revision = 3
+	snapshot.Revision = 6
 	snapshot.Rules = []map[string]any{{"type": "field", "domain": []string{"domain:example.com"}, "outboundTag": "direct"}}
 	for range 2 {
 		err := remote.SyncRouting(context.Background(), snapshot)

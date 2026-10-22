@@ -14,5 +14,9 @@ func (a *ServerController) syncRouting(c *gin.Context) {
 		return
 	}
 	err := (service.RoutingSyncService{}).Apply(state)
-	jsonMsg(c, "apply synchronized routing rules", err)
+	if err != nil {
+		jsonMsg(c, "apply synchronized routing rules", err)
+		return
+	}
+	jsonObj(c, map[string]bool{"balancingApplied": state.Balancing != nil}, nil)
 }

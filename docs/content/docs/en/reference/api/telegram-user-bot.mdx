@@ -46,6 +46,9 @@ _openapi:
       title: Page verified one-to-one bindings.
       url: '#page-verified-one-to-one-bindings'
     - depth: 2
+      title: Bind a numeric Telegram account ID to a client as an administrator.
+      url: '#bind-a-numeric-telegram-account-id-to-a-client-as-an-administrator'
+    - depth: 2
       title: Search lightweight clients for binding-code generation.
       url: '#search-lightweight-clients-for-binding-code-generation'
     - depth: 2
@@ -96,6 +99,8 @@ _openapi:
         id: download-a-message-attachment-through-authenticated-bot-access
       - content: Page verified one-to-one bindings.
         id: page-verified-one-to-one-bindings
+      - content: Bind a numeric Telegram account ID to a client as an administrator.
+        id: bind-a-numeric-telegram-account-id-to-a-client-as-an-administrator
       - content: Search lightweight clients for binding-code generation.
         id: search-lightweight-clients-for-binding-code-generation
       - content: List current invitation codes, links and lifecycle states.
@@ -134,6 +139,12 @@ _openapi:
           as a panel binary. Photos, audio and video use the matching Telegram
           media method.
         heading: send-an-attachment-and-persist-its-delivery-result
+      - content: Does not require a user-initiated binding command. Both directions are
+          unique; identical bindings are idempotent. Creates a conversation
+          placeholder, consumes invitations and queues visible historical
+          notices atomically. Telegram still requires the user to start the Bot
+          before it can deliver messages.
+        heading: bind-a-numeric-telegram-account-id-to-a-client-as-an-administrator
       - content: 'validityMinutes is optional: omitted/null defaults to 30 minutes, 0
           never expires, otherwise 1..5256000 whole minutes. Rotation
           invalidates the old code. Codes remain one-time even without
@@ -148,7 +159,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/commands","method":"get"},{"path":"/panel/api/telegram/commands","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/invitations","method":"get"},{"path":"/panel/api/telegram/invitations/{clientId}/revoke","method":"post"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/commands","method":"get"},{"path":"/panel/api/telegram/commands","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/bindings","method":"post"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/invitations","method":"get"},{"path":"/panel/api/telegram/invitations/{clientId}/revoke","method":"post"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
     </>
   );
 }

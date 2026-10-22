@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { HttpUtil } from '@/utils';
 import {
+  AdminBindInputSchema,
   BindCodeSchema,
   BindCodeInputSchema,
   InvitationViewSchema,
@@ -92,6 +93,8 @@ export const telegramApi = {
     postTelegram(`/invitations/${clientId}/revoke`, undefined, z.unknown()),
   bindCode: (input: z.infer<typeof BindCodeInputSchema>) =>
     postTelegram('/bind-code', input, BindCodeSchema),
+  manualBind: (input: z.infer<typeof AdminBindInputSchema>) =>
+    postTelegram('/bindings', input, z.unknown()),
   unbind: (tgId: number) => postTelegram(`/bindings/${tgId}/unbind`, undefined, z.unknown()),
   logs: (page: number, size: number, event: string, tgId: string) =>
     getTelegram(

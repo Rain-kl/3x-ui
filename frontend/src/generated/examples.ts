@@ -157,6 +157,10 @@ export const EXAMPLES: Record<string, unknown> = {
     ],
     "total": 0
   },
+  "AdminBindInput": {
+    "clientId": 1,
+    "tgId": 123456789
+  },
   "AllSetting": {
     "datepicker": "",
     "discordAdminIds": "",
@@ -659,6 +663,13 @@ export const EXAMPLES: Record<string, unknown> = {
     "pageSize": 20,
     "total": 1
   },
+  "Balancing": {
+    "balancers": [
+      {}
+    ],
+    "burstObservatory": {},
+    "observatory": {}
+  },
   "BindCode": {
     "code": "",
     "expiresAt": 0,
@@ -899,6 +910,7 @@ export const EXAMPLES: Record<string, unknown> = {
     "total": 2000
   },
   "Control": {
+    "balancing": null,
     "revision": 0,
     "rules": [
       {}

@@ -361,6 +361,24 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "AdminBindInput": {
+    "properties": {
+      "clientId": {
+        "example": 1,
+        "type": "integer"
+      },
+      "tgId": {
+        "example": 123456789,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "clientId",
+      "tgId"
+    ],
+    "type": "object"
+  },
   "AllSetting": {
     "properties": {
       "datepicker": {
@@ -2327,6 +2345,30 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "Balancing": {
+    "description": "Balancing replaces parent-owned balancers and their probe configuration as one unit.",
+    "properties": {
+      "balancers": {
+        "items": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "burstObservatory": {
+        "additionalProperties": {},
+        "type": "object"
+      },
+      "observatory": {
+        "additionalProperties": {},
+        "type": "object"
+      }
+    },
+    "required": [
+      "balancers"
+    ],
+    "type": "object"
+  },
   "BindCode": {
     "properties": {
       "code": {
@@ -3249,6 +3291,14 @@ export const SCHEMAS: Record<string, unknown> = {
   "Control": {
     "description": "Control is a complete authoritative snapshot, including an explicitly empty rule list.",
     "properties": {
+      "balancing": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Balancing"
+          }
+        ],
+        "nullable": true
+      },
       "revision": {
         "format": "int64",
         "type": "integer"

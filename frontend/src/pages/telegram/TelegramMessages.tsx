@@ -296,7 +296,7 @@ export default function TelegramMessages({ tgId, onSelect }: Props) {
                         {row.tgId}
                       </Typography.Text>
                       <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                        {new Date(row.lastMessageAt).toLocaleString()}
+                        {row.lastMessageAt > 0 ? new Date(row.lastMessageAt).toLocaleString() : '—'}
                       </Typography.Text>
                     </Space>
                   </Button>
