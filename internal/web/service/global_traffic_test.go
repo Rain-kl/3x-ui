@@ -206,6 +206,13 @@ func TestSnapshotListNotOverlaid_SlimOverlaid(t *testing.T) {
 	if err := db.Create(ib).Error; err != nil {
 		t.Fatalf("create inbound: %v", err)
 	}
+	client := model.ClientRecord{Email: "alice", Enable: true}
+	if err := db.Create(&client).Error; err != nil {
+		t.Fatalf("create client: %v", err)
+	}
+	if err := db.Create(&model.ClientInbound{ClientId: client.Id, InboundId: ib.Id, Up: 100, Down: 100}).Error; err != nil {
+		t.Fatalf("attach client with raw traffic: %v", err)
+	}
 	seedClientRow(t, "alice", ib.Id, 100, 100, 0)
 	if err := svc.AcceptGlobalTraffic("master-a", []*xray.ClientTraffic{{Email: "alice", Up: 900, Down: 900}}); err != nil {
 		t.Fatalf("AcceptGlobalTraffic: %v", err)

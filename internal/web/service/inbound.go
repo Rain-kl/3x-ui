@@ -197,7 +197,10 @@ func (s *InboundService) GetInbounds(userId int) ([]*model.Inbound, error) {
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
-	s.enrichClientStats(db, inbounds)
+	// FORK(multi-inbound-accounting): Reject partial counters before serving a billable snapshot.
+	if err := s.enrichClientStats(db, inbounds); err != nil {
+		return nil, err
+	}
 	s.annotateFallbackParents(db, inbounds)
 	s.annotateLocalOriginGuid(inbounds)
 	return inbounds, nil
@@ -245,7 +248,10 @@ func (s *InboundService) GetInboundsSlim(userId int) ([]*model.Inbound, error) {
 	// Top up stats rows owned by sibling inbounds (multi-attached clients)
 	// so the list's depleted/expiring badges see every client; the UUID/SubId
 	// enrichment stays skipped. Must run before slimming strips the settings.
-	s.backfillClientStats(db, inbounds)
+	// FORK(multi-inbound-accounting): Preserve membership query failures rather than return partial stats.
+	if _, err := s.backfillClientStats(db, inbounds); err != nil {
+		return nil, err
+	}
 	// Slim feeds the panel UI only (masters poll the full list), so the badge
 	// math may see the cross-panel totals a master pushed.
 	s.overlayInboundsClientStats(db, inbounds)
@@ -557,7 +563,10 @@ func (s *InboundService) GetAllInbounds() ([]*model.Inbound, error) {
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
-	s.enrichClientStats(db, inbounds)
+	// FORK(multi-inbound-accounting): Reject partial counters before serving a billable snapshot.
+	if err := s.enrichClientStats(db, inbounds); err != nil {
+		return nil, err
+	}
 	return inbounds, nil
 }
 
@@ -1745,7 +1754,10 @@ func (s *InboundService) GetInboundDetail(id int) (*model.Inbound, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.enrichClientStats(db, []*model.Inbound{inbound})
+	// FORK(multi-inbound-accounting): Never replace raw usage with a successful partial response.
+	if err := s.enrichClientStats(db, []*model.Inbound{inbound}); err != nil {
+		return nil, err
+	}
 	s.overlayInboundsClientStats(db, []*model.Inbound{inbound})
 	return inbound, nil
 }

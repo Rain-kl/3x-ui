@@ -24,17 +24,16 @@ type CopyClientsResult struct {
 	Errors  []string `json:"errors"`
 }
 
-// enrichClientStats resolves each inbound's clients from the clients table
-// once, fills in the UUID/SubId fields on the preloaded ClientStats, and tops
-// up rows owned by a sibling inbound (shared-email mode — the row is keyed on
-// email so it only preloads on its owning inbound). Reading identity from the
-// clients table keeps /inbounds/list in sync with the running Xray config
-// when the embedded settings JSON is stale (#6436).
-func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inbound) {
+// enrichClientStats pairs raw inbound usage with shared client metadata.
+// FORK(multi-inbound-accounting): Incomplete reads must never expose billed totals as raw counters.
+func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inbound) error {
 	if len(inbounds) == 0 {
-		return
+		return nil
 	}
-	clientsByInbound := s.backfillClientStats(db, inbounds)
+	clientsByInbound, err := s.backfillClientStats(db, inbounds)
+	if err != nil {
+		return err
+	}
 	inboundIds := make([]int, 0, len(inbounds))
 	for _, ib := range inbounds {
 		if ib != nil && ib.Id > 0 {
@@ -54,47 +53,52 @@ func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inboun
 			Select("LOWER(clients.email) AS email, client_inbounds.inbound_id, client_inbounds.up, client_inbounds.down").
 			Joins("JOIN clients ON clients.id = client_inbounds.client_id").
 			Where("client_inbounds.inbound_id IN ?", inboundIds).
-			Scan(&rows).Error; err == nil {
-			for _, r := range rows {
-				ciStatsMap[fmt.Sprintf("%d:%s", r.InboundId, r.Email)] = r
-			}
+			Scan(&rows).Error; err != nil {
+			return fmt.Errorf("read raw per-inbound client traffic: %w", err)
+		}
+		for _, r := range rows {
+			ciStatsMap[fmt.Sprintf("%d:%s", r.InboundId, r.Email)] = r
 		}
 	}
 	for i, inbound := range inbounds {
 		clients := clientsByInbound[i]
-		if len(clients) == 0 || len(inbound.ClientStats) == 0 {
-			continue
-		}
+
 		cMap := make(map[string]model.Client, len(clients))
 		for _, c := range clients {
 			cMap[strings.ToLower(c.Email)] = c
 		}
-		for j := range inbound.ClientStats {
-			email := strings.ToLower(inbound.ClientStats[j].Email)
-			inbound.ClientStats[j].InboundId = inbound.Id
-			if c, ok := cMap[email]; ok {
-				inbound.ClientStats[j].UUID = c.ID
-				inbound.ClientStats[j].SubId = c.SubID
+		stats := make([]xray.ClientTraffic, 0, len(inbound.ClientStats))
+		for _, stat := range inbound.ClientStats {
+			email := strings.ToLower(stat.Email)
+			c, attached := cMap[email]
+			if !attached {
+				continue
 			}
-			if st, ok := ciStatsMap[fmt.Sprintf("%d:%s", inbound.Id, email)]; ok {
-				inbound.ClientStats[j].Up = st.Up
-				inbound.ClientStats[j].Down = st.Down
+			st, ok := ciStatsMap[fmt.Sprintf("%d:%s", inbound.Id, email)]
+			if !ok {
+				return fmt.Errorf("raw client traffic missing for inbound %d, client %q", inbound.Id, stat.Email)
 			}
+			stat.InboundId = inbound.Id
+			stat.UUID, stat.SubId = c.ID, c.SubID
+			stat.Up, stat.Down = st.Up, st.Down
+			stats = append(stats, stat)
 		}
+		inbound.ClientStats = stats
 	}
+	return nil
 }
 
-// backfillClientStats tops up each inbound's preloaded ClientStats with rows
-// owned by a sibling inbound: client_traffics is keyed on email, so a client
-// attached to several inbounds has one row that only preloads on the inbound
-// it was created on. Returns the clients-table clients per inbound for reuse
-// (not the embedded settings JSON, which can lag the live UUID — #6436).
-func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbound) [][]model.Client {
+// backfillClientStats fills shared metadata for clients attached to sibling inbounds.
+// FORK(multi-inbound-accounting): Failed membership reads must invalidate the snapshot.
+func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbound) ([][]model.Client, error) {
 	clientsByInbound := make([][]model.Client, len(inbounds))
 	seenByInbound := make([]map[string]struct{}, len(inbounds))
 	missing := make(map[string]struct{})
 	for i, inbound := range inbounds {
-		clients, _ := s.clientService.ListForInbound(db, inbound.Id)
+		clients, err := s.clientService.ListForInbound(db, inbound.Id)
+		if err != nil {
+			return nil, fmt.Errorf("list clients for inbound %d: %w", inbound.Id, err)
+		}
 		clientsByInbound[i] = clients
 		seen := make(map[string]struct{}, len(inbound.ClientStats))
 		for _, st := range inbound.ClientStats {
@@ -128,7 +132,7 @@ func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbo
 			extra = append(extra, page...)
 		}
 		if loadErr != nil {
-			logger.Warning("backfillClientStats:", loadErr)
+			return nil, fmt.Errorf("load shared client traffic for inbound snapshot: %w", loadErr)
 		} else {
 			byEmail := make(map[string]xray.ClientTraffic, len(extra))
 			for _, st := range extra {
@@ -151,7 +155,7 @@ func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbo
 			}
 		}
 	}
-	return clientsByInbound
+	return clientsByInbound, nil
 }
 
 // emailUsedByOtherInbounds reports whether email lives in any inbound other than
