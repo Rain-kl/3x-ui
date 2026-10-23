@@ -72,8 +72,8 @@ func TestReissuedCodeBindsThroughStartDeepLink(t *testing.T) {
 	if _, err := BoundClient(99900001); err == nil {
 		t.Fatal("bare /start unexpectedly selected a client")
 	}
-	if len(replies) != 1 || !strings.Contains(replies[0], "未携带绑定参数") {
-		t.Fatal("bare start did not explain missing binding payload")
+	if len(replies) != 1 || !strings.Contains(replies[0], "/bind") {
+		t.Fatal("bare start did not explain how to bind")
 	}
 	receive(2, "/start "+first.Code)
 	if _, err := BoundClient(99900001); err == nil {
