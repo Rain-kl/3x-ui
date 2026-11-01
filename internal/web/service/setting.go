@@ -66,14 +66,15 @@ var defaultValueMap = map[string]string{
 	// cert are minted lazily on first use, and the node-side trust CA is pasted
 	// in by the operator. Kept out of entity.AllSetting so private keys never
 	// reach the settings UI/export.
-	"nodeMtlsCaCertPem":           "",
-	"nodeMtlsCaKeyPem":            "",
-	"nodeMtlsClientCertPem":       "",
-	"nodeMtlsClientKeyPem":        "",
-	"nodeMtlsClientCertSha256":    "",
-	"nodeMtlsClientCAPem":         "",
-	"webBasePath":                 normalizeBasePath(getEnv("XUI_INIT_WEB_BASE_PATH", "/")),
-	"sessionMaxAge":               "360",
+	"nodeMtlsCaCertPem":        "",
+	"nodeMtlsCaKeyPem":         "",
+	"nodeMtlsClientCertPem":    "",
+	"nodeMtlsClientKeyPem":     "",
+	"nodeMtlsClientCertSha256": "",
+	"nodeMtlsClientCAPem":      "",
+	"webBasePath":              normalizeBasePath(getEnv("XUI_INIT_WEB_BASE_PATH", "/")),
+	// FORK(telegram-renewal-reminders): Keep new administrator sessions valid for 72 hours.
+	"sessionMaxAge":               "4320",
 	"trustedProxyCIDRs":           DefaultTrustedProxyCIDRs,
 	"realityScanCandidates":       DefaultRealityScanCandidatesCSV,
 	"ipLimitAllowlist":            "",

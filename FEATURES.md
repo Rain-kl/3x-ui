@@ -273,3 +273,9 @@
 - 2026-10-20：新增客户端时，若所选入站支持 XTLS 流控，Flow 默认选中 `xtls-rprx-vision`，用户仍可显式改为无；编辑既有客户端不改变其流控，API 省略 flow 时仍为空。（frontend/src/pages/clients/ClientFormModal.tsx、ClientBulkAddModal.tsx；FORK(其他更新)；docs/specs/client-vision-default-flow.md）
 
 - 2026-10-20：ACME 域名/IP 证书申请、手动续期和自动续期的 standalone 监听端口默认改为 65800（`XUI_ACME_HTTP_PORT` 可覆盖）；进入 SSL 菜单或 Force Renew 时把 acme.sh 证书配置中的 `Le_HTTPPort` 从 80 迁移到新端口，自定义端口保持不变；外部 80 仍需转发到该端口。（x-ui.sh、install.sh、docs/content/docs/{en,zh}/config/ssl-certificates.mdx；FORK(其他更新)；docs/specs/acme-http-port.md）
+
+## Telegram 续费提醒与重置日期 (telegram-renewal-reminders)
+
+- **需求与行为**：用户 `/usage` 显示最早流量重置日期；有效期剩余 7/3/1 天向绑定账号发送一次续费提醒，重启去重、续期后重新提醒、解绑后取消待发。会话默认有效期为 72 小时，保留显式设置。
+- **文件与标记**：`internal/telegramuser/renewal.go`、`runtime.go`、`delivery.go`、`internal/web/service/telegram_reset_date.go`、`telegram_user.go`、`setting.go`；标记 `FORK(telegram-renewal-reminders)`。
+- **文档**：[规格](docs/specs/telegram-renewal-reminders.md)、[实现](.agents/notes/telegram-renewal-reminders.md)。

@@ -115,6 +115,21 @@ func (r *receiver) deliver() {
 				continue
 			}
 		}
+		// FORK(telegram-renewal-reminders): Cancel reminders invalidated by renewal or unbinding.
+		if row.Role == "renewal" {
+			valid, err := validRenewal(&row)
+			if err != nil {
+				r.failure("renewal.check.failed", err)
+				pause(r.ctx, time.Second)
+				continue
+			}
+			if !valid {
+				if err := database.GetDB().Model(&row).Update("status", "cancelled").Error; err != nil {
+					r.failure("renewal.cancel.failed", err)
+				}
+				continue
+			}
+		}
 		if row.NoticeID > 0 {
 			valid, err := validNoticeDelivery(&row)
 			if err != nil {

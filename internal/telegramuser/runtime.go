@@ -145,11 +145,13 @@ func (m *Manager) Reload() (resultErr error) {
 	m.mu.Lock()
 	m.current, m.lastErr, m.lastEvent = r, "", ""
 	// FORK(telegram-subscription-details): Wait for pending deletion work before closing the database.
-	r.wg.Add(4)
+	// FORK(telegram-renewal-reminders): Track the renewal worker during shutdown.
+	r.wg.Add(5)
 	m.mu.Unlock()
 	go r.run("poll", r.poll)
 	go r.run("delivery", r.deliver)
 	go r.run("retention", r.maintain)
+	go r.run("renewal reminders", r.remindRenewals)
 	// FORK(telegram-subscription-details): One durable worker replaces per-message deletion timers.
 	go r.run("message deletion", r.deleteExpiredMessages)
 	return nil
