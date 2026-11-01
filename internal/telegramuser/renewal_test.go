@@ -1,11 +1,12 @@
 package telegramuser
 
 import (
-	"github.com/mhsanaei/3x-ui/v3/internal/database"
-	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/mhsanaei/3x-ui/v3/internal/database"
+	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
 )
 
 func TestRenewalRemindersDeduplicateAndInvalidate(t *testing.T) {
