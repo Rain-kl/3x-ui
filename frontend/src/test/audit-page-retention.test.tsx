@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HttpUtil } from '@/utils';
 import AuditPage from '@/pages/audit/AuditPage';
@@ -8,6 +8,7 @@ import { renderWithProviders } from './test-utils';
 vi.mock('@/layouts/AppSidebar', () => ({ default: () => null }));
 
 describe('AuditPage retention windows', () => {
+  afterEach(() => vi.useRealTimers());
   it('limits available windows to the configured detail and summary retention', async () => {
     vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
       if (url.endsWith('/audit/rates'))
@@ -74,6 +75,8 @@ describe('AuditPage retention windows', () => {
   });
 
   it('disables today minus N days and allows the Nth retained UTC date', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-15T12:00:00Z'));
     vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
       if (url.endsWith('/audit/rates'))
         return {
