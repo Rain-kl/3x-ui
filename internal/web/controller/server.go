@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
@@ -92,6 +93,8 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.POST("/clientIps", a.setClientIps)
 	g.POST("/outbounds", a.setOutbounds)
 	g.POST("/routing", a.setRouting)
+	// FORK(routing-rule-sync): Old children must reject guarded edits instead of ignoring their precondition.
+	g.POST("/routing/checked", a.setRouting)
 	// FORK(routing-rule-sync): Parent snapshots require an atomic node-side merge, not full rule replacement.
 	g.POST("/routing/sync", a.syncRouting)
 }
@@ -598,23 +601,13 @@ func (a *ServerController) setOutbounds(c *gin.Context) {
 		return
 	}
 
-	template, err := a.settingService.GetXrayConfigTemplate()
+	// FORK(routing-rule-sync): Outbound synchronization cannot overwrite concurrent local routing edits.
+	changed, err := a.xraySettingService.ReplaceProxyOutbounds(proxyOutbounds)
 	if err != nil {
-		jsonMsg(c, "failed to get xray template", err)
+		jsonMsg(c, "failed to save outbounds", err)
 		return
 	}
-
-	updated, changed, err := service.ReplaceProxyOutboundsInTemplate(template, proxyOutbounds)
-	if err != nil {
-		jsonMsg(c, "failed to replace outbounds", err)
-		return
-	}
-
 	if changed {
-		if err := a.xraySettingService.SaveXraySetting(updated); err != nil {
-			jsonMsg(c, "failed to save xray template", err)
-			return
-		}
 		if a.xrayService.IsXrayRunning() {
 			if err := a.serverService.RestartXrayService(); err != nil {
 				logger.Warning("restart xray after outbounds sync failed:", err)
@@ -649,23 +642,15 @@ func (a *ServerController) setRouting(c *gin.Context) {
 		return
 	}
 
-	template, err := a.settingService.GetXrayConfigTemplate()
-	if err != nil {
-		jsonMsg(c, "failed to get xray template", err)
+	// FORK(routing-rule-sync): Check the editor baseline in the same critical section as the routing write.
+	expected := c.PostForm("expectedRules")
+	if strings.HasSuffix(c.Request.URL.Path, "/checked") && expected == "" {
+		jsonMsg(c, "routing baseline required", fmt.Errorf("expectedRules is required; reload the node rules"))
 		return
 	}
-
-	updated, changed, err := service.ReplaceRoutingRulesInTemplate(template, rules)
-	if err != nil {
-		jsonMsg(c, "failed to replace routing rules", err)
+	if _, err := a.xraySettingService.ReplaceRoutingRules(rules, expected); err != nil {
+		jsonMsg(c, "failed to save routing rules", err)
 		return
-	}
-
-	if changed {
-		if err := a.xraySettingService.SaveXraySetting(updated); err != nil {
-			jsonMsg(c, "failed to save xray template", err)
-			return
-		}
 	}
 	// FORK(node-scoped-routing): Remote saves need the same immediate reconcile and visible failures as local saves.
 	// Retry unchanged desired rules too: a previous runtime apply may have failed after persistence.

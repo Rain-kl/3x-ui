@@ -35,6 +35,8 @@ interface RoutingColumnsParams {
   confirmDelete: (idx: number) => void;
   toggleRule: (idx: number, enabled: boolean) => void;
   remarkByTag?: Record<string, string>;
+  // FORK(outbound-stable-identity): Display names without changing the referenced ID.
+  outboundNames?: Record<string, string>;
 }
 
 export function useRoutingColumns({
@@ -49,6 +51,7 @@ export function useRoutingColumns({
   confirmDelete,
   toggleRule,
   remarkByTag: customRemarkByTag,
+  outboundNames = {},
 }: RoutingColumnsParams): ColumnsType<RuleRow> {
   const { t } = useTranslation();
   const { data: inboundOptions } = useInboundOptions();
@@ -326,7 +329,7 @@ export function useRoutingColumns({
           record.outboundTag ? (
             <div className="target-row">
               <ExportOutlined className="target-icon" aria-hidden="true" />
-              <Tag color="green">{record.outboundTag}</Tag>
+              <Tag color="green">{outboundNames[record.outboundTag] || record.outboundTag}</Tag>
             </div>
           ) : (
             <span className="criterion-empty">—</span>
@@ -356,6 +359,7 @@ export function useRoutingColumns({
       showSource,
       showBalancer,
       remarkByTag,
+      outboundNames,
       onHandlePointerDown,
       openEdit,
       moveUp,

@@ -255,6 +255,8 @@ export function useXraySetting(): UseXraySettingResult {
       const sentXraySetting = xraySettingRef.current;
       const sentTestUrl = normalizeOutboundTestUrl(outboundTestUrlRef.current);
       const msg = await HttpUtil.post('/panel/api/xray/update', {
+        // FORK(routing-rule-sync): Refuse stale full-template saves after another editor or node RPC changes it.
+        expectedXraySetting: savedXraySettingRef.current,
         xraySetting: sentXraySetting,
         outboundTestUrl: sentTestUrl,
       });

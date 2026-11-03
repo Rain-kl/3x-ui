@@ -238,6 +238,8 @@ export type OutboundStreamFormValues = z.infer<typeof OutboundStreamFormSchema>;
 // targetStrategy '' means AsIs (omitted from wire).
 export const OutboundFormBaseSchema = z.object({
   tag: z.string().default(''),
+  // FORK(outbound-stable-identity): Names must not change route identities.
+  remark: z.string().default(''),
   sendThrough: z.string().default(''),
   targetStrategy: z.union([OutboundDomainStrategySchema, z.literal('')]).default(''),
   streamSettings: OutboundStreamFormSchema.optional(),

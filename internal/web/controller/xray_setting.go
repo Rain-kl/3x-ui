@@ -126,6 +126,16 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 		if tags, tErr := rem.FetchOutboundTags(c.Request.Context()); tErr == nil {
 			outboundTags = tags
 		}
+		outboundNames := map[string]string{}
+		if outbounds, err := rem.FetchProxyOutbounds(c.Request.Context()); err == nil {
+			for _, ob := range outbounds {
+				tag, _ := ob["tag"].(string)
+				name, _ := ob["remark"].(string)
+				if tag != "" && name != "" {
+					outboundNames[tag] = name
+				}
+			}
+		}
 		outboundTagsJSON, _ := json.Marshal(outboundTags)
 		nodeXraySetting := map[string]any{
 			"routing": map[string]any{
@@ -135,6 +145,7 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 		settingBytes, _ := json.Marshal(nodeXraySetting)
 		xrayResponse := map[string]any{
 			"xraySetting":       json.RawMessage(settingBytes),
+			"outboundNames":     outboundNames,
 			"inboundTags":       json.RawMessage(inboundTags),
 			"clientReverseTags": json.RawMessage(clientReverseTags),
 			"outboundTags":      json.RawMessage(outboundTagsJSON),
@@ -164,7 +175,7 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 	// Strip any such wrapper here, and heal the DB if we found one so
 	// the next read is O(1) instead of climbing the same pile again.
 	if unwrapped := service.UnwrapXrayTemplateConfig(xraySetting); unwrapped != xraySetting {
-		if saveErr := a.XraySettingService.SaveXraySetting(unwrapped); saveErr == nil {
+		if saveErr := a.XraySettingService.SaveXraySettingIfCurrent(unwrapped, xraySetting); saveErr == nil {
 			xraySetting = unwrapped
 		} else {
 			// Don't fail the read — just serve the unwrapped value
@@ -227,14 +238,20 @@ func (a *XraySettingController) updateSetting(c *gin.Context) {
 	}
 	xraySetting := c.PostForm("xraySetting")
 	outboundTestUrl := c.PostForm("outboundTestUrl")
+	// FORK(routing-rule-sync): Browser snapshots carry preconditions instead of silently replacing newer edits.
+	expectedTemplate := c.PostForm("expectedXraySetting")
+	expectedRules := c.PostForm("expectedRoutingRules")
 
 	if nodeIDStr == "" && xraySetting == "" {
 		var req struct {
-			NodeID          *int   `json:"nodeId"`
-			XraySetting     string `json:"xraySetting"`
-			OutboundTestUrl string `json:"outboundTestUrl"`
+			NodeID           *int   `json:"nodeId"`
+			XraySetting      string `json:"xraySetting"`
+			OutboundTestUrl  string `json:"outboundTestUrl"`
+			ExpectedTemplate string `json:"expectedXraySetting"`
+			ExpectedRules    string `json:"expectedRoutingRules"`
 		}
 		if err := c.ShouldBindJSON(&req); err == nil {
+			expectedTemplate, expectedRules = req.ExpectedTemplate, req.ExpectedRules
 			if req.NodeID != nil && *req.NodeID > 0 {
 				nodeIDStr = strconv.Itoa(*req.NodeID)
 			}
@@ -265,7 +282,13 @@ func (a *XraySettingController) updateSetting(c *gin.Context) {
 				return
 			}
 			service.StripNodeInboundTagsFromRoutingRules(id, rules)
-			if err := rem.PushRoutingRules(c.Request.Context(), rules); err != nil {
+			var pushErr error
+			if expectedRules != "" {
+				pushErr = rem.PushRoutingRulesChecked(c.Request.Context(), rules, expectedRules)
+			} else {
+				pushErr = rem.PushRoutingRules(c.Request.Context(), rules)
+			}
+			if err := pushErr; err != nil {
 				jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 				return
 			}
@@ -274,7 +297,7 @@ func (a *XraySettingController) updateSetting(c *gin.Context) {
 		}
 	}
 
-	if err := a.XraySettingService.SaveXraySetting(xraySetting); err != nil {
+	if err := a.XraySettingService.SaveXraySettingIfCurrent(xraySetting, expectedTemplate); err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return
 	}

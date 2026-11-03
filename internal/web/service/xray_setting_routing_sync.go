@@ -280,33 +280,25 @@ func (s *XraySettingService) PropagateInboundTagRename(oldTag, newTag string) (b
 	if oldTag == "" || newTag == "" || oldTag == newTag {
 		return false, nil
 	}
-	template, err := s.GetXrayConfigTemplate()
-	if err != nil {
-		return false, err
-	}
-	updated, changed, err := mutateXrayTemplateRouting(template, func(cfg map[string]any) bool {
-		mutated := false
-		rules := routingRulesFromCfg(cfg)
-		if len(rules) > 0 {
-			if replaceInboundTagInRules(rules, oldTag, newTag) {
-				setRoutingRulesInCfg(cfg, rules)
+	// FORK(routing-rule-sync): Read and update the latest template under one lock.
+	return s.editTemplate(func(template string) (string, bool, error) {
+		return mutateXrayTemplateRouting(template, func(cfg map[string]any) bool {
+			mutated := false
+			rules := routingRulesFromCfg(cfg)
+			if len(rules) > 0 {
+				if replaceInboundTagInRules(rules, oldTag, newTag) {
+					setRoutingRulesInCfg(cfg, rules)
+					mutated = true
+				}
+			}
+			outbounds := outboundsFromCfg(cfg)
+			if len(outbounds) > 0 && replaceInboundTagInOutbounds(outbounds, oldTag, newTag) {
+				cfg["outbounds"] = outbounds
 				mutated = true
 			}
-		}
-		outbounds := outboundsFromCfg(cfg)
-		if len(outbounds) > 0 && replaceInboundTagInOutbounds(outbounds, oldTag, newTag) {
-			cfg["outbounds"] = outbounds
-			mutated = true
-		}
-		return mutated
+			return mutated
+		})
 	})
-	if err != nil || !changed {
-		return false, err
-	}
-	if err := s.SaveXraySetting(updated); err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 // RemoveInboundTagReferences drops a deleted inbound tag from routing rules.
@@ -316,32 +308,24 @@ func (s *XraySettingService) RemoveInboundTagReferences(deletedTag string) (bool
 	if deletedTag == "" {
 		return false, nil
 	}
-	template, err := s.GetXrayConfigTemplate()
-	if err != nil {
-		return false, err
-	}
-	updated, changed, err := mutateXrayTemplateRouting(template, func(cfg map[string]any) bool {
-		mutated := false
-		rules := routingRulesFromCfg(cfg)
-		if len(rules) > 0 {
-			nextRules, rulesChanged := removeInboundTagFromRules(rules, deletedTag)
-			if rulesChanged {
-				setRoutingRulesInCfg(cfg, nextRules)
+	// FORK(routing-rule-sync): Read and update the latest template under one lock.
+	return s.editTemplate(func(template string) (string, bool, error) {
+		return mutateXrayTemplateRouting(template, func(cfg map[string]any) bool {
+			mutated := false
+			rules := routingRulesFromCfg(cfg)
+			if len(rules) > 0 {
+				nextRules, rulesChanged := removeInboundTagFromRules(rules, deletedTag)
+				if rulesChanged {
+					setRoutingRulesInCfg(cfg, nextRules)
+					mutated = true
+				}
+			}
+			outbounds := outboundsFromCfg(cfg)
+			if len(outbounds) > 0 && removeInboundTagFromOutbounds(outbounds, deletedTag) {
+				cfg["outbounds"] = outbounds
 				mutated = true
 			}
-		}
-		outbounds := outboundsFromCfg(cfg)
-		if len(outbounds) > 0 && removeInboundTagFromOutbounds(outbounds, deletedTag) {
-			cfg["outbounds"] = outbounds
-			mutated = true
-		}
-		return mutated
+			return mutated
+		})
 	})
-	if err != nil || !changed {
-		return false, err
-	}
-	if err := s.SaveXraySetting(updated); err != nil {
-		return false, err
-	}
-	return true, nil
 }

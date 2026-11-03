@@ -181,6 +181,7 @@ func TestNodeSyncScopeAllowlistMatchesRemoteInventory(t *testing.T) {
 		"/server/outbounds":            {http.MethodGet: {}, http.MethodPost: {}},
 		"/server/outboundTags":         {http.MethodGet: {}},
 		"/server/routing":              {http.MethodGet: {}, http.MethodPost: {}},
+		"/server/routing/checked":      {http.MethodPost: {}},
 		"/server/routing/sync":         {http.MethodPost: {}},
 		"/audit/pending":               {http.MethodGet: {}},
 		"/audit/ack":                   {http.MethodPost: {}},

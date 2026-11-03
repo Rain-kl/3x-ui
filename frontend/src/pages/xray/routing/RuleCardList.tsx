@@ -34,6 +34,8 @@ interface RuleCardListProps {
   confirmDelete: (idx: number) => void;
   toggleRule: (idx: number, enabled: boolean) => void;
   remarkByTag?: Record<string, string>;
+  // FORK(outbound-stable-identity): Display names without changing the referenced ID.
+  outboundNames?: Record<string, string>;
 }
 
 export default function RuleCardList({
@@ -47,6 +49,7 @@ export default function RuleCardList({
   confirmDelete,
   toggleRule,
   remarkByTag: customRemarkByTag,
+  outboundNames = {},
 }: RuleCardListProps) {
   const { t } = useTranslation();
   const { data: inboundOptions } = useInboundOptions();
@@ -176,7 +179,8 @@ export default function RuleCardList({
                 </span>
                 {rule.outboundTag ? (
                   <Tag color="green" className="flow-tag">
-                    <ExportOutlined aria-hidden="true" /> {rule.outboundTag}
+                    <ExportOutlined aria-hidden="true" />{' '}
+                    {outboundNames[rule.outboundTag] || rule.outboundTag}
                   </Tag>
                 ) : rule.balancerTag ? (
                   <Tag color="purple" className="flow-tag">

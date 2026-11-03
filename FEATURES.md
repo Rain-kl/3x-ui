@@ -279,3 +279,16 @@
 - **需求与行为**：用户 `/usage` 显示最早流量重置日期；有效期剩余 7/3/1 天向绑定账号发送一次续费提醒，重启去重、续期后重新提醒、解绑后取消待发。会话默认有效期为 72 小时，保留显式设置。
 - **文件与标记**：`internal/telegramuser/renewal.go`、`runtime.go`、`delivery.go`、`internal/web/service/telegram_reset_date.go`、`telegram_user.go`、`setting.go`；标记 `FORK(telegram-renewal-reminders)`。
 - **文档**：[规格](docs/specs/telegram-renewal-reminders.md)、[实现](.agents/notes/telegram-renewal-reminders.md)。
+
+## 路由编辑完整性与固定出站标识 (routing-edit-integrity)
+
+- **背景**：主子节点编辑和后台局部更新交错时，旧整份模板与迟到节点响应可能删除子节点本地规则。
+- **修改**：局部更新锁内读取写入；完整编辑与节点规则编辑增加原始基线冲突校验；节点响应按代次隔离；空同步归属保留为本地，非法类型明确拒绝。涉及模板服务、server/xray 控制器、remote RPC、Xray 编辑 hook 与路由页面，沿用 `FORK(routing-rule-sync)` 标记。
+- **规格与实现**：[规格](docs/specs/routing-rule-sync.md)、[实现](.agents/notes/routing-edit-integrity.md)。主子均需更新；旧客户端无基线接口保留兼容。
+
+## 出站固定 ID 与独立备注 (outbound-stable-identity)
+
+- **背景**：显示名称和路由 tag 混用，改名可能让子节点路由失效。
+- **修改**：新出站自动生成固定 ob-UUID，旧出站沿用原 tag；备注单独编辑、路由和均衡器绑定固定 ID；编辑及重新导入连接保留 ID；订阅刷新保留稳定标识和供应商备注；主子同步保留、核心配置剥离面板元数据。
+- **文件与标记**：`outbound_identity.go`、`xray.go`、`xray_setting.go`、`outbound_subscription.go`、前端出站表单/适配器/schema、路由及均衡器选择器。标记 `FORK(outbound-stable-identity)`。
+- **文档**：[规格](docs/specs/outbound-stable-identity.md)、[实现](.agents/notes/routing-edit-integrity.md)。

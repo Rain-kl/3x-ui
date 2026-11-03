@@ -5,7 +5,7 @@ import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 import { FinalMaskField, SniffingField } from '@/lib/xray/forms/fields';
 import { FormField, rhfZodValidate } from '@/components/form/rhf';
 import { JsonEditor } from '@/components/form';
-import { Wireguard } from '@/utils';
+import { RandomUtil, Wireguard } from '@/utils';
 import { formValuesToWirePayload, rawOutboundToFormValues } from '@/lib/xray/outbound-form-adapter';
 import { parseOutboundLink } from '@/lib/xray/outbound-link-parser';
 import XDriveForm from '@/lib/xray/forms/transport/XDriveForm';
@@ -138,7 +138,9 @@ export default function OutboundFormModal({
       return;
     }
     const currentTag = methods.getValues('tag');
-    if (!parsed.tag && currentTag) parsed.tag = currentTag;
+    // FORK(outbound-stable-identity): Importing a replacement connection must not change route references.
+    parsed.remark = parsed.remark || parsed.tag || methods.getValues('remark');
+    parsed.tag = currentTag;
     const next = rawOutboundToFormValues(parsed);
     methods.reset(next);
     setJsonText(JSON.stringify(formValuesToWirePayload(next), null, 2));
@@ -151,6 +153,8 @@ export default function OutboundFormModal({
   useEffect(() => {
     if (!open) return;
     const initial = outboundProp ? rawOutboundToFormValues(outboundProp) : buildAddModeValues();
+    // FORK(outbound-stable-identity): Old tags remain valid IDs; new outbounds get an opaque identity.
+    if (!outboundProp) initial.tag = `ob-${RandomUtil.randomUUID()}`;
     methods.reset(initial);
     setActiveKey('1');
     setJsonText(JSON.stringify(formValuesToWirePayload(initial), null, 2));
@@ -363,7 +367,15 @@ export default function OutboundFormModal({
       messageApi.error('Tag already used by another outbound');
       return;
     }
-    onConfirm(formValuesToWirePayload(values));
+    const id = outboundProp?.tag || methods.getValues('tag');
+    if (isEdit && tagValue !== id) {
+      messageApi.error('Outbound ID is immutable; edit the remark to rename it.');
+      return;
+    }
+    const payload = formValuesToWirePayload(values);
+    payload.tag = id;
+    payload.panelId = id;
+    onConfirm(payload);
   }
 
   return (
@@ -404,6 +416,9 @@ export default function OutboundFormModal({
                         <Select id="protocol" options={PROTOCOL_OPTIONS} />
                       </FormField>
 
+                      <FormField name="remark" label={t('remark')}>
+                        <Input />
+                      </FormField>
                       <Controller
                         control={methods.control}
                         name="tag"
@@ -430,6 +445,7 @@ export default function OutboundFormModal({
                             >
                               <Input
                                 value={field.value}
+                                readOnly
                                 onChange={(e) => field.onChange(e.target.value)}
                                 onBlur={field.onBlur}
                                 ref={field.ref}

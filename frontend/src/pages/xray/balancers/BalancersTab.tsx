@@ -143,8 +143,11 @@ export default function BalancersTab({
   }, [otherTags]);
 
   const overrideOptions: Array<{ value: string; label: React.ReactNode }> = useMemo(() => {
-    return outboundTags.map((tag) => ({ value: tag, label: tag }));
-  }, [outboundTags]);
+    return outboundTags.map((tag) => ({
+      value: tag,
+      label: templateSettings?.outbounds?.find((o) => o.tag === tag)?.remark || tag,
+    }));
+  }, [outboundTags, templateSettings?.outbounds]);
 
   const mutate = useCallback(
     (mutator: (next: XraySettingsValue) => void) => {

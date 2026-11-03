@@ -500,6 +500,9 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	}
 
 	xray.ScopeRoutingUsers(xrayConfig)
+	// FORK(outbound-stable-identity): Names and panel identities are not core configuration.
+	xrayConfig.OutboundConfigs = stripOutboundPanelMetadata(xrayConfig.OutboundConfigs)
+
 	return xrayConfig, nil
 }
 

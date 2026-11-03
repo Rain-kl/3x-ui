@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
 
 import { ThemeProvider } from '@/hooks/useTheme';
@@ -774,5 +774,39 @@ describe('OutboundFormModal finalmask variables', () => {
     );
 
     expect(finalmask.udp).toEqual([{ type: 'noise', settings: { reset: '60-120', noise: [] } }]);
+  });
+  it('keeps the fixed outbound ID when its remark changes', async () => {
+    const confirm = vi.fn();
+    renderWithProviders(
+      <OutboundFormModal
+        open
+        outbound={{
+          tag: 'ob-fixed',
+          panelId: 'ob-fixed',
+          remark: 'Old name',
+          protocol: 'freedom',
+          settings: {},
+        }}
+        existingTags={[]}
+        onClose={() => {}}
+        onConfirm={confirm}
+      />,
+    );
+    const name = screen.getByLabelText('Remark');
+    fireEvent.change(name, { target: { value: 'New name' } });
+    fireEvent.click(document.querySelector('.ant-modal-footer .ant-btn-primary') as HTMLElement);
+    await waitFor(() => expect(confirm).toHaveBeenCalledOnce());
+    expect(confirm.mock.calls[0][0]).toMatchObject({
+      tag: 'ob-fixed',
+      panelId: 'ob-fixed',
+      remark: 'New name',
+    });
+  });
+
+  it('allocates a new fixed ID when creating an outbound', () => {
+    renderModal(null);
+    const input = formItemByLabel('Tag')?.querySelector('input');
+    expect(input?.readOnly).toBe(true);
+    expect(input?.value).toMatch(/^ob-[0-9a-f-]{36}$/);
   });
 });

@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -328,6 +330,23 @@ func TestMasterNodeContract(t *testing.T) {
 						return err
 					}
 					return master.PushRoutingRules(ctx, rules)
+				}, nil},
+				{"checked routing RPC accepts current baselines and rejects stale ones", []string{"PushRoutingRulesChecked"}, func() error {
+					rules, err := master.FetchRoutingRules(ctx)
+					if err != nil {
+						return err
+					}
+					baseline, err := json.Marshal(rules)
+					if err != nil {
+						return err
+					}
+					if err := master.PushRoutingRulesChecked(ctx, rules, string(baseline)); err != nil {
+						return err
+					}
+					if err := master.PushRoutingRulesChecked(ctx, rules, `[{"outboundTag":"stale"}]`); err == nil {
+						return fmt.Errorf("stale routing baseline was accepted")
+					}
+					return nil
 				}, nil},
 				{"routing snapshot RPC accepts node-sync tokens", []string{"SyncRouting"}, func() error {
 					// This contract fixture has no geodata assets; use explicit self-contained outbounds.

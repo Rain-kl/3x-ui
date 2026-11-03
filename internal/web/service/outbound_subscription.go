@@ -532,6 +532,9 @@ func assignStableTags(parsed []link.Outbound, identities []string, prev map[stri
 		used[final] = true
 		assigned[i] = final
 
+		// FORK(outbound-stable-identity): Preserve the provider's name separately when reusing the stable tag.
+		parsed[i]["remark"] = parsed[i]["tag"]
+		parsed[i]["panelId"] = final
 		// write back the tag into the outbound
 		parsed[i]["tag"] = final
 	}

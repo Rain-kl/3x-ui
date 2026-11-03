@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Form, Input, InputNumber, Modal, Select, Space, Switch, Tag } from 'antd';
@@ -137,11 +137,20 @@ export default function BalancerFormModal({
 
   const wouldCreateCycle = !!cycleInfo[fallbackTag];
 
+  // FORK(outbound-stable-identity): Labels may change; selector and fallback values stay fixed IDs.
+  const outboundLabel = useCallback(
+    (tag: string) => {
+      const ob = templateSettings?.outbounds?.find((o) => o.tag === tag);
+      return ob?.remark ? `${ob.remark} (${tag})` : tag;
+    },
+    [templateSettings?.outbounds],
+  );
+
   const fallbackOptions = useMemo(() => {
     const options: Array<{ value: string; label: ReactNode; disabled?: boolean; title?: string }> =
       [{ value: '', label: `(${t('none')})` }];
     for (const tg of outboundTags) {
-      options.push({ value: tg, label: tg });
+      options.push({ value: tg, label: outboundLabel(tg) });
     }
     for (const tg of availableBalancerTags) {
       const cycle = cycleInfo[tg];
@@ -162,7 +171,7 @@ export default function BalancerFormModal({
       });
     }
     return options;
-  }, [outboundTags, availableBalancerTags, cycleInfo, currentTag, t]);
+  }, [outboundTags, availableBalancerTags, cycleInfo, currentTag, t, outboundLabel]);
 
   const isFallbackBalancer = useMemo(
     () => balancerTags.includes(fallbackTag),
@@ -251,7 +260,7 @@ export default function BalancerFormModal({
             <Select
               mode="tags"
               tokenSeparators={[',']}
-              options={outboundTags.map((tg) => ({ value: tg, label: tg }))}
+              options={outboundTags.map((tg) => ({ value: tg, label: outboundLabel(tg) }))}
             />
           </FormField>
           <FormField

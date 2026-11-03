@@ -33,9 +33,26 @@ func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
 	// FORK(routing-rule-sync): Template writes and authoritative routing snapshots must be atomic and serialized.
 	xrayTemplateMu.Lock()
 	defer xrayTemplateMu.Unlock()
+	return s.saveXraySettingLocked(newXraySettings)
+}
+
+func (s *XraySettingService) saveXraySettingLocked(newXraySettings string) error {
 	// Strip textarea response wrappers so nested payloads cannot persist.
 	newXraySettings = UnwrapXrayTemplateConfig(newXraySettings)
 	oldTemplate, err := s.GetXrayConfigTemplate()
+	if err != nil {
+		return err
+	}
+	// FORK(outbound-stable-identity): Persist display names separately from immutable core tags.
+	newXraySettings, err = normalizeOutboundIdentity(newXraySettings)
+	if err != nil {
+		return err
+	}
+	newXraySettings, err = normalizeRoutingOwnership(newXraySettings)
+	if err != nil {
+		return err
+	}
+	oldTemplate, err = normalizeRoutingOwnership(oldTemplate)
 	if err != nil {
 		return err
 	}
@@ -217,19 +234,20 @@ func parseXrayCoreVersionParts(version string) ([3]int, bool) {
 }
 
 func (s *XraySettingService) UpdateWarpXraySetting(warpData map[string]string, warpConfig map[string]any) error {
-	template, err := s.GetXrayConfigTemplate()
-	if err != nil {
-		return err
-	}
+	// FORK(routing-rule-sync): Automatic Warp changes must preserve concurrent local rule edits.
+	_, err := s.editTemplate(func(template string) (string, bool, error) { return updateWarpTemplate(template, warpData, warpConfig) })
+	return err
+}
 
+func updateWarpTemplate(template string, warpData map[string]string, warpConfig map[string]any) (string, bool, error) {
 	var cfg map[string]any
 	if err := json.Unmarshal([]byte(template), &cfg); err != nil {
-		return err
+		return "", false, err
 	}
 
 	outbounds, ok := cfg["outbounds"].([]any)
 	if !ok {
-		return nil
+		return template, false, nil
 	}
 
 	updated := false
@@ -296,12 +314,12 @@ func (s *XraySettingService) UpdateWarpXraySetting(warpData map[string]string, w
 	if updated {
 		outJSON, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
-			return err
+			return "", false, err
 		}
-		return s.SaveXraySetting(string(outJSON))
+		return string(outJSON), true, nil
 	}
 
-	return nil
+	return template, false, nil
 }
 
 // UnwrapXrayTemplateConfig returns the raw xray config JSON from `raw`,

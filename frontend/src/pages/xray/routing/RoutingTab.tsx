@@ -66,9 +66,22 @@ export default function RoutingTab({
   const [selectedNodeId, setSelectedNodeId] = useState<number>(0);
   const [remoteRules, setRemoteRules] = useState<RoutingRule[]>([]);
   const [remoteOutboundTags, setRemoteOutboundTags] = useState<string[]>([]);
+  const [remoteOutboundNames, setRemoteOutboundNames] = useState<Record<string, string>>({});
   const [remoteLoading, setRemoteLoading] = useState(false);
   const [remoteSaving, setRemoteSaving] = useState(false);
   const [remoteReady, setRemoteReady] = useState(false);
+  // FORK(routing-rule-sync): Every asynchronous result belongs to one node and request generation.
+  const remoteRequest = useRef(0);
+  const activeNode = useRef(0);
+  const [remoteBaseline, setRemoteBaseline] = useState('');
+
+  useEffect(
+    () => () => {
+      ++remoteRequest.current;
+      activeNode.current = 0;
+    },
+    [],
+  );
 
   const { nodes: nodesList = [] } = useNodesQuery();
   const { data: allInboundOptions = [] } = useInboundOptions();
@@ -96,13 +109,17 @@ export default function RoutingTab({
 
   const fetchRemoteRules = useCallback(
     async (nodeId: number) => {
-      if (nodeId <= 0) return;
+      if (nodeId <= 0 || activeNode.current !== nodeId) return;
+      const request = ++remoteRequest.current;
+      const current = () => request === remoteRequest.current && activeNode.current === nodeId;
       setRemoteLoading(true);
       setRemoteReady(false);
       setRemoteRules([]);
       setRemoteOutboundTags([]);
+      setRemoteOutboundNames({});
       try {
         const resp = await HttpUtil.post('/panel/api/xray/', { nodeId }, { silent: true });
+        if (!current()) return;
         if (!resp?.success) {
           messageApi.error(resp?.msg || t('somethingWentWrong'));
           return;
@@ -112,15 +129,18 @@ export default function RoutingTab({
           messageApi.error(t('somethingWentWrong'));
           return;
         }
+        setRemoteBaseline(JSON.stringify(rules));
         setRemoteRules(
           (rules as RoutingRule[]).map((rule) => stripNodePrefixFromRoutingRule(nodeId, rule)),
         );
         setRemoteOutboundTags(parseOutboundTagsFromXrayConfigObj(resp.obj));
+        const envelope = typeof resp.obj === 'string' ? JSON.parse(resp.obj) : resp.obj;
+        setRemoteOutboundNames(envelope?.outboundNames || {});
         setRemoteReady(true);
       } catch {
-        messageApi.error(t('somethingWentWrong'));
+        if (current()) messageApi.error(t('somethingWentWrong'));
       } finally {
-        setRemoteLoading(false);
+        if (current()) setRemoteLoading(false);
       }
     },
     [messageApi, t],
@@ -128,12 +148,19 @@ export default function RoutingTab({
 
   const handleNodeChange = useCallback(
     (val: number) => {
+      activeNode.current = val;
+      ++remoteRequest.current;
+      setRemoteReady(false);
+      setRemoteLoading(false);
+      setRemoteSaving(false);
+      setRemoteBaseline('');
       setSelectedNodeId(val);
       if (val > 0) {
         void fetchRemoteRules(val);
       } else {
         setRemoteRules([]);
         setRemoteOutboundTags([]);
+        setRemoteOutboundNames({});
         setRemoteReady(false);
       }
     },
@@ -233,11 +260,21 @@ export default function RoutingTab({
   );
 
   const saveRemoteRules = useCallback(async () => {
-    if (selectedNodeId <= 0 || !remoteReady) return;
+    if (
+      selectedNodeId <= 0 ||
+      !remoteReady ||
+      !remoteBaseline ||
+      activeNode.current !== selectedNodeId
+    )
+      return;
+    const node = selectedNodeId;
+    const request = remoteRequest.current;
+    const current = () => activeNode.current === node && remoteRequest.current === request;
     setRemoteSaving(true);
     try {
       const payload = {
-        nodeId: selectedNodeId,
+        nodeId: node,
+        expectedRoutingRules: remoteBaseline,
         xraySetting: JSON.stringify({
           routing: {
             rules: remoteRules,
@@ -245,16 +282,16 @@ export default function RoutingTab({
         }),
       };
       const resp = await HttpUtil.post('/panel/api/xray/update', payload);
-      if (resp?.success) {
+      if (resp?.success && current()) {
         messageApi.success(t('pages.settings.toasts.modifySettings'));
         await fetchRemoteRules(selectedNodeId);
       }
     } catch {
-      messageApi.error(t('somethingWentWrong'));
+      if (current()) messageApi.error(t('somethingWentWrong'));
     } finally {
-      setRemoteSaving(false);
+      if (activeNode.current === node) setRemoteSaving(false);
     }
-  }, [messageApi, selectedNodeId, remoteReady, remoteRules, t, fetchRemoteRules]);
+  }, [messageApi, selectedNodeId, remoteReady, remoteRules, remoteBaseline, t, fetchRemoteRules]);
 
   const inboundTagOptions = useMemo(() => {
     const seen = new Set<string>();
@@ -283,6 +320,18 @@ export default function RoutingTab({
     }
     return out;
   }, [nodeInboundOptions, selectedNodeId, templateSettings]);
+
+  const outboundNames = useMemo(
+    () =>
+      selectedNodeId > 0
+        ? remoteOutboundNames
+        : Object.fromEntries(
+            (templateSettings?.outbounds || [])
+              .filter((o) => o.tag && o.remark)
+              .map((o) => [o.tag!, o.remark!]),
+          ),
+    [selectedNodeId, remoteOutboundNames, templateSettings?.outbounds],
+  );
 
   const outboundTagOptions = useMemo(() => {
     const out = new Set<string>(['']);
@@ -514,6 +563,7 @@ export default function RoutingTab({
     confirmDelete,
     toggleRule,
     remarkByTag,
+    outboundNames,
   });
 
   const tableScrollX = desktopColumns.reduce((sum, c) => {
@@ -629,6 +679,7 @@ export default function RoutingTab({
                     confirmDelete={confirmDelete}
                     toggleRule={toggleRule}
                     remarkByTag={remarkByTag}
+                    outboundNames={outboundNames}
                   />
                 ) : (
                   <Table
@@ -671,6 +722,7 @@ export default function RoutingTab({
         rule={editingRule}
         inboundTags={inboundTagOptions}
         outboundTags={outboundTagOptions}
+        outboundNames={outboundNames}
         balancerTags={balancerTagOptions}
         remarkByTag={remarkByTag}
         onClose={() => setRuleModalOpen(false)}
