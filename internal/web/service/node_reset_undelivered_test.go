@@ -312,9 +312,13 @@ func TestNodeResetsSettleEachClientOnItsOwn(t *testing.T) {
 }
 
 // stallingResetRuntime never answers a reset until its context ends.
-type stallingResetRuntime struct{ fakeNodeRuntime }
+type stallingResetRuntime struct {
+	fakeNodeRuntime
+	finished chan struct{}
+}
 
-func (*stallingResetRuntime) ResetClientTraffic(ctx context.Context, _ *model.Inbound, _ string) error {
+func (r *stallingResetRuntime) ResetClientTraffic(ctx context.Context, _ *model.Inbound, _ string) error {
+	defer close(r.finished)
 	<-ctx.Done()
 	return ctx.Err()
 }
@@ -328,7 +332,19 @@ func TestNodeResetDeliveryDoesNotHoldTheRequestBehindASilentNode(t *testing.T) {
 	if err := database.GetDB().Create(node).Error; err != nil {
 		t.Fatalf("create node: %v", err)
 	}
-	mgr.SetRuntimeOverride(node.Id, &stallingResetRuntime{})
+	finished := make(chan struct{})
+	mgr.SetRuntimeOverride(node.Id, &stallingResetRuntime{finished: finished})
+	t.Cleanup(func() {
+		select {
+		case <-finished:
+		case <-time.After(nodeClientPushTimeout + time.Second):
+			t.Error("silent node reset did not finish before fixture cleanup")
+			return
+		}
+		lock, _ := nodeResetDeliveryLocks.Load(node.Id)
+		lock.(*sync.Mutex).Lock()
+		lock.(*sync.Mutex).Unlock()
+	})
 	ib := nodeInbound(t, node.Id, 41912, []model.Client{{Email: "held", ID: "11111111-1111-1111-1111-1111111111ab", Enable: true}})
 	if err := (&InboundService{}).AddClientStat(database.GetDB(), ib.Id, &model.Client{Email: "held", Enable: true}); err != nil {
 		t.Fatalf("AddClientStat: %v", err)
