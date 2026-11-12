@@ -29,7 +29,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/valyala/fasthttp v1.77.0
 	github.com/xlzd/gotp v0.1.0
-	github.com/xtls/xray-core v1.260327.1-0.20261031132019-a4a3dff5b20c
+	github.com/xtls/xray-core v1.260327.1-0.20261111134232-c45614181535
 	github.com/yuin/goldmark v1.7.13 // FORK(telegram-user-bot): Parse standard Markdown before Telegram rendering.
 	go.etcd.io/bbolt v1.4.3 // FORK(audit-bandwidth): Persist fine-grained rolling-hour samples outside SQL.
 	go.uber.org/atomic v1.12.0
