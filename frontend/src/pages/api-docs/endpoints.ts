@@ -1780,6 +1780,27 @@ export const sections: readonly Section[] = [
         },
         response: '{\n  "success": true,\n  "msg": "success"\n}',
       },
+      {
+        method: 'POST',
+        path: '/panel/api/server/routing/checked',
+        summary:
+          'Replace node routing only if expectedRules matches the currently persisted rules. Missing or stale baselines fail without changing local rules. Old nodes return 404; never fall back to an unguarded write.',
+        params: [
+          {
+            name: 'rules',
+            in: 'body (form)',
+            type: 'string',
+            desc: 'JSON array of replacement rules.',
+          },
+          {
+            name: 'expectedRules',
+            in: 'body (form)',
+            type: 'string',
+            desc: 'JSON array originally returned by GET /server/routing.',
+          },
+        ],
+        response: '{"success":true,"msg":"success"}',
+      },
       // FORK(routing-rule-sync): Document the dedicated merge RPC instead of suggesting full replacement.
       {
         method: 'POST',
@@ -3077,6 +3098,21 @@ export const sections: readonly Section[] = [
             type: 'string',
             desc: 'Full Xray JSON config template.',
           },
+          {
+            name: 'expectedXraySetting',
+            in: 'body (form)',
+            type: 'string',
+            optional: true,
+            desc: 'Original full template baseline. A changed persisted template rejects the save.',
+          },
+          {
+            name: 'expectedRoutingRules',
+            in: 'body (form)',
+            type: 'string',
+            optional: true,
+            desc: 'Original child rules JSON array for a nodeId save. Uses the child checked routing endpoint.',
+          },
+
           {
             name: 'outboundTestUrl',
             in: 'body (form)',

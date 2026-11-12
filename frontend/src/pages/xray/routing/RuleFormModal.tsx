@@ -42,6 +42,8 @@ interface RuleFormModalProps {
   rule: RoutingRule | null;
   inboundTags: string[];
   outboundTags: string[];
+  // FORK(outbound-stable-identity): Selectors bind fixed IDs while displaying readable names.
+  outboundNames?: Record<string, string>;
   balancerTags: string[];
   remarkByTag?: Record<string, string>;
   allowSync?: boolean;
@@ -85,6 +87,7 @@ export default function RuleFormModal({
   rule,
   inboundTags,
   outboundTags,
+  outboundNames = {},
   balancerTags,
   remarkByTag: customRemarkByTag,
   allowSync = true,
@@ -377,7 +380,12 @@ export default function RuleFormModal({
           </FormField>
 
           <FormField name="outboundTag" label={t('pages.xray.ruleForm.outboundTag')}>
-            <Select options={outboundTags.map((tag) => ({ value: tag, label: tag || '(none)' }))} />
+            <Select
+              options={outboundTags.map((tag) => ({
+                value: tag,
+                label: outboundNames[tag] ? `${outboundNames[tag]} (${tag})` : tag || '(none)',
+              }))}
+            />
           </FormField>
 
           <FormField

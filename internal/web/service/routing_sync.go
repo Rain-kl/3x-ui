@@ -343,6 +343,10 @@ func (RoutingSyncService) Apply(state routingsync.Control) error {
 	if err != nil {
 		return err
 	}
+	template, err = normalizeRoutingOwnership(template)
+	if err != nil {
+		return err
+	}
 	current, err := GetRoutingRulesFromTemplate(template)
 	if err != nil {
 		return err

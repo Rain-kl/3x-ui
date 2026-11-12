@@ -520,6 +520,9 @@ func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	xray.ScopeRoutingUsers(xrayConfig)
 	xrayConfig.RouterConfig = dropRefusedScript(xrayConfig.RouterConfig, "routing", routingScriptRefused)
 	xrayConfig.DNSConfig = dropRefusedScript(xrayConfig.DNSConfig, "dns", dnsScriptRefused)
+	// FORK(outbound-stable-identity): Names and panel identities are not core configuration.
+	xrayConfig.OutboundConfigs = stripOutboundPanelMetadata(xrayConfig.OutboundConfigs)
+
 	return xrayConfig, nil
 }
 

@@ -1190,6 +1190,16 @@ func (r *Remote) PushRoutingRules(ctx context.Context, rules []map[string]any) e
 	return err
 }
 
+// PushRoutingRulesChecked never falls back to the unguarded endpoint on older children.
+func (r *Remote) PushRoutingRulesChecked(ctx context.Context, rules []map[string]any, expected string) error {
+	raw, err := json.Marshal(rules)
+	if err != nil {
+		return err
+	}
+	_, err = r.do(ctx, http.MethodPost, "panel/api/server/routing/checked", url.Values{"rules": {string(raw)}, "expectedRules": {expected}})
+	return err
+}
+
 // FORK(routing-rule-sync): Parent snapshots need merge semantics rather than the legacy full replacement RPC.
 func (r *Remote) SyncRouting(ctx context.Context, state routingsync.Control) error {
 	response, err := r.do(ctx, http.MethodPost, "panel/api/server/routing/sync", state)

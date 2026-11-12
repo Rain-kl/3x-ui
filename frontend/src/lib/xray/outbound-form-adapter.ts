@@ -555,6 +555,8 @@ function muxFromWire(raw: unknown): MuxForm {
 
 export interface RawOutboundRow {
   tag?: string;
+  remark?: string;
+  panelId?: string;
   protocol?: string;
   sendThrough?: string;
   targetStrategy?: string;
@@ -660,6 +662,8 @@ export function rawOutboundToFormValues(raw: RawOutboundRow): OutboundFormValues
   return {
     ...typed,
     tag,
+    // FORK(outbound-stable-identity): Preserve display names independently of route IDs.
+    remark: asString(raw.remark),
     sendThrough,
     // The freedom card owns the strategy for freedom, so the shared root field
     // stays empty and cannot disagree with what the card is showing.
@@ -988,6 +992,8 @@ export function formValuesToWirePayload(values: OutboundFormValues): WireOutboun
     settings,
   };
   if (values.tag) result.tag = values.tag;
+  // FORK(outbound-stable-identity): Keep the name through form and JSON round trips.
+  if (values.remark) result.remark = values.remark;
   if (values.targetStrategy && values.protocol !== 'freedom') {
     result.targetStrategy = values.targetStrategy;
   }

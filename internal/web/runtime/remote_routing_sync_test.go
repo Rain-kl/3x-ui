@@ -44,3 +44,28 @@ func TestRemoteRoutingSyncRequiresBalancingAcknowledgment(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoteCheckedRoutingNeverFallsBackOnOldChild(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if r.URL.Path != "/panel/api/server/routing/checked" {
+			t.Errorf("unguarded fallback requested: %s", r.URL.Path)
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Error(err)
+		}
+		if r.FormValue("expectedRules") != "[]" || r.FormValue("rules") != "[]" {
+			t.Error("missing routing precondition")
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+	remote := NewRemote(nodeForPlainServer(t, server, "verify", "tok"), nil)
+	if err := remote.PushRoutingRulesChecked(context.Background(), []map[string]any{}, "[]"); err == nil {
+		t.Fatal("old child accepted checked edit")
+	}
+	if calls != 1 {
+		t.Fatalf("got %d calls, expected single guarded request", calls)
+	}
+}

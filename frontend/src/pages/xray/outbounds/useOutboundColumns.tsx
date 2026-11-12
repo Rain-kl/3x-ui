@@ -166,7 +166,7 @@ export function useOutboundColumns({
         render: (_v, record) => (
           <div className="identity-cell">
             <Tooltip title={record.tag}>
-              <span className="tag-name">{record.tag}</span>
+              <span className="tag-name">{record.remark || record.tag}</span>
             </Tooltip>
             <div className="protocol-line">
               <Tag color="green">{record.protocol}</Tag>

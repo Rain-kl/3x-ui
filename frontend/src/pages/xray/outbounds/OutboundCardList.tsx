@@ -145,7 +145,7 @@ export default function OutboundCardList({
             <div className="card-identity">
               <span className="card-num">{index + 1}</span>
               <Tooltip title={record.tag}>
-                <span className="tag-name">{record.tag}</span>
+                <span className="tag-name">{record.remark || record.tag}</span>
               </Tooltip>
               <Tag color="green">{record.protocol}</Tag>
               {[Protocols.VMess, Protocols.VLESS, Protocols.Trojan, Protocols.Shadowsocks].includes(

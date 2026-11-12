@@ -15,6 +15,9 @@ export const XraySettingsValueSchema = z
         z
           .object({
             tag: z.string().optional(),
+            // FORK(outbound-stable-identity): Panel names and IDs must survive schema parsing.
+            remark: z.string().optional(),
+            panelId: z.string().optional(),
             protocol: z.string().optional(),
             settings: z.unknown().optional(),
             streamSettings: z.unknown().optional(),

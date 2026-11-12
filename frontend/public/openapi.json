@@ -14116,6 +14116,64 @@
         }
       }
     },
+    "/panel/api/server/routing/checked": {
+      "post": {
+        "tags": [
+          "Server"
+        ],
+        "summary": "Replace node routing only if expectedRules matches the currently persisted rules. Missing or stale baselines fail without changing local rules. Old nodes return 404; never fall back to an unguarded write.",
+        "operationId": "post_panel_api_server_routing_checked",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rules": {
+                    "type": "string",
+                    "description": "JSON array of replacement rules."
+                  },
+                  "expectedRules": {
+                    "type": "string",
+                    "description": "JSON array originally returned by GET /server/routing."
+                  }
+                },
+                "required": [
+                  "rules",
+                  "expectedRules"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "msg": "success"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/server/routing/sync": {
       "post": {
         "tags": [
@@ -20215,6 +20273,14 @@
                   "xraySetting": {
                     "type": "string",
                     "description": "Full Xray JSON config template."
+                  },
+                  "expectedXraySetting": {
+                    "type": "string",
+                    "description": "Original full template baseline. A changed persisted template rejects the save."
+                  },
+                  "expectedRoutingRules": {
+                    "type": "string",
+                    "description": "Original child rules JSON array for a nodeId save. Uses the child checked routing endpoint."
                   },
                   "outboundTestUrl": {
                     "type": "string",

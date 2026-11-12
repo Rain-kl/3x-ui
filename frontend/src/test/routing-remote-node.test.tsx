@@ -328,4 +328,61 @@ describe('RoutingTab remote node rules', () => {
     });
     expect(screen.queryByRole('option', { name: /n7-in-443-tcp/ })).toBeNull();
   });
+  it('ignores a late node A response and saves node B rules with its baseline', async () => {
+    let releaseSlow!: () => void;
+    const slow = new Promise<void>((resolve) => {
+      releaseSlow = resolve;
+    });
+    const posts: Array<{ url: string; data: unknown }> = [];
+    vi.spyOn(HttpUtil, 'get').mockImplementation(async (url: string) => {
+      if (url.includes('/panel/api/nodes/list'))
+        return new Msg(true, '', [
+          { id: 7, name: 'slow', address: '10.0.0.7' },
+          { id: 8, name: 'target', address: '10.0.0.8' },
+        ]);
+      return new Msg(true, '', []);
+    });
+    vi.spyOn(HttpUtil, 'post').mockImplementation(async (url: string, data?: unknown) => {
+      posts.push({ url, data });
+      if (url === '/panel/api/xray/') {
+        const id = (data as { nodeId: number }).nodeId;
+        if (id === 7) await slow;
+        const shared = { ...REMOTE_RULE, outboundTag: 'shared-only', panelSyncSource: 'master' };
+        const rules =
+          id === 7 ? [shared] : [shared, { ...LOCAL_RULE, outboundTag: 'target-local' }];
+        return new Msg(true, '', JSON.stringify({ xraySetting: { routing: { rules } } }));
+      }
+      return new Msg(true, 'ok');
+    });
+    renderTab();
+    await openRulesTab();
+    const select = screen.getByRole('combobox', { name: 'Node' });
+    fireEvent.mouseDown(select);
+    fireEvent.click(await screen.findByText('slow (10.0.0.7)'));
+    await waitFor(() =>
+      expect(
+        posts.some(
+          (p) => p.url === '/panel/api/xray/' && (p.data as { nodeId: number }).nodeId === 7,
+        ),
+      ).toBe(true),
+    );
+    fireEvent.mouseDown(select);
+    fireEvent.click(await screen.findByText('target (10.0.0.8)'));
+    await screen.findByText('target-local');
+    releaseSlow();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByText('target-local')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    await waitFor(() => expect(posts.some((p) => p.url === '/panel/api/xray/update')).toBe(true));
+    const update = posts.find((p) => p.url === '/panel/api/xray/update')!.data as {
+      nodeId: number;
+      xraySetting: string;
+    };
+    expect(update.nodeId).toBe(8);
+    const saved = JSON.parse(update.xraySetting);
+    expect(saved.routing.rules.map((r: { outboundTag: string }) => r.outboundTag)).toEqual([
+      'shared-only',
+      'target-local',
+    ]);
+  });
 });
