@@ -176,6 +176,9 @@ func FlushAuditBandwidth() {
 func (s *bandwidthCapture) flush(now time.Time) error {
 	auditRetentionMu.Lock()
 	defer auditRetentionMu.Unlock()
+	if database.GetDB() == nil {
+		return fmt.Errorf("cannot flush audit bandwidth before database initialization")
+	}
 	restoreErr := s.restoreRecent(now)
 	control, err := readAuditControl(database.GetDB())
 	if err != nil {

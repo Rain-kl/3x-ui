@@ -4,11 +4,21 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"os"
+	"os/exec"
 	"testing"
 	"time"
 )
 
 func TestServerStopWhenXrayNotRunningSucceeds(t *testing.T) {
+	if os.Getenv("XUI_TEST_UNSTARTED_SHUTDOWN") != "1" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestServerStopWhenXrayNotRunningSucceeds$")
+		cmd.Env = append(os.Environ(), "XUI_TEST_UNSTARTED_SHUTDOWN=1")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("stop unstarted server in fresh process: %v\n%s", err, output)
+		}
+		return
+	}
 	t.Setenv("XUI_DB_FOLDER", t.TempDir())
 	s := NewServer(nil)
 	if err := s.Stop(); err != nil {

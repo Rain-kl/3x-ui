@@ -61,3 +61,9 @@ unrelated 24-hour metric loss.
 Pruning collects copied keys before deleting them, avoiding bbolt cursor index
 shifts skipping adjacent expired records. PostgreSQL deployments still require
 a persistent, writable panel data directory for this local bbolt file.
+
+## 2026-11-12：数据库初始化前退出
+
+发布检查的随机测试顺序暴露未启动 Server 的退出崩溃：restoreRecent 已返回数据库未初始化错误，flush 仍继续以 nil 数据库读取审计策略。flush 在任何恢复和 SQL 操作之前检查数据库并返回明确错误，退出包装函数沿用既有日志报告。保留正常运行时 bbolt 与 SQL 独立刷盘语义。
+
+退出回归测试改在全新子进程执行，消除其他测试初始化全局数据库带来的顺序依赖。添加测试后先确认原实现空指针失败，再应用保护验证通过。

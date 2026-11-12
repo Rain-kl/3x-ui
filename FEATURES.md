@@ -233,6 +233,7 @@
 - **修改文件**：新增 `internal/web/service/audit_bandwidth*.go`、`internal/database/model/audit_bandwidth.go`、`frontend/src/pages/audit/AuditBandwidth*.tsx`；接入流量同步、模型注册及跨库迁移、审计 API/导出/清理、Web 生命周期、AI 工具、接口文档与13种语言词条。
 - **上游改动标记**：`FORK(audit-bandwidth)`。
 - **设计与实现**：[功能规格](docs/specs/audit-bandwidth.md)、[Agent Note](.agents/notes/audit-bandwidth.md)。
+- **2026-11-12 修复**：未初始化数据库的面板退出时，带宽刷盘记录明确错误并完成停止，避免空指针崩溃；独立进程回归测试固定覆盖该启动状态。
 
 ## Telegram 邀请码管理（telegram-invite-management）
 
