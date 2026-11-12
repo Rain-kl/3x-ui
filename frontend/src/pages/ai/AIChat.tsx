@@ -141,6 +141,7 @@ export default function AIChat({
                   size="small"
                 />
                 <Select
+                  aria-label={t('pages.ai.openCodeDefault')}
                   style={{ width: '100%' }}
                   allowClear
                   showSearch
@@ -154,6 +155,7 @@ export default function AIChat({
                   }))}
                 />
                 <Input.TextArea
+                  aria-label={t('pages.ai.chatPlaceholder')}
                   value={prompt}
                   onChange={(event) => setPrompt(event.target.value)}
                   autoSize={{ minRows: 3, maxRows: 8 }}

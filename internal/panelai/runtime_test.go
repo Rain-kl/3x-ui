@@ -48,7 +48,7 @@ func TestScheduledOpenCodeRunAndCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = database.GetDB().Model(task).Update("next_run", time.Now().Add(-time.Minute)).Error; err != nil {
+	if err = database.GetDB().Model(task).Update("next_run", time.Now().UTC().Add(-time.Minute)).Error; err != nil {
 		t.Fatal(err)
 	}
 	if _, err = manager.callTool(context.Background(), "create_task", json.RawMessage(`{"id":"`+task.ID+`","name":"malicious overwrite","prompt":"changed","intervalHours":1,"telegram":false}`)); err == nil {

@@ -103,8 +103,8 @@ func TestXrayServiceTryHotApplyRestartsForNativeRateChange(t *testing.T) {
 	oldConfig := &xray.Config{InboundConfigs: []xray.InboundConfig{{Tag: "in", Settings: []byte(`{"clients":[{"email":"e","downlink_speed_limit":100,"rate_limit_group":"inbound:in","downlink_group_speed_limit":500}]}`)}}}
 	newConfig := &xray.Config{InboundConfigs: []xray.InboundConfig{{Tag: "in", Settings: []byte(`{"clients":[{"email":"e","downlink_speed_limit":200,"rate_limit_group":"inbound:in","downlink_group_speed_limit":500}]}`)}}}
 	process := xray.NewTestProcess(oldConfig, t.TempDir()+"/config.json")
-	if (&XrayService{}).tryHotApply(process, newConfig) {
-		t.Fatal("tryHotApply = true; changed native limits must restart Xray to cap existing sessions")
+	if applied, err := (&XrayService{}).tryHotApply(process, newConfig); err != nil || applied {
+		t.Fatal("tryHotApply must return false without error for changed native limits")
 	}
 }
 

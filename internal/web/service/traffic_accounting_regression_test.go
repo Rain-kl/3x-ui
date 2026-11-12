@@ -20,11 +20,11 @@ func TestRemoteTrafficResetAndRatioChange(t *testing.T) {
 				t.Fatal(err)
 			}
 			cr := model.ClientRecord{Email: email, Enable: true}
-			if err := db.Create(&cr).Error; err != nil {
+			if err := db.Where("email = ?", email).First(&cr).Error; err != nil {
 				t.Fatal(err)
 			}
 			ci := model.ClientInbound{ClientId: cr.Id, InboundId: ib.Id}
-			if err := db.Create(&ci).Error; err != nil {
+			if err := db.Where("client_id = ? AND inbound_id = ?", cr.Id, ib.Id).FirstOrCreate(&ci).Error; err != nil {
 				t.Fatal(err)
 			}
 			if err := svc.AddClientStat(db, ib.Id, &model.Client{Email: email, Enable: true}); err != nil {

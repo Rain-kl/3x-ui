@@ -284,7 +284,10 @@ func TestRoutingSyncRejectsScriptOverride(t *testing.T) {
 				}
 				return
 			}
-			if err != nil {
+			if err == nil || !strings.Contains(err.Error(), "xray-core refuses") {
+				t.Fatalf("local script must be rejected before core application: %v", err)
+			}
+			if err := settings.setString("xrayTemplateConfig", string(raw)); err != nil {
 				t.Fatal(err)
 			}
 			if err := (RoutingSyncService{}).Apply(state); err == nil || !strings.Contains(err.Error(), "script overrides") {

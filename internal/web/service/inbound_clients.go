@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 
@@ -47,12 +48,13 @@ func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inboun
 		Down      int64
 	}
 	ciStatsMap := make(map[string]ciStat)
-	if len(inboundIds) > 0 {
+	// FORK(multi-inbound-accounting): Large node snapshots must stay under SQL bind limits.
+	for _, batch := range chunkInts(uniqueInts(inboundIds), sqlInChunk) {
 		var rows []ciStat
 		if err := db.Table("client_inbounds").
 			Select("LOWER(clients.email) AS email, client_inbounds.inbound_id, client_inbounds.up, client_inbounds.down").
 			Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-			Where("client_inbounds.inbound_id IN ?", inboundIds).
+			Where("client_inbounds.inbound_id IN ?", batch).
 			Scan(&rows).Error; err != nil {
 			return fmt.Errorf("read raw per-inbound client traffic: %w", err)
 		}
@@ -60,10 +62,10 @@ func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inboun
 			ciStatsMap[fmt.Sprintf("%d:%s", r.InboundId, r.Email)] = r
 		}
 	}
-	for i, inbound := range inbounds {
-		clients := clientsByInbound[i]
+	for _, inbound := range inbounds {
+		clients := clientsByInbound[inbound.Id]
 
-		cMap := make(map[string]model.Client, len(clients))
+		cMap := make(map[string]clientStatsIdentity, len(clients))
 		for _, c := range clients {
 			cMap[strings.ToLower(c.Email)] = c
 		}
@@ -79,7 +81,7 @@ func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inboun
 				return fmt.Errorf("raw client traffic missing for inbound %d, client %q", inbound.Id, stat.Email)
 			}
 			stat.InboundId = inbound.Id
-			stat.UUID, stat.SubId = c.ID, c.SubID
+			stat.UUID, stat.SubId = c.UUID, c.SubID
 			stat.Up, stat.Down = st.Up, st.Down
 			stats = append(stats, stat)
 		}
@@ -88,18 +90,20 @@ func (s *InboundService) enrichClientStats(db *gorm.DB, inbounds []*model.Inboun
 	return nil
 }
 
-// backfillClientStats fills shared metadata for clients attached to sibling inbounds.
-// FORK(multi-inbound-accounting): Failed membership reads must invalidate the snapshot.
-func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbound) ([][]model.Client, error) {
-	clientsByInbound := make([][]model.Client, len(inbounds))
+// FORK(multi-inbound-accounting): Batch identity reads must report errors before exposing raw counters.
+func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbound) (map[int][]clientStatsIdentity, error) {
+	ids := make([]int, 0, len(inbounds))
+	for _, inbound := range inbounds {
+		ids = append(ids, inbound.Id)
+	}
+	clientsByInbound, err := s.clientService.listStatsIdentitiesForInbounds(db, ids)
+	if err != nil {
+		return nil, fmt.Errorf("load client identities for inbound snapshot: %w", err)
+	}
 	seenByInbound := make([]map[string]struct{}, len(inbounds))
 	missing := make(map[string]struct{})
 	for i, inbound := range inbounds {
-		clients, err := s.clientService.ListForInbound(db, inbound.Id)
-		if err != nil {
-			return nil, fmt.Errorf("list clients for inbound %d: %w", inbound.Id, err)
-		}
-		clientsByInbound[i] = clients
+		clients := clientsByInbound[inbound.Id]
 		seen := make(map[string]struct{}, len(inbound.ClientStats))
 		for _, st := range inbound.ClientStats {
 			if st.Email != "" {
@@ -139,7 +143,7 @@ func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbo
 				byEmail[strings.ToLower(st.Email)] = st
 			}
 			for i, inbound := range inbounds {
-				for _, c := range clientsByInbound[i] {
+				for _, c := range clientsByInbound[inbound.Id] {
 					if c.Email == "" {
 						continue
 					}
@@ -158,17 +162,42 @@ func (s *InboundService) backfillClientStats(db *gorm.DB, inbounds []*model.Inbo
 	return clientsByInbound, nil
 }
 
+// emailSpellings returns the arguments a "LOWER(col) IN ? OR col IN ?" match
+// needs: SQLite's LOWER() folds ASCII only, so non-ASCII capitals get every case.
+func emailSpellings(emails []string) []string {
+	seen := make(map[string]struct{}, len(emails))
+	out := make([]string, 0, len(emails))
+	for _, e := range emails {
+		e = strings.TrimSpace(e)
+		if e == "" {
+			continue
+		}
+		variants := []string{strings.ToLower(e)}
+		if strings.ContainsFunc(e, func(r rune) bool { return r > unicode.MaxASCII }) {
+			variants = caseVariants(e)
+		}
+		for _, v := range variants {
+			if _, dup := seen[v]; !dup {
+				seen[v] = struct{}{}
+				out = append(out, v)
+			}
+		}
+	}
+	return out
+}
+
 // emailUsedByOtherInbounds reports whether email lives in any inbound other than
 // exceptInboundId. Inside a transaction pass tx: a pool query there starves the pool.
 func (s *InboundService) emailUsedByOtherInbounds(db *gorm.DB, email string, exceptInboundId int) (bool, error) {
-	if email == "" {
+	spellings := emailSpellings([]string{email})
+	if len(spellings) == 0 {
 		return false, nil
 	}
 	var count int64
 	err := db.Table("client_inbounds").
 		Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-		Where("client_inbounds.inbound_id != ? AND LOWER(clients.email) = ?",
-			exceptInboundId, strings.ToLower(strings.TrimSpace(email))).
+		Where("client_inbounds.inbound_id != ? AND (LOWER(clients.email) IN ? OR clients.email IN ?)",
+			exceptInboundId, spellings, spellings).
 		Count(&count).Error
 	if err != nil {
 		return false, err
@@ -176,34 +205,22 @@ func (s *InboundService) emailUsedByOtherInbounds(db *gorm.DB, email string, exc
 	return count > 0, nil
 }
 
+// emailsUsedByOtherInbounds is emailUsedByOtherInbounds for a batch; the result
+// is keyed by the lower-cased email.
 func (s *InboundService) emailsUsedByOtherInbounds(db *gorm.DB, emails []string, exceptInboundId int) (map[string]bool, error) {
 	shared := make(map[string]bool, len(emails))
-	want := make(map[string]struct{}, len(emails))
-	for _, e := range emails {
-		e = strings.ToLower(strings.TrimSpace(e))
-		if e != "" {
-			want[e] = struct{}{}
-		}
-	}
-	if len(want) == 0 {
-		return shared, nil
-	}
-	lowered := make([]string, 0, len(want))
-	for e := range want {
-		lowered = append(lowered, e)
-	}
-	for _, batch := range chunkStrings(lowered, sqlInChunk) {
+	for _, batch := range chunkStrings(emailSpellings(emails), sqlInChunk) {
 		var rows []struct{ Email string }
 		err := db.Table("client_inbounds").
 			Joins("JOIN clients ON clients.id = client_inbounds.client_id").
-			Select("DISTINCT LOWER(clients.email) AS email").
-			Where("client_inbounds.inbound_id != ? AND LOWER(clients.email) IN ?", exceptInboundId, batch).
+			Select("DISTINCT clients.email AS email").
+			Where("client_inbounds.inbound_id != ? AND (LOWER(clients.email) IN ? OR clients.email IN ?)", exceptInboundId, batch, batch).
 			Scan(&rows).Error
 		if err != nil {
 			return nil, err
 		}
 		for _, r := range rows {
-			shared[r.Email] = true
+			shared[strings.ToLower(r.Email)] = true
 		}
 	}
 	return shared, nil

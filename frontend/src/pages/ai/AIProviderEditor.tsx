@@ -1,10 +1,11 @@
-import { FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Card, Form, Space, Typography } from 'antd';
 import { z } from 'zod';
 import JsonEditor from '@/components/form/JsonEditor';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { aiApi } from './api';
 
 const ConfigSchema = z.object({
@@ -23,7 +24,10 @@ const ConfigSchema = z.object({
 function Editor({ initial, path }: { initial: string; path: string }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
-  const methods = useZodForm(ConfigSchema, { defaultValues: { config: initial } });
+  const methods = useForm({
+    resolver: zodResolver(ConfigSchema),
+    defaultValues: { config: initial },
+  });
   const save = useMutation({
     mutationFn: (data: z.infer<typeof ConfigSchema>) => aiApi.saveProviderConfig({ ...data, path }),
     onSuccess: (saved) => {

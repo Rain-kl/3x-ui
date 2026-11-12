@@ -1,9 +1,10 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { FormProvider } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Form, Input, Modal, Popconfirm, Space, Switch, Table, message } from 'antd';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { TelegramCommandFormSchema, telegramApi, type TelegramCustomCommand } from './api';
 
 function CommandEditor({
@@ -18,7 +19,10 @@ function CommandEditor({
   saving: boolean;
 }) {
   const { t } = useTranslation();
-  const methods = useZodForm(TelegramCommandFormSchema, { defaultValues: value });
+  const methods = useForm({
+    resolver: zodResolver(TelegramCommandFormSchema),
+    defaultValues: value,
+  });
   return (
     <Modal
       open
@@ -128,6 +132,7 @@ export default function TelegramCommands() {
             width: 100,
             render: (_, row) => (
               <Switch
+                aria-label={t('enable')}
                 checked={row.enabled}
                 disabled={saving}
                 onChange={(enabled) => {

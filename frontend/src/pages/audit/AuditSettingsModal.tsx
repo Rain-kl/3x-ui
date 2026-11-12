@@ -116,8 +116,9 @@ export default function AuditSettingsModal({
         {/* FORK(audit-workbench): Paired fields use the available width while keeping mobile controls readable. */}
         <Form layout="vertical" className="audit-settings-form">
           <div className="audit-settings-fields">
-            <Form.Item label={t('pages.audit.detailRetention')}>
+            <Form.Item htmlFor="audit-detailRetention" label={t('pages.audit.detailRetention')}>
               <InputNumber
+                id="audit-detailRetention"
                 min={1}
                 max={720}
                 precision={0}
@@ -128,11 +129,13 @@ export default function AuditSettingsModal({
               />
             </Form.Item>
             <Form.Item
+              htmlFor="audit-summaryRetention"
               label={t('pages.audit.summaryRetention')}
               validateStatus={retentionValid ? undefined : 'error'}
               help={retentionValid ? undefined : t('pages.audit.invalidRetention')}
             >
               <InputNumber
+                id="audit-summaryRetention"
                 min={1}
                 max={365}
                 precision={0}
@@ -151,8 +154,12 @@ export default function AuditSettingsModal({
             {t('pages.audit.frequencyHelp')}
           </Typography.Paragraph>
           <div className="audit-settings-fields">
-            <Form.Item label={t('pages.audit.connectionRateLimit')}>
+            <Form.Item
+              htmlFor="audit-connectionRateLimit"
+              label={t('pages.audit.connectionRateLimit')}
+            >
               <InputNumber
+                id="audit-connectionRateLimit"
                 min={0}
                 max={1000000}
                 precision={3}
@@ -162,11 +169,13 @@ export default function AuditSettingsModal({
               />
             </Form.Item>
             <Form.Item
+              htmlFor="audit-siteRateLimit"
               label={t('pages.audit.siteRateLimit')}
               validateStatus={ratesValid ? undefined : 'error'}
               help={ratesValid ? undefined : t('pages.audit.invalidRateLimit')}
             >
               <InputNumber
+                id="audit-siteRateLimit"
                 min={0}
                 max={1000000}
                 precision={3}
@@ -189,6 +198,7 @@ export default function AuditSettingsModal({
         <Typography.Text type="secondary">{t('pages.audit.clearHelp')}</Typography.Text>
         <Space wrap>
           <InputNumber
+            aria-label={t('pages.audit.clearHelp')}
             style={{ width: 140 }}
             min={1}
             max={3650}

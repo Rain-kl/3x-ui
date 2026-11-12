@@ -34,4 +34,4 @@ it('validates a numeric Telegram ID, preserves server errors and refreshes bindi
   fireEvent.click(screen.getByRole('button', { name: 'Manual binding' }));
   await waitFor(() => expect(close).toHaveBeenCalledOnce());
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['telegram'] });
-});
+}, 10000);

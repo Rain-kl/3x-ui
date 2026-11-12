@@ -63,6 +63,7 @@ func migrationModels() []any {
 		// FORK-END(telegram-user-bot)
 		&model.InboundFallback{},
 		&model.Host{},
+		&model.HostTombstone{},
 		&model.NodeClientTraffic{},
 		&model.NodeClientIp{},
 		&model.ClientGlobalTraffic{},

@@ -1,8 +1,9 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Form, Input, Modal, Select, Space, Switch, Tooltip } from 'antd';
-import { PlusOutlined, MinusOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Button, Form, Input, Modal, Select, Space, Switch } from 'antd';
+import { PlusOutlined, MinusOutlined } from '@ant-design/icons';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
+import { selectTagRender } from '@/components/form';
 import { InputAddon } from '@/components/ui';
 import { GeoTokenInput } from '@/components/geodata';
 import { FormField } from '@/components/form/rhf';
@@ -238,33 +239,24 @@ export default function RuleFormModal({
 
           <FormField
             name="sourceIP"
-            label={
-              <Tooltip title={t('pages.xray.rules.useComma')}>
-                {t('pages.xray.ruleForm.sourceIps')} <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
+            label={t('pages.xray.ruleForm.sourceIps')}
+            tooltip={t('pages.xray.rules.useComma')}
           >
             <GeoTokenInput kind="ip" placeholder="0.0.0.0/8, fc00::/7, geoip:ir" />
           </FormField>
 
           <FormField
             name="sourcePort"
-            label={
-              <Tooltip title={t('pages.xray.rules.useComma')}>
-                {t('pages.xray.ruleForm.sourcePort')} <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
+            label={t('pages.xray.ruleForm.sourcePort')}
+            tooltip={t('pages.xray.rules.useComma')}
           >
             <Input placeholder="53,443,1000-2000" />
           </FormField>
 
           <FormField
             name="vlessRoute"
-            label={
-              <Tooltip title={t('pages.xray.rules.useComma')}>
-                {t('pages.xray.ruleForm.vlessRoute')} <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
+            label={t('pages.xray.ruleForm.vlessRoute')}
+            tooltip={t('pages.xray.rules.useComma')}
           >
             <Input placeholder="53,443,1000-2000" />
           </FormField>
@@ -274,14 +266,18 @@ export default function RuleFormModal({
           </FormField>
 
           <FormField name="protocol" label={t('pages.inbounds.protocol')}>
-            <Select mode="multiple" options={PROTOCOLS.map((p) => ({ value: p, label: p }))} />
+            <Select
+              mode="multiple"
+              tagRender={selectTagRender}
+              options={PROTOCOLS.map((p) => ({ value: p, label: p }))}
+            />
           </FormField>
 
           <Form.Item label={t('pages.xray.ruleForm.attributes')}>
             <Button
               size="small"
               aria-label={t('add')}
-              icon={<PlusOutlined />}
+              icon={<PlusOutlined aria-hidden />}
               onClick={() => methods.setValue('attrs', [...attrs, ['', ''] as [string, string]])}
             />
           </Form.Item>
@@ -313,7 +309,7 @@ export default function RuleFormModal({
                 />
                 <Button
                   aria-label={t('remove')}
-                  icon={<MinusOutlined />}
+                  icon={<MinusOutlined aria-hidden />}
                   onClick={() =>
                     methods.setValue(
                       'attrs',
@@ -325,35 +321,18 @@ export default function RuleFormModal({
             ))}
           </Form.Item>
 
-          <FormField
-            name="ip"
-            label={
-              <Tooltip title={t('pages.xray.rules.useComma')}>
-                IP <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
-          >
+          <FormField name="ip" label="IP" tooltip={t('pages.xray.rules.useComma')}>
             <GeoTokenInput kind="ip" placeholder="0.0.0.0/8, fc00::/7, geoip:ir" />
           </FormField>
 
-          <FormField
-            name="domain"
-            label={
-              <Tooltip title={t('pages.xray.rules.useComma')}>
-                {t('domainName')} <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
-          >
+          <FormField name="domain" label={t('domainName')} tooltip={t('pages.xray.rules.useComma')}>
             <GeoTokenInput kind="domain" placeholder="google.com, geosite:cn" />
           </FormField>
 
           <FormField
             name="user"
-            label={
-              <Tooltip title={t('pages.xray.rules.useComma')}>
-                {t('pages.xray.ruleForm.user')} <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
+            label={t('pages.xray.ruleForm.user')}
+            tooltip={t('pages.xray.rules.useComma')}
             transform={{
               input: (value) => csv(typeof value === 'string' ? value : ''),
               output: (value) => (Array.isArray(value) ? value.join(',') : ''),
@@ -361,6 +340,7 @@ export default function RuleFormModal({
           >
             <Select
               mode="tags"
+              tagRender={selectTagRender}
               tokenSeparators={[',']}
               allowClear
               loading={clientsLoading}
@@ -379,11 +359,8 @@ export default function RuleFormModal({
 
           <FormField
             name="port"
-            label={
-              <Tooltip title={t('pages.xray.rules.useComma')}>
-                {t('pages.inbounds.port')} <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
+            label={t('pages.inbounds.port')}
+            tooltip={t('pages.xray.rules.useComma')}
           >
             <Input placeholder="53,443,1000-2000" />
           </FormField>
@@ -391,6 +368,7 @@ export default function RuleFormModal({
           <FormField name="inboundTag" label={t('pages.xray.ruleForm.inboundTags')}>
             <Select
               mode="multiple"
+              tagRender={selectTagRender}
               options={inboundTags.map((tag) => ({
                 value: tag,
                 label: formatInboundTag(tag, remarkByTag),
@@ -404,11 +382,8 @@ export default function RuleFormModal({
 
           <FormField
             name="balancerTag"
-            label={
-              <Tooltip title={t('pages.xray.ruleForm.balancerTagTooltip')}>
-                {t('pages.xray.ruleForm.balancerTag')} <QuestionCircleOutlined aria-hidden="true" />
-              </Tooltip>
-            }
+            label={t('pages.xray.ruleForm.balancerTag')}
+            tooltip={t('pages.xray.ruleForm.balancerTagTooltip')}
           >
             <Select options={balancerTags.map((tag) => ({ value: tag, label: tag || '(none)' }))} />
           </FormField>

@@ -50,6 +50,7 @@ export default function TelegramLogs({ onChat }: { onChat: (tgId: number) => voi
       {messageHolder}
       <Space wrap style={{ marginBottom: 16 }}>
         <Input.Search
+          aria-label={'Telegram ID'}
           placeholder="Telegram ID"
           allowClear
           onSearch={(value) => {
@@ -59,6 +60,7 @@ export default function TelegramLogs({ onChat }: { onChat: (tgId: number) => voi
           style={{ width: 200 }}
         />
         <Input.Search
+          aria-label={t('pages.telegram.eventFilter')}
           placeholder={t('pages.telegram.eventFilter')}
           allowClear
           onSearch={(value) => {
@@ -130,6 +132,7 @@ export default function TelegramLogs({ onChat }: { onChat: (tgId: number) => voi
       />
       <Space wrap>
         <Select
+          aria-label={t('pages.telegram.cleanupHelp')}
           value={kind}
           onChange={setKind}
           options={[
@@ -139,6 +142,7 @@ export default function TelegramLogs({ onChat }: { onChat: (tgId: number) => voi
           style={{ width: 180 }}
         />
         <InputNumber
+          aria-label={t('pages.telegram.days')}
           min={1}
           max={3650}
           precision={0}

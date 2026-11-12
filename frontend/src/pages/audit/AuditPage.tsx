@@ -211,7 +211,7 @@ export default function AuditPage() {
                       {t('pages.audit.exportTitle')}
                     </Button>
                     <Button
-                      icon={<SettingOutlined />}
+                      icon={<SettingOutlined aria-hidden />}
                       disabled={!policy || data?.centralized}
                       onClick={() => setSettingsOpen(true)}
                     >
@@ -219,7 +219,7 @@ export default function AuditPage() {
                     </Button>
                     <Button
                       type="primary"
-                      icon={<ReloadOutlined />}
+                      icon={<ReloadOutlined aria-hidden />}
                       loading={isFetching}
                       onClick={() => {
                         // FORK(audit-workbench): Explicit refresh should also reflect updated inbound remarks.
@@ -235,6 +235,7 @@ export default function AuditPage() {
                 </div>
                 <Space wrap>
                   <Select
+                    aria-label={t('hour')}
                     value={hours}
                     onChange={(value) => {
                       setHours(value);
@@ -251,6 +252,7 @@ export default function AuditPage() {
                     style={{ width: 145 }}
                   />
                   <DatePicker
+                    aria-label={t('pages.audit.dayFilter')}
                     value={day ? dayjs(day) : null}
                     onChange={(value) => {
                       setDay(value?.format('YYYY-MM-DD') || '');
@@ -266,6 +268,7 @@ export default function AuditPage() {
                     }
                   />
                   <Select
+                    aria-label={t('pages.audit.allNodes')}
                     value={nodeId}
                     onChange={(value) => {
                       setNodeId(value);
@@ -280,6 +283,7 @@ export default function AuditPage() {
                   />
                   <AuditClientFilter value={client} onChange={chooseClient} />
                   <Input.Search
+                    aria-label={t('pages.audit.siteFilter')}
                     value={siteInput}
                     onChange={(e) => {
                       setSiteInput(e.target.value);

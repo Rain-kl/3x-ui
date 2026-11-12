@@ -1,25 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import { createBrowserRouter, type RouteObject } from 'react-router';
 import { Spin } from 'antd';
 
 import PanelLayout from '@/layouts/PanelLayout';
-
-const IndexPage = lazy(() => import('@/pages/index/IndexPage'));
-const InboundsPage = lazy(() => import('@/pages/inbounds/InboundsPage'));
-const ClientsPage = lazy(() => import('@/pages/clients/ClientsPage'));
-const GroupsPage = lazy(() => import('@/pages/groups/GroupsPage'));
-// FORK(subscription-notifications): Operators manage targeted subscription announcements from the panel.
-const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage'));
-// FORK(telegram-user-bot): User support, binding and delivery settings share a dedicated panel route.
-const TelegramPage = lazy(() => import('@/pages/telegram/TelegramPage'));
-const NodesPage = lazy(() => import('@/pages/nodes/NodesPage'));
-// FORK(panel-ai): Keep the assistant within the administrator panel shell.
-const AIPage = lazy(() => import('@/pages/ai/AIPage'));
-const AuditPage = lazy(() => import('@/pages/audit/AuditPage'));
-const HostsPage = lazy(() => import('@/pages/hosts/HostsPage'));
-const SettingsPage = lazy(() => import('@/pages/settings/SettingsPage'));
-const XrayPage = lazy(() => import('@/pages/xray/XrayPage'));
-const ApiDocsPage = lazy(() => import('@/pages/api-docs/ApiDocsPage'));
+import { PANEL_ROUTES } from '@/routes/panelRoutes';
 
 function withSuspense(node: React.ReactNode) {
   return (
@@ -42,30 +26,14 @@ function withSuspense(node: React.ReactNode) {
   );
 }
 
-const routes: RouteObject[] = [
+export const routes: RouteObject[] = [
   {
     path: '/',
     element: <PanelLayout />,
-    children: [
-      { index: true, element: withSuspense(<IndexPage />) },
-      { path: 'inbounds', element: withSuspense(<InboundsPage />) },
-      { path: 'clients', element: withSuspense(<ClientsPage />) },
-      { path: 'groups', element: withSuspense(<GroupsPage />) },
-      // FORK(subscription-notifications): Keep the editor inside the authenticated panel layout.
-      { path: 'notifications', element: withSuspense(<NotificationsPage />) },
-      // FORK(telegram-user-bot): Keep the user Bot management page in the authenticated shell.
-      { path: 'telegram', element: withSuspense(<TelegramPage />) },
-      { path: 'nodes', element: withSuspense(<NodesPage />) },
-      // FORK(panel-ai): Provide the OpenCode conversation, tasks and settings route.
-      { path: 'ai', element: withSuspense(<AIPage />) },
-      { path: 'audit', element: withSuspense(<AuditPage />) },
-      { path: 'hosts', element: withSuspense(<HostsPage />) },
-      { path: 'settings', element: withSuspense(<SettingsPage />) },
-      { path: 'xray', element: withSuspense(<XrayPage />) },
-      { path: 'outbound', element: withSuspense(<XrayPage />) },
-      { path: 'routing', element: withSuspense(<XrayPage />) },
-      { path: 'api-docs', element: withSuspense(<ApiDocsPage />) },
-    ],
+    children: PANEL_ROUTES.map((route) => {
+      const element = withSuspense(<route.component />);
+      return route.path === '/' ? { index: true, element } : { path: route.path.slice(1), element };
+    }),
   },
 ];
 

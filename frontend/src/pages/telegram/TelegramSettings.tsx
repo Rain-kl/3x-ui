@@ -1,4 +1,5 @@
-import { FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -15,7 +16,7 @@ import {
   Switch,
   message,
 } from 'antd';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { TelegramSettingsFormSchema, telegramApi, type TelegramSettings as Settings } from './api';
 import TelegramBindings from './TelegramBindings';
 
@@ -23,7 +24,8 @@ function SettingsEditor({ value }: { value: Settings }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [messageApi, messageHolder] = message.useMessage();
-  const methods = useZodForm(TelegramSettingsFormSchema, {
+  const methods = useForm({
+    resolver: zodResolver(TelegramSettingsFormSchema),
     defaultValues: { ...value, token: '' },
   });
   return (

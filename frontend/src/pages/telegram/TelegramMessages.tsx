@@ -1,5 +1,6 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useRef, useState } from 'react';
-import { FormProvider } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -22,7 +23,7 @@ import {
   message,
 } from 'antd';
 import { PaperClipOutlined, SendOutlined } from '@ant-design/icons';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { telegramApi, telegramMediaURL, TelegramComposerSchema, type TelegramMessage } from './api';
 
 interface Props {
@@ -72,7 +73,10 @@ function Thread({ tgId }: { tgId: number }) {
   const [reply, setReply] = useState<TelegramMessage | null>(null);
   const [uploading, setUploading] = useState(false);
   const [messageApi, messageHolder] = message.useMessage();
-  const methods = useZodForm(TelegramComposerSchema, { defaultValues: { text: '' } });
+  const methods = useForm({
+    resolver: zodResolver(TelegramComposerSchema),
+    defaultValues: { text: '' },
+  });
   const query = useQuery({
     queryKey: ['telegram', 'messages', tgId, page],
     queryFn: () => telegramApi.messages(tgId, page),
@@ -185,6 +189,7 @@ function Thread({ tgId }: { tgId: number }) {
         <Form component="div" layout="vertical" style={{ marginTop: 12 }}>
           <FormField name="text">
             <Input.TextArea
+              aria-label={t('pages.telegram.messagePlaceholder')}
               autoSize={{ minRows: 2, maxRows: 6 }}
               maxLength={3500}
               showCount
@@ -227,13 +232,13 @@ function Thread({ tgId }: { tgId: number }) {
                 return false;
               }}
             >
-              <Button icon={<PaperClipOutlined />} loading={uploading}>
+              <Button icon={<PaperClipOutlined aria-hidden />} loading={uploading}>
                 {t('pages.telegram.attach')}
               </Button>
             </Upload>
             <Button
               type="primary"
-              icon={<SendOutlined />}
+              icon={<SendOutlined aria-hidden />}
               loading={send.isPending}
               disabled={uploading}
               onClick={() => void sendText()}
@@ -262,6 +267,7 @@ export default function TelegramMessages({ tgId, onSelect }: Props) {
       <Col xs={24} lg={8}>
         <Card size="small" title={t('pages.telegram.conversations')}>
           <Input.Search
+            aria-label={t('search')}
             allowClear
             placeholder={t('search')}
             onSearch={(value) => {

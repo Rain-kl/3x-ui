@@ -161,7 +161,7 @@ export default function NotificationsPage() {
               extra={
                 <Button
                   type="primary"
-                  icon={<PlusOutlined />}
+                  icon={<PlusOutlined aria-hidden />}
                   onClick={() => setEditing({ ...emptyNotification })}
                 >
                   {t('pages.notifications.create')}

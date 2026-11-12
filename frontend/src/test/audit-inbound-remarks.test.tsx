@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { HttpUtil } from '@/utils';
@@ -104,7 +104,7 @@ describe('Audit inbound remarks', () => {
     expect(screen.getByText('n7-literal（本机原始标签）')).toBeTruthy();
     expect(screen.getByText('empty')).toBeTruthy();
     expect(screen.getByText('deleted')).toBeTruthy();
-    fireEvent.click(screen.getByTitle('2'));
+    fireEvent.click(within(screen.getByTitle('2')).getByRole('button'));
     await waitFor(() =>
       expect(
         get.mock.calls.some(

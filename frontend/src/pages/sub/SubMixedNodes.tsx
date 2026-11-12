@@ -19,7 +19,7 @@ export default function SubMixedNodes({ nodes }: Props) {
             items={[
               {
                 key: 'address',
-                label: t('address'),
+                label: t('pages.inbounds.address'),
                 children: (
                   <Typography.Text copyable>
                     {node.address.includes(':') ? `[${node.address}]` : node.address}:{node.port}

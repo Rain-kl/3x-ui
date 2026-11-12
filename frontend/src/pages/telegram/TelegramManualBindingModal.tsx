@@ -1,10 +1,11 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
-import { FormProvider } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Form, Input, Modal, Select } from 'antd';
 import { z } from 'zod';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { telegramApi } from './api';
 
 const ManualBindingSchema = z.object({
@@ -21,7 +22,10 @@ const ManualBindingSchema = z.object({
 export default function TelegramManualBindingModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
-  const methods = useZodForm(ManualBindingSchema, { defaultValues: { tgId: '' } });
+  const methods = useForm({
+    resolver: zodResolver(ManualBindingSchema),
+    defaultValues: { tgId: '' },
+  });
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   useEffect(() => {

@@ -1,3 +1,5 @@
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, useWatch } from 'react-hook-form';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -15,7 +17,8 @@ import {
   Space,
   Switch,
 } from 'antd';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
+import { selectTagRender } from '@/components/form';
 import { GroupSummaryListSchema } from '@/schemas/client';
 import { HttpUtil } from '@/utils';
 import {
@@ -34,7 +37,8 @@ interface Props {
 
 export default function NotificationEditor({ value, saving, onClose, onSave }: Props) {
   const { t } = useTranslation();
-  const methods = useZodForm(NotificationFormSchema, {
+  const methods = useForm<import('zod').z.infer<typeof NotificationFormSchema>>({
+    resolver: zodResolver(NotificationFormSchema),
     defaultValues: {
       ...value,
       targetType: 'both',
@@ -204,7 +208,7 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
               >
                 <Select
                   mode="multiple"
-                  maxTagCount="responsive"
+                  tagRender={selectTagRender}
                   disabled={saving || selectingAll}
                   showSearch={{ filterOption: false, onSearch: setSearch }}
                   options={clientOptions}
@@ -252,7 +256,7 @@ export default function NotificationEditor({ value, saving, onClose, onSave }: P
               >
                 <Select
                   mode="multiple"
-                  maxTagCount="responsive"
+                  tagRender={selectTagRender}
                   disabled={saving}
                   showSearch={{ optionFilterProp: 'label' }}
                   options={(groups.data ?? []).map((group) => ({

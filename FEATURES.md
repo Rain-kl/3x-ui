@@ -26,6 +26,8 @@
 
 ### 客户端多入站统计与增量计费（multi-inbound-accounting）
 
+- **上游同步记录**：2026-11-12 合并上游 `74c3cc38..e535df03`：采用批量身份查询并保留原始明细/计费倍率，读取失败拒绝快照，按 SQL 参数上限分批；空增量不更新明细。冲突涉及 `inbound_clients.go`、`inbound_node.go`、`inbound_traffic.go`，保留对应 FORK 标记。 规格：[同步规格](docs/specs/upstream-sync-20261112.md)，实现：[Agent Note](.agents/notes/upstream-sync-20261112.md)。
+
 - **背景**：客户端同时使用多条线路、入站计费倍率不同或从节点重启时，需要避免流量归属错误、重复扣费及节点明细与总账不一致。
 - **功能**：以入站标签和客户端 email 组成内部统计标识，采集后还原面板身份；不改变 UUID、密码和订阅凭据。按入站保存原始用量，客户端总账记录加权后的计费用量；主控保存各入站同步基线，倍率仅作用于新增流量，重复快照不会重复计费。节点计数重置后从新计数继续累计。基线、总账和明细在同一事务中提交，落库失败时回退采集基线以便重试；多入站实时速度按客户端合并展示。
 - **维护要点**：`node_client_traffics.inbound_totals` 保存原始入站基线并支持兼容迁移；已有历史总账和明细不自动追溯修正。主控与从节点应共同升级。未升级节点及不提供独立用户统计的协议，无法保证精确的多入站归属；核心异常退出前未采集的内存流量仍可能丢失。
@@ -70,6 +72,8 @@
 - **设计与实现**：[行为规格](docs/specs/audit-node-consistency.md)、[实现说明](.agents/notes/audit-node-consistency.md)。上游相关改动使用 `FORK(audit-node-consistency)` 标记。
 
 ### 审计工作台与内部连接过滤（audit-workbench）
+
+- **上游同步记录**：2026-11-12 合并上游 `74c3cc38..e535df03`：维持广告组件及 API 删除；移除新集中导航中的广告注册，fork 页面外挂到独立清单；守卫扫描新增入口和全部语言。冲突涉及 `panelRoutes.tsx`、导航组件、赞助商实现及语言文件，使用 `FORK(audit-workbench)`。 规格：[同步规格](docs/specs/upstream-sync-20261112.md)，实现：[Agent Note](.agents/notes/upstream-sync-20261112.md)。
 
 - **功能**：审计页面复用管理页面的布局、卡片和明暗/Ultra 主题样式。移除项目赞助商展示位、侧边栏入口、赞助商页面和公开赞助商 API，以及对应的翻译和文档；MTProto Telegram 赞助频道标签仍作为独立协议能力保留。过滤保留的 `api` 入站管理连接，避免其进入暂存、入库和查询，并定期清理历史控制连接记录；真实客户端访问本地地址仍会保留。
 - **设计与实现**：[行为规格](docs/specs/audit-workbench.md)、[实现说明](.agents/notes/audit-workbench.md)。上游相关改动使用 `FORK(audit-workbench)` 标记。
@@ -141,6 +145,8 @@
 
 ### 仅使用最新定制 Xray 核心（custom-core-only）
 
+- **上游同步记录**：2026-11-12 合并上游 `74c3cc38..e535df03`：保留定制来源与最新 feat 限制，采用上游候选校验和原子替换；配套核心另行同步至 `c4561418`，在其提交可获取前使用本地模块验证。冲突涉及 `server.go`、`panel.go`、`go.mod`。 规格：[同步规格](docs/specs/upstream-sync-20261112.md)，实现：[Agent Note](.agents/notes/upstream-sync-20261112.md)。
+
 - **功能**：面板安装、升级和手动更新统一使用 Rain-kl/Xray-core 最新 `-feat.x` 发布版；移除版本锁定、官方核心和任意旧版切换。更新前先下载并校验核心，成功后再停止现有核心。版本列表自动获取并优先展示最新 feat 版本。
 - **发布验证**：核心发布前验证审计、嗅探域名、原生限速及竞态行为；面板发布前验证实际打包核心的版本、校验和、网站审计、限速及 gRPC，并执行前端检查。验证失败则停止发布。
 - **设计与实现**：[行为规格](docs/specs/custom-core-only.md)、[实现说明](.agents/notes/custom-core-only.md)。上游相关改动使用 `FORK(custom-core-only)` 标记。
@@ -168,6 +174,8 @@
 - **设计文档**：[mixed 客户端规范](docs/specs/mixed-clients.md)；**实现文档**：[Agent Note](.agents/notes/mixed-clients.md)。
 
 ## 用户 Telegram Bot（telegram-user-bot）
+
+- **上游同步记录**：2026-11-12 同步冲突：上游 `15fee2a0` 重构管理 Bot，用户确认保留本项目独立用户 Bot，同时采用上游管理菜单；保留消息渲染和管理回复接线。冲突涉及 `tgbot_send.go`、`tgbot_broadcast.go`、`tgbot_inbound.go` 与 Web 生命周期。 规格：[同步规格](docs/specs/upstream-sync-20261112.md)，实现：[Agent Note](.agents/notes/upstream-sync-20261112.md)。
 
 - **需求背景**：用户需要通过 Telegram 绑定购买的客户端、查询订阅和用量、接收定向通知并联系管理员；管理员需要持久化的双向聊天及排障日志。
 - **修改内容**：新增独立用户 Bot，消息中包含客户端核心订阅标识（sub_id）即绑定、也支持 30 分钟一次性绑定码，不校验协议/域名/路径，账号与客户端双向唯一。支持获取/确认重置订阅、查询剩余流量与天数、列出订阅节点名、绑定/确认解绑。订阅回复附可用 MIXED 连接及 Clash/Singbox 转换提示，发送成功30秒后请求删除，删除任务持久化并有界重试。独立绑定表保持旧管理 Bot 兼容。仅使用 Telegram 原生 `/` 指令提示，移除底部快捷键盘，并在普通指令响应时收起旧键盘。移除清除 Token 开关，留空保留、填写新值替换。新增默认关闭的「开启匿名聊天」：关闭时未绑定账号只处理指令及绑定，普通消息和附件不转发、不计待回复未读；待发转发同样重新检查。
@@ -253,6 +261,8 @@
 - **设计与实现**：[规格](docs/specs/subscription-access-guard.md)、[说明](.agents/notes/subscription-access-guard.md)。
 
 ## 其他更新
+
+- 2026-11-12：按用户选择完整采用上游 Host Mihomo X25519 开关生成规则及旧开关一次性清空迁移；配套定制核心保留纯 X25519 兼容。（`internal/sub/`、`internal/database/db.go`；规格与实现见本次同步文档。）
 
 - 2026-10-19：AI 页移除页面标题和 OpenCode 状态行，对话页签占满整个页面高度，任务/设置页签改为内边距滚动容器；错误与未启用提示保留在页签上方。（frontend/src/pages/ai/AIPage.tsx、frontend/src/pages/ai/AIPage.css、internal/web/translation/*.json）
 

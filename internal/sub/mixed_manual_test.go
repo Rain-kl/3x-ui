@@ -45,7 +45,7 @@ func TestMixedOnlySubscriptionManualCredentials(t *testing.T) {
 		if kind == "json" {
 			body, _, err = NewSubJsonService("", "", "", "", req).GetJson("mixed-sub", "sub.example.test", false)
 		} else {
-			body, _, err = NewSubClashService(false, "", req).GetClash("mixed-sub", "sub.example.test")
+			body, _, err = NewSubClashService(false, "", false, req).GetClash("mixed-sub", "sub.example.test")
 		}
 		if err != nil || strings.Contains(body, "2001:db8::1") || strings.Contains(body, "p@ss") || strings.Contains(body, "10801") {
 			t.Fatalf("%s contains mixed proxy or failed: %q %v", kind, body, err)

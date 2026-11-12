@@ -38,7 +38,7 @@ export default function AuditExportModal({
         )}
         <Button
           type="primary"
-          icon={<DownloadOutlined />}
+          icon={<DownloadOutlined aria-hidden />}
           disabled={kind === 'client' && !selectedClient.trim()}
           href={`${base}/panel/api/audit/export?${params}`}
           target="_blank"

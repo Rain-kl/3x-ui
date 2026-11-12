@@ -9,7 +9,7 @@ import (
 const statIdentityPrefix = "xui-stat:"
 
 func ScopedEmail(tag, email string) string {
-	if tag == "" || email == "" {
+	if tag == "" || email == "" || email == LockedShadowsocks2022Email {
 		return email
 	}
 	if _, _, ok := ParseScopedEmail(email); ok {

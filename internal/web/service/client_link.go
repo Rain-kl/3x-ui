@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/google/uuid"
@@ -46,6 +47,10 @@ func applyClientRecordMerge(row *model.ClientRecord, incoming *model.ClientRecor
 	if incoming.Security != "" {
 		row.Security = incoming.Security
 	}
+	// nil preserves the stored binding, empty clears it via Update's write.
+	if ids := model.NormalizeClientHostRuleIds(incoming.ClientHostRuleIds); ids != nil {
+		row.ClientHostRuleIds = ids
+	}
 	if incoming.Reverse != "" {
 		row.Reverse = incoming.Reverse
 	}
@@ -59,7 +64,14 @@ func applyClientRecordMerge(row *model.ClientRecord, incoming *model.ClientRecor
 		row.AllowedIPs = incoming.AllowedIPs
 	}
 	row.PreSharedKey = incoming.PreSharedKey
-	row.KeepAlive = incoming.KeepAlive
+	if incoming.KeepAlive != "" {
+		row.KeepAlive = incoming.KeepAlive
+	}
+	// Guarded like Group: only an AmneziaWG entry is sure to carry the spec, and the record
+	// is shared with every other inbound of the client.
+	if incoming.ForwardedPorts != "" {
+		row.ForwardedPorts = incoming.ForwardedPorts
+	}
 	row.SubID = incoming.SubID
 	row.LimitIP = incoming.LimitIP
 	row.TotalGB = incoming.TotalGB
@@ -109,7 +121,11 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 		tx = database.GetDB()
 	}
 
-	if err := s.validateProtocolClients(tx, inboundId, clients, detachEmails, prune); err != nil {
+	var inbound model.Inbound
+	if err := tx.Select("protocol", "node_id").Where("id = ?", inboundId).Take(&inbound).Error; err != nil {
+		return err
+	}
+	if err := s.validateProtocolClients(tx, inbound.Protocol, inboundId, clients, detachEmails, prune); err != nil {
 		return err
 	}
 
@@ -141,6 +157,19 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 		}
 	}
 
+	isTunnel := inbound.Protocol == model.WireGuard || inbound.Protocol == model.AmneziaWG
+	var onLowerTunnel map[int]struct{}
+	if isTunnel && len(existing) > 0 {
+		ids := make([]int, 0, len(existing))
+		for _, row := range existing {
+			ids = append(ids, row.Id)
+		}
+		var err error
+		if onLowerTunnel, err = clientsOnLowerTunnel(tx, inboundId, inbound.NodeID, ids); err != nil {
+			return err
+		}
+	}
+
 	idByEmail := make(map[string]int, len(emails))
 	pending := make(map[string]*model.ClientRecord, len(emails))
 	toCreate := make([]*model.ClientRecord, 0, len(emails))
@@ -155,6 +184,7 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 		// looks up by, or a padded email is inserted and never found again.
 		incoming.Email = email
 		incoming.DownLimit = 0
+		incoming.ClientHostRuleIds = model.NormalizeClientHostRuleIds(incoming.ClientHostRuleIds)
 		row, ok := existing[email]
 		if !ok {
 			if _, dup := pending[email]; !dup {
@@ -166,12 +196,16 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 
 		before := *row
 		applyClientRecordMerge(row, incoming)
+		_, outranked := onLowerTunnel[row.Id]
+		keepLinkOwnedFields(row, &before, isTunnel && !outranked)
 		preservedUpdatedAt := max(incoming.UpdatedAt, row.UpdatedAt)
 		row.UpdatedAt = preservedUpdatedAt
 
 		idByEmail[email] = row.Id
 
-		if *row == before {
+		// DeepEqual: ClientRecord now carries a slice (ClientHostRuleIds)
+		// and is no longer ==-comparable.
+		if reflect.DeepEqual(*row, before) {
 			continue
 		}
 		if err := tx.Save(row).Error; err != nil {
@@ -194,6 +228,9 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 		if err := tx.CreateInBatches(toCreate, 200).Error; err != nil {
 			return err
 		}
+		// Whichever API re-created the client, a delete tombstone left standing makes
+		// the next node merge prune it and ReapSyncOrphans delete it.
+		liftTombstonesOnCommit(tx, toCreate)
 		disabledIDs := make([]int, 0)
 		for i, rec := range toCreate {
 			idByEmail[rec.Email] = rec.Id
@@ -227,7 +264,11 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 		wantedIds = append(wantedIds, id)
 	}
 
-	if err := s.reconcileInboundLinks(tx, inboundId, wantedFlow, wantedIds, detachEmails, prune); err != nil {
+	relinked, err := s.reconcileInboundLinks(tx, inboundId, wantedFlow, wantedIds, detachEmails, prune)
+	if err != nil {
+		return err
+	}
+	if err := settleRecordFlows(tx, relinked); err != nil {
 		return err
 	}
 
@@ -265,19 +306,19 @@ func (s *ClientService) syncInboundClients(tx *gorm.DB, inboundId int, clients [
 	return nil
 }
 
-// reconcileInboundLinks writes only the client_inbounds rows that differ. prune
-// also removes links absent from wantedFlow, which only a full sync may do.
-func (s *ClientService) reconcileInboundLinks(tx *gorm.DB, inboundId int, wantedFlow map[int]string, wantedIds []int, detachEmails []string, prune bool) error {
+// reconcileInboundLinks writes only the client_inbounds rows that differ and returns
+// their clients. prune also removes links absent from wantedFlow, as only a full sync may.
+func (s *ClientService) reconcileInboundLinks(tx *gorm.DB, inboundId int, wantedFlow map[int]string, wantedIds []int, detachEmails []string, prune bool) ([]int, error) {
 	var current []model.ClientInbound
 	if prune {
 		if err := tx.Where("inbound_id = ?", inboundId).Find(&current).Error; err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		for _, batch := range chunkInts(wantedIds, sqlInChunk) {
 			var rows []model.ClientInbound
 			if err := tx.Where("inbound_id = ? AND client_id IN ?", inboundId, batch).Find(&rows).Error; err != nil {
-				return err
+				return nil, err
 			}
 			current = append(current, rows...)
 		}
@@ -305,7 +346,7 @@ func (s *ClientService) reconcileInboundLinks(tx *gorm.DB, inboundId int, wanted
 		for _, batch := range chunkStrings(detachEmails, sqlInChunk) {
 			var ids []int
 			if err := tx.Model(&model.ClientRecord{}).Where("email IN ?", batch).Pluck("id", &ids).Error; err != nil {
-				return err
+				return nil, err
 			}
 			for _, id := range ids {
 				if _, keep := wantedFlow[id]; !keep {
@@ -330,7 +371,7 @@ func (s *ClientService) reconcileInboundLinks(tx *gorm.DB, inboundId int, wanted
 	for _, batch := range chunkInts(toDelete, sqlInChunk) {
 		if err := tx.Where("inbound_id = ? AND client_id IN ?", inboundId, batch).
 			Delete(&model.ClientInbound{}).Error; err != nil {
-			return err
+			return nil, err
 		}
 	}
 	for flow, ids := range toUpdate {
@@ -338,7 +379,7 @@ func (s *ClientService) reconcileInboundLinks(tx *gorm.DB, inboundId int, wanted
 			if err := tx.Model(&model.ClientInbound{}).
 				Where("inbound_id = ? AND client_id IN ?", inboundId, batch).
 				Update("flow_override", flow).Error; err != nil {
-				return err
+				return nil, err
 			}
 		}
 	}
@@ -349,7 +390,103 @@ func (s *ClientService) reconcileInboundLinks(tx *gorm.DB, inboundId int, wanted
 			Columns:   []clause.Column{{Name: "client_id"}, {Name: "inbound_id"}},
 			DoUpdates: clause.AssignmentColumns([]string{"flow_override"}),
 		}).CreateInBatches(toInsert, 200).Error; err != nil {
+			return nil, err
+		}
+		// Not left to the next node merge: there may never be one, and a mark that outlives the
+		// attach hands the client to the reaper on its next detach.
+		linked := make([]int, 0, len(toInsert))
+		for _, link := range toInsert {
+			linked = append(linked, link.ClientId)
+		}
+		for _, batch := range chunkInts(linked, sqlInChunk) {
+			if err := tx.Model(&model.ClientRecord{}).Where("id IN ? AND sync_orphaned_at > 0", batch).
+				Updates(map[string]any{"sync_orphaned_at": 0, "sync_orphaned_by": 0}).Error; err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	relinked := append([]int(nil), toDelete...)
+	for _, ids := range toUpdate {
+		relinked = append(relinked, ids...)
+	}
+	for _, link := range toInsert {
+		relinked = append(relinked, link.ClientId)
+	}
+	return relinked, nil
+}
+
+// keepLinkOwnedFields undoes the merge of the record fields one inbound cannot decide
+// alone, or syncing a client's inbounds in turn rewrites the record back and forth.
+func keepLinkOwnedFields(row, before *model.ClientRecord, ownsTunnelPeer bool) {
+	row.Flow = before.Flow
+	if ownsTunnelPeer {
+		return
+	}
+	row.PrivateKey = before.PrivateKey
+	row.PublicKey = before.PublicKey
+	row.AllowedIPs = before.AllowedIPs
+	row.PreSharedKey = before.PreSharedKey
+	row.KeepAlive = before.KeepAlive
+}
+
+// clientsOnLowerTunnel returns the clients also attached to a higher-ranked WireGuard/AmneziaWG
+// inbound, which owns their record's peer fields: a master-local one first, then the lowest id.
+func clientsOnLowerTunnel(tx *gorm.DB, inboundId int, nodeID *int, clientIds []int) (map[int]struct{}, error) {
+	outranks := "inbounds.node_id IS NULL AND client_inbounds.inbound_id < ?"
+	if nodeID != nil {
+		outranks = "(inbounds.node_id IS NULL OR client_inbounds.inbound_id < ?)"
+	}
+	out := make(map[int]struct{})
+	for _, batch := range chunkInts(clientIds, sqlInChunk) {
+		var ids []int
+		if err := tx.Table("client_inbounds").
+			Joins("JOIN inbounds ON inbounds.id = client_inbounds.inbound_id").
+			Where("client_inbounds.client_id IN ? AND inbounds.protocol IN ?",
+				batch, []model.Protocol{model.WireGuard, model.AmneziaWG}).
+			Where(outranks, inboundId).
+			Distinct().Pluck("client_inbounds.client_id", &ids).Error; err != nil {
+			return nil, err
+		}
+		for _, id := range ids {
+			out[id] = struct{}{}
+		}
+	}
+	return out, nil
+}
+
+// settleRecordFlows sets the record flow of each still-linked client to its
+// effective flow (EffectiveFlow's rule); an unlinked record keeps its own.
+func settleRecordFlows(tx *gorm.DB, clientIds []int) error {
+	for _, batch := range chunkInts(clientIds, sqlInChunk) {
+		var links []model.ClientInbound
+		if err := tx.Select("client_id", "flow_override").
+			Where("client_id IN ?", batch).
+			Order("inbound_id ASC").
+			Find(&links).Error; err != nil {
 			return err
+		}
+		effective := make(map[int]string, len(batch))
+		for _, link := range links {
+			if flow, seen := effective[link.ClientId]; !seen || (flow == "" && link.FlowOverride != "") {
+				effective[link.ClientId] = link.FlowOverride
+			}
+		}
+		var records []model.ClientRecord
+		if err := tx.Select("id", "flow").Where("id IN ?", batch).Find(&records).Error; err != nil {
+			return err
+		}
+		idsByFlow := make(map[string][]int)
+		for _, rec := range records {
+			if flow, linked := effective[rec.Id]; linked && flow != rec.Flow {
+				idsByFlow[flow] = append(idsByFlow[flow], rec.Id)
+			}
+		}
+		for flow, ids := range idsByFlow {
+			if err := tx.Model(&model.ClientRecord{}).Where("id IN ?", ids).
+				UpdateColumn("flow", flow).Error; err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -360,6 +497,42 @@ func (s *ClientService) DetachInbound(tx *gorm.DB, inboundId int) error {
 		tx = database.GetDB()
 	}
 	return tx.Where("inbound_id = ?", inboundId).Delete(&model.ClientInbound{}).Error
+}
+
+type clientStatsIdentity struct {
+	UUID  string
+	Email string
+	SubID string
+}
+
+func (s *ClientService) listStatsIdentitiesForInbounds(tx *gorm.DB, inboundIDs []int) (map[int][]clientStatsIdentity, error) {
+	if tx == nil {
+		tx = database.GetDB()
+	}
+	out := make(map[int][]clientStatsIdentity)
+	for _, batch := range chunkInts(uniqueInts(inboundIDs), sqlInChunk) {
+		var rows []struct {
+			InboundID int    `gorm:"column:inbound_id"`
+			UUID      string `gorm:"column:uuid"`
+			Email     string `gorm:"column:email"`
+			SubID     string `gorm:"column:sub_id"`
+		}
+		err := tx.Table("clients").
+			Select("client_inbounds.inbound_id, clients.uuid, clients.email, clients.sub_id").
+			Joins("JOIN client_inbounds ON client_inbounds.client_id = clients.id").
+			Where("client_inbounds.inbound_id IN ?", batch).
+			Order("client_inbounds.inbound_id ASC, clients.id ASC").
+			Find(&rows).Error
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			out[row.InboundID] = append(out[row.InboundID], clientStatsIdentity{
+				UUID: row.UUID, Email: row.Email, SubID: row.SubID,
+			})
+		}
+	}
+	return out, nil
 }
 
 func (s *ClientService) ListForInbound(tx *gorm.DB, inboundId int) ([]model.Client, error) {
@@ -423,7 +596,7 @@ func (s *ClientService) ListForInboundBySubId(tx *gorm.DB, inboundId int, subId 
 
 // validateProtocolClients runs inside the write every path linking clients to an inbound
 // shares, so a client the protocol's core config would refuse never reaches it.
-func (s *ClientService) validateProtocolClients(tx *gorm.DB, inboundID int, changed []model.Client, detached []string, prune bool) error {
+func (s *ClientService) validateProtocolClients(tx *gorm.DB, protocol model.Protocol, inboundID int, changed []model.Client, detached []string, prune bool) error {
 	var inbound model.Inbound
 	// FORK(mixed-clients): Validate mixed authentication mode together with client identity.
 	if err := tx.Select("protocol", "settings").Where("id = ?", inboundID).Take(&inbound).Error; err != nil {

@@ -161,6 +161,7 @@ export default function AITasks({
       />
       <Typography.Title level={5}>{t('pages.ai.history')}</Typography.Title>
       <Select
+        aria-label={t('pages.ai.allTasks')}
         allowClear
         style={{ minWidth: 240 }}
         value={taskID || undefined}

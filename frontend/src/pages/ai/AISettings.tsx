@@ -1,5 +1,6 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect } from 'react';
-import { FormProvider } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -16,7 +17,7 @@ import {
   Typography,
 } from 'antd';
 import AIProviderEditor from './AIProviderEditor';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { aiApi, SettingsFormSchema, type AIModelOption } from './api';
 import type { z } from 'zod';
 
@@ -29,7 +30,7 @@ export default function AISettings({
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
-  const methods = useZodForm(SettingsFormSchema, { defaultValues: value });
+  const methods = useForm({ resolver: zodResolver(SettingsFormSchema), defaultValues: value });
   const save = useMutation({
     mutationFn: aiApi.saveSettings,
     onSuccess: (saved) => {

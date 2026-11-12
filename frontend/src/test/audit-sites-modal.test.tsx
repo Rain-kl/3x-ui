@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/hooks/useTheme';
+import { AntdRootConfig } from '@/i18n/AntdRootConfig';
 import { HttpUtil } from '@/utils';
 import AuditPage from '@/pages/audit/AuditPage';
 import AuditSitesModal from '@/pages/audit/AuditSitesModal';
@@ -54,22 +55,24 @@ describe('Audit full site rankings', () => {
     expect(await screen.findByText('server-page-1-20.example')).toBeTruthy();
     expect(get.mock.calls[0][1]).toEqual({ ...filters, page: 1, pageSize: 20 });
 
-    fireEvent.click(screen.getByTitle('2'));
+    fireEvent.click(within(screen.getByTitle('2')).getByRole('button'));
     expect(await screen.findByText('server-page-2-20.example')).toBeTruthy();
     expect(get.mock.calls.at(-1)?.[1]).toEqual({ ...filters, page: 2, pageSize: 20 });
     await chooseSize(50);
     expect(await screen.findByText('server-page-1-50.example')).toBeTruthy();
     expect(get.mock.calls.at(-1)?.[1]).toEqual({ ...filters, page: 1, pageSize: 50 });
-    fireEvent.click(screen.getByTitle('2'));
+    fireEvent.click(within(screen.getByTitle('2')).getByRole('button'));
     expect(await screen.findByText('server-page-2-50.example')).toBeTruthy();
 
     const changed = { ...filters, hours: 24, day: '', nodeId: -1, client: 'bob', site: '' };
     // Keep the same providers and query cache while changing the parent filters.
     view.rerender(
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuditSitesModal filters={changed} onClose={close} />
-        </ThemeProvider>
+        <AntdRootConfig>
+          <ThemeProvider>
+            <AuditSitesModal filters={changed} onClose={close} />
+          </ThemeProvider>
+        </AntdRootConfig>
       </QueryClientProvider>,
     );
     await waitFor(() =>

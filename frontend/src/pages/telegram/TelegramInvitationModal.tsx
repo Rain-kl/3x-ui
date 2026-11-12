@@ -1,3 +1,5 @@
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { FormProvider, useWatch } from 'react-hook-form';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
@@ -5,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Button, Form, InputNumber, Modal, Select, Space, Switch, Typography } from 'antd';
 import { z } from 'zod';
 import { BindCodeSchema } from '@/generated/zod';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { telegramApi, type Invitation } from './api';
 
 const factors = { minutes: 1, hours: 60, days: 1440 };
@@ -56,7 +58,8 @@ export default function TelegramInvitationModal({
 }) {
   const { t } = useTranslation();
   const cache = useQueryClient();
-  const methods = useZodForm(InvitationFormSchema, {
+  const methods = useForm({
+    resolver: zodResolver(InvitationFormSchema),
     defaultValues: { clientId: invitation?.clientId, ...initialLifetime(invitation) },
   });
   const selectedClient = useWatch({ control: methods.control, name: 'clientId' });

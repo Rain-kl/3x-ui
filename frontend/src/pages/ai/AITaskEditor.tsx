@@ -1,7 +1,8 @@
-import { FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Col, Form, Input, InputNumber, Modal, Row, Select, Switch } from 'antd';
-import { FormField, useZodForm } from '@/components/form/rhf';
+import { FormField } from '@/components/form/rhf';
 import { TaskFormSchema, type AIModelOption } from './api';
 import type { z } from 'zod';
 
@@ -21,7 +22,7 @@ export default function AITaskEditor({
   onSave: (value: z.infer<typeof TaskFormSchema>) => void;
 }) {
   const { t } = useTranslation();
-  const methods = useZodForm(TaskFormSchema, { defaultValues: value });
+  const methods = useForm({ resolver: zodResolver(TaskFormSchema), defaultValues: value });
   return (
     <Modal title={t('pages.ai.editTask')} open width={800} onCancel={onClose} footer={null}>
       {error && <Alert type="error" title={error} style={{ marginBottom: 16 }} />}

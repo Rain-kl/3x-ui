@@ -70,6 +70,7 @@ export default function SubscriptionAccessModal({ onClose }: { onClose: () => vo
       />
       <Space wrap style={{ marginBottom: 16 }}>
         <Input.Search
+          aria-label={t('pages.audit.client')}
           allowClear
           placeholder={t('pages.audit.client')}
           onSearch={(value) => {
@@ -78,6 +79,7 @@ export default function SubscriptionAccessModal({ onClose }: { onClose: () => vo
           }}
         />
         <Input.Search
+          aria-label={t('pages.audit.subscriptionIP')}
           allowClear
           placeholder={t('pages.audit.subscriptionIP')}
           onSearch={(value) => {
@@ -86,6 +88,7 @@ export default function SubscriptionAccessModal({ onClose }: { onClose: () => vo
           }}
         />
         <DatePicker
+          aria-label={t('pages.audit.dayFilter')}
           placeholder={t('pages.audit.dayFilter')}
           onChange={(value) => {
             setDay(value?.format('YYYY-MM-DD') ?? '');
@@ -127,6 +130,7 @@ export default function SubscriptionAccessModal({ onClose }: { onClose: () => vo
       />
       <Space wrap style={{ marginTop: 12 }}>
         <InputNumber
+          aria-label={t('pages.audit.subscriptionDays')}
           min={0}
           max={3650}
           value={days}
