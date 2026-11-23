@@ -107,3 +107,7 @@ No checks, tests, build or Git hooks run, per the standing user instruction.
 新增受管理员鉴权的 POST /panel/api/telegram/bindings 和绑定卡片入口，接受 clientId 与数字 tgId，允许没有既有会话的账号。提取 claimBinding 供订阅/邀请码及管理员共用，保持同一事务中的唯一归属校验、邀请码结束和定向历史通知补发；管理员事务追加会话占位与审计日志，失败整体回滚。普通解绑也取得 inviteMu，防止与管理员或用户绑定并发交错。无需新增数据模型。
 
 前端客户端选择按需搜索分页、Telegram ID 校验安全整数；成功刷新绑定、会话及邀请码，错误保留表单供修正。未有消息的会话时间显示破折号。明确说明 Telegram 要求用户先 Start，管理员绑定不能绕过平台发送限制。验证事务回滚、历史通知仅入队一次、与用户绑定的交叉冲突、真实路由鉴权及网页表单交互。
+
+## 删除会话与单条消息
+
+新增受管理员鉴权的 `POST /panel/api/telegram/messages/:id/delete` 与 `POST /panel/api/telegram/conversations/:tgId/delete`，在 `internal/telegramuser/message_delete.go` 内通过数据库事务统一处理本地记录清理：单条删除限定 `delivery_bot <> 'admin'` 且状态非 `pending`/`sending`，同步移除关联管理员转发副本与 `telegram_admin_relays` 并按剩余可见消息刷新 `last_message_at`；会话删除清除所有非 `pending`/`sending` 消息与孤立转发映射，仅当剩余总消息数为 0 时删除 `telegram_conversations`（保留 `telegram_bindings`），有待发消息则保留会话并返回 `preservedPending`。`QueueText` 与 `Upload` 通过 `conversationAccessible` 允许已绑定但会话已被清空的账号继续发送，由 `recordMessage` 自动重建会话行。前端在 `TelegramMessages` 与 `Thread` 复用同一结果处理回调，避免删除后取消选中卸载 `Thread` 导致提示丢失，并确保会话列表中的删除按钮与选中按钮互斥不嵌套。

@@ -263,6 +263,15 @@ export const sections: readonly Section[] = [
         ],
       },
       {
+        method: 'POST',
+        path: '/panel/api/telegram/conversations/:tgId/delete',
+        summary: 'Delete local message history for a conversation and remove empty conversations.',
+        description:
+          'Deletes non-pending, non-sending messages and relays in panel storage while keeping client bindings intact. Removes the conversation row when no pending messages remain.',
+        params: [{ name: 'tgId', in: 'path', type: 'integer' }],
+        responseSchema: 'TelegramConversationDeleteResult',
+      },
+      {
         method: 'GET',
         path: '/panel/api/telegram/messages',
         summary: 'Page message history with delivery state, newest first.',
@@ -272,6 +281,13 @@ export const sections: readonly Section[] = [
           { name: 'pageSize', in: 'query', type: 'integer', optional: true, defaultValue: 50 },
         ],
         responseSchema: 'TelegramMessagePage',
+      },
+      {
+        method: 'POST',
+        path: '/panel/api/telegram/messages/:id/delete',
+        summary: 'Delete one non-pending local message from a conversation.',
+        params: [{ name: 'id', in: 'path', type: 'integer' }],
+        responseSchema: 'TelegramMessageDeleteResult',
       },
       {
         method: 'POST',

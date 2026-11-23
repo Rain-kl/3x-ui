@@ -31,8 +31,15 @@ _openapi:
       title: Mark a conversation read through a displayed message.
       url: '#mark-a-conversation-read-through-a-displayed-message'
     - depth: 2
+      title: Delete local message history for a conversation and remove empty
+        conversations.
+      url: '#delete-local-message-history-for-a-conversation-and-remove-empty-conversations'
+    - depth: 2
       title: Page message history with delivery state, newest first.
       url: '#page-message-history-with-delivery-state-newest-first'
+    - depth: 2
+      title: Delete one non-pending local message from a conversation.
+      url: '#delete-one-non-pending-local-message-from-a-conversation'
     - depth: 2
       title: Queue a text message to one user conversation.
       url: '#queue-a-text-message-to-one-user-conversation'
@@ -89,8 +96,13 @@ _openapi:
         id: page-conversations-and-unread-counts
       - content: Mark a conversation read through a displayed message.
         id: mark-a-conversation-read-through-a-displayed-message
+      - content: Delete local message history for a conversation and remove empty
+          conversations.
+        id: delete-local-message-history-for-a-conversation-and-remove-empty-conversations
       - content: Page message history with delivery state, newest first.
         id: page-message-history-with-delivery-state-newest-first
+      - content: Delete one non-pending local message from a conversation.
+        id: delete-one-non-pending-local-message-from-a-conversation
       - content: Queue a text message to one user conversation.
         id: queue-a-text-message-to-one-user-conversation
       - content: Send an attachment and persist its delivery result.
@@ -135,6 +147,10 @@ _openapi:
           Disabled commands are excluded from matching and menus. List order
           defines menu order.
         heading: atomically-replace-custom-commands-and-update-the-native-slash-menu-on-the-next-poll
+      - content: Deletes non-pending, non-sending messages and relays in panel storage
+          while keeping client bindings intact. Removes the conversation row
+          when no pending messages remain.
+        heading: delete-local-message-history-for-a-conversation-and-remove-empty-conversations
       - content: Maximum file size 20 MiB. Content is uploaded to Telegram, not retained
           as a panel binary. Photos, audio and video use the matching Telegram
           media method.
@@ -159,7 +175,7 @@ export default function Layout(props) {
   return (
     <>
       {props.children}
-      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/commands","method":"get"},{"path":"/panel/api/telegram/commands","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/bindings","method":"post"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/invitations","method":"get"},{"path":"/panel/api/telegram/invitations/{clientId}/revoke","method":"post"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
+      <OpenAPIPage document="./public/openapi.json" webhooks={[]} operations={[{"path":"/panel/api/telegram/settings","method":"get"},{"path":"/panel/api/telegram/settings","method":"post"},{"path":"/panel/api/telegram/commands","method":"get"},{"path":"/panel/api/telegram/commands","method":"post"},{"path":"/panel/api/telegram/status","method":"get"},{"path":"/panel/api/telegram/conversations","method":"get"},{"path":"/panel/api/telegram/conversations/{tgId}/read","method":"post"},{"path":"/panel/api/telegram/conversations/{tgId}/delete","method":"post"},{"path":"/panel/api/telegram/messages","method":"get"},{"path":"/panel/api/telegram/messages/{id}/delete","method":"post"},{"path":"/panel/api/telegram/messages/send","method":"post"},{"path":"/panel/api/telegram/messages/upload","method":"post"},{"path":"/panel/api/telegram/media/{id}","method":"get"},{"path":"/panel/api/telegram/bindings","method":"get"},{"path":"/panel/api/telegram/bindings","method":"post"},{"path":"/panel/api/telegram/clients","method":"get"},{"path":"/panel/api/telegram/invitations","method":"get"},{"path":"/panel/api/telegram/invitations/{clientId}/revoke","method":"post"},{"path":"/panel/api/telegram/bind-code","method":"post"},{"path":"/panel/api/telegram/bindings/{tgId}/unbind","method":"post"},{"path":"/panel/api/telegram/logs","method":"get"},{"path":"/panel/api/telegram/clear","method":"post"}]} showTitle />
     </>
   );
 }

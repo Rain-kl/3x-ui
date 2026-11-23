@@ -72,7 +72,7 @@ func run(root, outDir string) error {
 		},
 		{
 			Path:        resolveRel(root, "internal/telegramuser"),
-			StructAllow: setOf("AdminBindInput", "InvitationView", "InvitationPage", "CustomCommands", "UserTelegramSettings", "UserTelegramStatus", "BindCode", "BindCodeInput", "ConversationView", "ConversationPage", "TelegramMessagePage", "TelegramLogPage", "TelegramBindingView", "TelegramBindingPage"),
+			StructAllow: setOf("AdminBindInput", "InvitationView", "InvitationPage", "CustomCommands", "UserTelegramSettings", "UserTelegramStatus", "BindCode", "BindCodeInput", "ConversationView", "ConversationPage", "TelegramMessagePage", "TelegramMessageDeleteResult", "TelegramConversationDeleteResult", "TelegramLogPage", "TelegramBindingView", "TelegramBindingPage"),
 		},
 		{
 			Path:        resolveRel(root, "internal/routingsync"),

@@ -104,6 +104,15 @@ func newTelegramUserController(g *gin.RouterGroup) {
 		}
 		jsonObj(c, nil, telegramuser.MarkRead(id, body.ThroughID))
 	})
+	g.POST("/conversations/:tgId/delete", func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("tgId"), 10, 64)
+		if err != nil || id <= 0 {
+			jsonObj(c, nil, fmt.Errorf("invalid Telegram conversation ID"))
+			return
+		}
+		result, err := telegramuser.DeleteConversationMessages(id)
+		jsonObj(c, result, err)
+	})
 	g.GET("/messages", func(c *gin.Context) {
 		tgID, err := strconv.ParseInt(c.Query("tgId"), 10, 64)
 		if err != nil || tgID <= 0 {
@@ -112,6 +121,15 @@ func newTelegramUserController(g *gin.RouterGroup) {
 		}
 		page, size := notificationPaging(c)
 		result, err := telegramuser.Messages(tgID, page, size)
+		jsonObj(c, result, err)
+	})
+	g.POST("/messages/:id/delete", func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil || id <= 0 {
+			jsonObj(c, nil, fmt.Errorf("invalid Telegram message ID"))
+			return
+		}
+		result, err := telegramuser.DeleteMessage(id)
 		jsonObj(c, result, err)
 	})
 	g.POST("/messages/send", func(c *gin.Context) {

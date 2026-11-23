@@ -1701,6 +1701,12 @@ export const EXAMPLES: Record<string, unknown> = {
     "tgId": 0,
     "username": ""
   },
+  "TelegramConversationDeleteResult": {
+    "conversationDeleted": true,
+    "deletedMessages": 12,
+    "preservedPending": 0,
+    "tgId": 265758444
+  },
   "TelegramCustomCommand": {
     "command": "",
     "description": "",
@@ -1751,6 +1757,9 @@ export const EXAMPLES: Record<string, unknown> = {
     "text": "",
     "tgId": 0,
     "updatedAt": 0
+  },
+  "TelegramMessageDeleteResult": {
+    "deletedId": 42
   },
   "TelegramMessagePage": {
     "items": [

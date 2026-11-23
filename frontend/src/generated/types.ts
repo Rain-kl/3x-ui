@@ -1440,6 +1440,13 @@ export interface TelegramBindingView {
   username: string;
 }
 
+export interface TelegramConversationDeleteResult {
+  conversationDeleted: boolean;
+  deletedMessages: number;
+  preservedPending: number;
+  tgId: number;
+}
+
 export interface TelegramCustomCommand {
   command: string;
   description: string;
@@ -1484,6 +1491,10 @@ export interface TelegramMessage {
   text: string;
   tgId: number;
   updatedAt: number;
+}
+
+export interface TelegramMessageDeleteResult {
+  deletedId: number;
 }
 
 export interface TelegramMessagePage {

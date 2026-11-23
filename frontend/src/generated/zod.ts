@@ -1554,6 +1554,14 @@ export const TelegramBindingViewSchema = z.object({
 });
 export type TelegramBindingView = z.infer<typeof TelegramBindingViewSchema>;
 
+export const TelegramConversationDeleteResultSchema = z.object({
+  conversationDeleted: z.boolean(),
+  deletedMessages: z.number().int(),
+  preservedPending: z.number().int(),
+  tgId: z.number().int(),
+});
+export type TelegramConversationDeleteResult = z.infer<typeof TelegramConversationDeleteResultSchema>;
+
 export const TelegramCustomCommandSchema = z.object({
   command: z.string(),
   description: z.string(),
@@ -1603,6 +1611,11 @@ export const TelegramMessageSchema = z.object({
   updatedAt: z.number().int(),
 });
 export type TelegramMessage = z.infer<typeof TelegramMessageSchema>;
+
+export const TelegramMessageDeleteResultSchema = z.object({
+  deletedId: z.number().int(),
+});
+export type TelegramMessageDeleteResult = z.infer<typeof TelegramMessageDeleteResultSchema>;
 
 export const TelegramMessagePageSchema = z.object({
   items: z.array(z.lazy(() => TelegramMessageSchema)),

@@ -11,7 +11,9 @@ import {
   ConversationPageSchema,
   NotificationClientSchema,
   TelegramBindingPageSchema,
+  TelegramConversationDeleteResultSchema,
   TelegramLogPageSchema,
+  TelegramMessageDeleteResultSchema,
   TelegramMessagePageSchema,
   TelegramMessageSchema,
   UserTelegramSettingsSchema,
@@ -79,6 +81,14 @@ export const telegramApi = {
   upload: (body: FormData) => postTelegram('/messages/upload', body, TelegramMessageSchema),
   read: (tgId: number, throughId: number) =>
     postTelegram(`/conversations/${tgId}/read`, { throughId }, z.unknown()),
+  deleteConversation: (tgId: number) =>
+    postTelegram(
+      `/conversations/${tgId}/delete`,
+      undefined,
+      TelegramConversationDeleteResultSchema,
+    ),
+  deleteMessage: (id: number) =>
+    postTelegram(`/messages/${id}/delete`, undefined, TelegramMessageDeleteResultSchema),
   bindings: (page: number) =>
     getTelegram(`/bindings?page=${page}&pageSize=20`, TelegramBindingPageSchema),
   clients: (search: string, page: number) =>

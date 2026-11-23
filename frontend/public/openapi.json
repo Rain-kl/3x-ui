@@ -6199,6 +6199,36 @@
         ],
         "type": "object"
       },
+      "TelegramConversationDeleteResult": {
+        "properties": {
+          "conversationDeleted": {
+            "example": true,
+            "type": "boolean"
+          },
+          "deletedMessages": {
+            "example": 12,
+            "format": "int64",
+            "type": "integer"
+          },
+          "preservedPending": {
+            "example": 0,
+            "format": "int64",
+            "type": "integer"
+          },
+          "tgId": {
+            "example": 265758444,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "conversationDeleted",
+          "deletedMessages",
+          "preservedPending",
+          "tgId"
+        ],
+        "type": "object"
+      },
       "TelegramCustomCommand": {
         "properties": {
           "command": {
@@ -6375,6 +6405,19 @@
           "text",
           "tgId",
           "updatedAt"
+        ],
+        "type": "object"
+      },
+      "TelegramMessageDeleteResult": {
+        "properties": {
+          "deletedId": {
+            "example": 42,
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deletedId"
         ],
         "type": "object"
       },
@@ -7109,6 +7152,59 @@
         }
       }
     },
+    "/panel/api/telegram/conversations/{tgId}/delete": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Delete local message history for a conversation and remove empty conversations.",
+        "operationId": "post_panel_api_telegram_conversations_tgId_delete",
+        "description": "Deletes non-pending, non-sending messages and relays in panel storage while keeping client bindings intact. Removes the conversation row when no pending messages remain.",
+        "parameters": [
+          {
+            "name": "tgId",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/TelegramConversationDeleteResult"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "conversationDeleted": true,
+                    "deletedMessages": 12,
+                    "preservedPending": 0,
+                    "tgId": 265758444
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/telegram/messages": {
       "get": {
         "tags": [
@@ -7195,6 +7291,55 @@
                       }
                     ],
                     "total": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/panel/api/telegram/messages/{id}/delete": {
+      "post": {
+        "tags": [
+          "Telegram user Bot"
+        ],
+        "summary": "Delete one non-pending local message from a conversation.",
+        "operationId": "post_panel_api_telegram_messages_id_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {
+                      "$ref": "#/components/schemas/TelegramMessageDeleteResult"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "obj": {
+                    "deletedId": 42
                   }
                 }
               }

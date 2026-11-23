@@ -15,6 +15,7 @@ import {
   Input,
   List,
   Pagination,
+  Popconfirm,
   Row,
   Space,
   Tag,
@@ -22,13 +23,13 @@ import {
   Upload,
   message,
 } from 'antd';
-import { PaperClipOutlined, SendOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PaperClipOutlined, SendOutlined } from '@ant-design/icons';
 import { FormField } from '@/components/form/rhf';
 import { telegramApi, telegramMediaURL, TelegramComposerSchema, type TelegramMessage } from './api';
 
 interface Props {
   tgId: number | null;
-  onSelect: (tgId: number) => void;
+  onSelect: (tgId: number | null) => void;
 }
 
 function Attachment({ row }: { row: TelegramMessage }) {
@@ -66,7 +67,16 @@ function Attachment({ row }: { row: TelegramMessage }) {
   );
 }
 
-function Thread({ tgId }: { tgId: number }) {
+function Thread({
+  tgId,
+  onConversationDeleted,
+}: {
+  tgId: number;
+  onConversationDeleted: (result: {
+    conversationDeleted: boolean;
+    preservedPending: number;
+  }) => void;
+}) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -85,6 +95,12 @@ function Thread({ tgId }: { tgId: number }) {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['telegram'] });
   const send = useMutation({
     mutationFn: (text: string) => telegramApi.send(tgId, text, reply?.id ?? 0),
+  });
+  const deleteMessageMutation = useMutation({
+    mutationFn: (id: number) => telegramApi.deleteMessage(id),
+  });
+  const deleteConversationMutation = useMutation({
+    mutationFn: () => telegramApi.deleteConversation(tgId),
   });
   const bottom = useRef<HTMLDivElement>(null);
   const latestId = query.data?.items[0]?.id;
@@ -111,8 +127,50 @@ function Thread({ tgId }: { tgId: number }) {
       messageApi.error(error instanceof Error ? error.message : t('somethingWentWrong'));
     }
   });
+  const handleDeleteMessage = async (id: number) => {
+    try {
+      const currentItems = query.data?.items ?? [];
+      await deleteMessageMutation.mutateAsync(id);
+      if (reply?.id === id) setReply(null);
+      if (page > 1 && currentItems.length <= 1) setPage((prev) => Math.max(1, prev - 1));
+      await invalidate();
+      messageApi.success(t('pages.telegram.messageDeleted'));
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : t('somethingWentWrong'));
+    }
+  };
+  const handleDeleteConversation = async () => {
+    try {
+      const result = await deleteConversationMutation.mutateAsync();
+      setReply(null);
+      if (!result.conversationDeleted && result.preservedPending > 0) setPage(1);
+      await invalidate();
+      onConversationDeleted(result);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : t('somethingWentWrong'));
+    }
+  };
   return (
-    <Card size="small" title={`${t('pages.telegram.conversation')} · ${tgId}`}>
+    <Card
+      size="small"
+      title={`${t('pages.telegram.conversation')} · ${tgId}`}
+      extra={
+        <Popconfirm
+          title={t('pages.telegram.deleteConversationConfirm')}
+          okButtonProps={{ danger: true }}
+          onConfirm={() => void handleDeleteConversation()}
+        >
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined aria-hidden />}
+            loading={deleteConversationMutation.isPending}
+          >
+            {t('pages.telegram.clearConversation')}
+          </Button>
+        </Popconfirm>
+      }
+    >
       {messageHolder}
       {query.error && <Alert type="error" title={query.error.message} />}
       <div style={{ height: 'clamp(320px, 50vh, 620px)', overflowY: 'auto', padding: 8 }}>
@@ -151,6 +209,25 @@ function Thread({ tgId }: { tgId: number }) {
                   <Button size="small" type="text" onClick={() => setReply(row)}>
                     {t('pages.telegram.reply')}
                   </Button>
+                  <Popconfirm
+                    title={t('pages.telegram.deleteMessageConfirm')}
+                    okButtonProps={{ danger: true }}
+                    disabled={row.status === 'pending' || row.status === 'sending'}
+                    onConfirm={() => void handleDeleteMessage(row.id)}
+                  >
+                    <Button
+                      danger
+                      size="small"
+                      type="text"
+                      disabled={row.status === 'pending' || row.status === 'sending'}
+                      loading={
+                        deleteMessageMutation.isPending &&
+                        deleteMessageMutation.variables === row.id
+                      }
+                    >
+                      {t('pages.telegram.deleteMessage')}
+                    </Button>
+                  </Popconfirm>
                 </Space>
                 {row.replyId > 0 && (
                   <Typography.Text type="secondary">↪ #{row.replyId}</Typography.Text>
@@ -255,15 +332,50 @@ function Thread({ tgId }: { tgId: number }) {
 
 export default function TelegramMessages({ tgId, onSelect }: Props) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [messageApi, messageHolder] = message.useMessage();
   const query = useQuery({
     queryKey: ['telegram', 'conversations', page, search],
     queryFn: () => telegramApi.conversations(page, search),
     refetchInterval: 5000,
   });
+  const deleteConversationMutation = useMutation({
+    mutationFn: (targetTgId: number) => telegramApi.deleteConversation(targetTgId),
+  });
+  const notifyConversationDelete = (
+    targetTgId: number,
+    result: { conversationDeleted: boolean; preservedPending: number },
+    deletedLastOnListPage = false,
+  ) => {
+    if (result.conversationDeleted) {
+      if (tgId === targetTgId) onSelect(null);
+      if (deletedLastOnListPage) setPage((prev) => Math.max(1, prev - 1));
+      messageApi.success(t('pages.telegram.conversationDeleted'));
+      return;
+    }
+    if (result.preservedPending > 0) {
+      messageApi.success(
+        t('pages.telegram.conversationClearedPendingKept', { count: result.preservedPending }),
+      );
+      return;
+    }
+    messageApi.success(t('pages.telegram.conversationDeleted'));
+  };
+  const handleDeleteListConversation = async (targetTgId: number) => {
+    try {
+      const currentItems = query.data?.items ?? [];
+      const result = await deleteConversationMutation.mutateAsync(targetTgId);
+      await queryClient.invalidateQueries({ queryKey: ['telegram'] });
+      notifyConversationDelete(targetTgId, result, page > 1 && currentItems.length <= 1);
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : t('somethingWentWrong'));
+    }
+  };
   return (
     <Row gutter={[16, 16]}>
+      {messageHolder}
       <Col xs={24} lg={8}>
         <Card size="small" title={t('pages.telegram.conversations')}>
           <Input.Search
@@ -282,30 +394,56 @@ export default function TelegramMessages({ tgId, onSelect }: Props) {
               dataSource={query.data?.items ?? []}
               renderItem={(row) => (
                 <List.Item>
-                  <Button
-                    block
-                    type={tgId === row.tgId ? 'primary' : 'text'}
-                    style={{ height: 'auto', textAlign: 'start', padding: '10px 8px' }}
-                    onClick={() => onSelect(row.tgId)}
-                  >
-                    <Space
-                      orientation="vertical"
-                      size={2}
-                      style={{ width: '100%', alignItems: 'flex-start' }}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, width: '100%' }}>
+                    <Button
+                      type={tgId === row.tgId ? 'primary' : 'text'}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        height: 'auto',
+                        textAlign: 'start',
+                        padding: '10px 8px',
+                      }}
+                      onClick={() => onSelect(row.tgId)}
                     >
-                      <Space>
-                        <Badge count={row.unread} />
-                        <span>{row.clientEmail || row.name || row.username || row.tgId}</span>
+                      <Space
+                        orientation="vertical"
+                        size={2}
+                        style={{ width: '100%', alignItems: 'flex-start' }}
+                      >
+                        <Space>
+                          <Badge count={row.unread} />
+                          <span>{row.clientEmail || row.name || row.username || row.tgId}</span>
+                        </Space>
+                        <Typography.Text type="secondary">
+                          {row.username ? `@${row.username} · ` : ''}
+                          {row.tgId}
+                        </Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                          {row.lastMessageAt > 0
+                            ? new Date(row.lastMessageAt).toLocaleString()
+                            : '—'}
+                        </Typography.Text>
                       </Space>
-                      <Typography.Text type="secondary">
-                        {row.username ? `@${row.username} · ` : ''}
-                        {row.tgId}
-                      </Typography.Text>
-                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                        {row.lastMessageAt > 0 ? new Date(row.lastMessageAt).toLocaleString() : '—'}
-                      </Typography.Text>
-                    </Space>
-                  </Button>
+                    </Button>
+                    <Popconfirm
+                      title={t('pages.telegram.deleteConversationConfirm')}
+                      okButtonProps={{ danger: true }}
+                      onConfirm={() => void handleDeleteListConversation(row.tgId)}
+                    >
+                      <Button
+                        danger
+                        size="small"
+                        type="text"
+                        aria-label={t('pages.telegram.clearConversation')}
+                        icon={<DeleteOutlined aria-hidden />}
+                        loading={
+                          deleteConversationMutation.isPending &&
+                          deleteConversationMutation.variables === row.tgId
+                        }
+                      />
+                    </Popconfirm>
+                  </div>
                 </List.Item>
               )}
             />
@@ -322,7 +460,11 @@ export default function TelegramMessages({ tgId, onSelect }: Props) {
       </Col>
       <Col xs={24} lg={16}>
         {tgId ? (
-          <Thread key={tgId} tgId={tgId} />
+          <Thread
+            key={tgId}
+            tgId={tgId}
+            onConversationDeleted={(result) => notifyConversationDelete(tgId, result)}
+          />
         ) : (
           <Card>
             <Empty description={t('pages.telegram.selectConversation')} />

@@ -96,9 +96,8 @@ func (m *Manager) Upload(ctx context.Context, tgID int64, name, contentType, cap
 	if len(data) == 0 || len(data) > MaxAttachment || len(utf16.Encode([]rune(caption))) > 900 {
 		return row, fmt.Errorf("upload requires 1–20 MiB and a caption of at most 900 characters")
 	}
-	var conversation model.TelegramConversation
-	if err := database.GetDB().First(&conversation, "tg_id = ?", tgID).Error; err != nil {
-		return row, fmt.Errorf("load upload conversation: %w", err)
+	if err := conversationAccessible(tgID); err != nil {
+		return row, err
 	}
 	if replyID > 0 {
 		var original model.TelegramMessage

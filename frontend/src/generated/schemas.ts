@@ -6173,6 +6173,36 @@ export const SCHEMAS: Record<string, unknown> = {
     ],
     "type": "object"
   },
+  "TelegramConversationDeleteResult": {
+    "properties": {
+      "conversationDeleted": {
+        "example": true,
+        "type": "boolean"
+      },
+      "deletedMessages": {
+        "example": 12,
+        "format": "int64",
+        "type": "integer"
+      },
+      "preservedPending": {
+        "example": 0,
+        "format": "int64",
+        "type": "integer"
+      },
+      "tgId": {
+        "example": 265758444,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "conversationDeleted",
+      "deletedMessages",
+      "preservedPending",
+      "tgId"
+    ],
+    "type": "object"
+  },
   "TelegramCustomCommand": {
     "properties": {
       "command": {
@@ -6349,6 +6379,19 @@ export const SCHEMAS: Record<string, unknown> = {
       "text",
       "tgId",
       "updatedAt"
+    ],
+    "type": "object"
+  },
+  "TelegramMessageDeleteResult": {
+    "properties": {
+      "deletedId": {
+        "example": 42,
+        "format": "int64",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "deletedId"
     ],
     "type": "object"
   },

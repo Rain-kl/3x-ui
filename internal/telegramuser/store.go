@@ -159,9 +159,8 @@ func QueueText(tgID int64, text string, replyID int64, role string) (model.Teleg
 	if tgID <= 0 || row.Text == "" || len(utf16.Encode([]rune(row.Text))) > 3500 || !Default.Running() {
 		return row, fmt.Errorf("send requires a running user Bot, a valid conversation and 1–3500 characters")
 	}
-	var conversation model.TelegramConversation
-	if err := database.GetDB().First(&conversation, "tg_id = ?", tgID).Error; err != nil {
-		return row, fmt.Errorf("load Telegram conversation: %w", err)
+	if err := conversationAccessible(tgID); err != nil {
+		return row, err
 	}
 	if client, err := BoundClient(tgID); err == nil {
 		row.ClientID = client.Id

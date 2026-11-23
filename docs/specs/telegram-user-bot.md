@@ -87,3 +87,12 @@ Telegram 绑定管理卡片新增“手动绑定”。管理员选择客户端�
 复用用户绑定的事务逻辑与双向唯一约束，重复提交同一关系幂等；任一方已绑定其他对象时明确拒绝，换绑前先解绑。验证客户端存在及 Telegram ID 有效；不修改客户端代理凭据、订阅或旧 tg_id 字段。成功时原子创建会话占位、结束当前邀请码生命周期、补发该客户端可见的历史通知并记录管理员绑定日志；任一步失败整体回滚，不产生半绑定。普通用户绑定流程保持一致，手动绑定后客户端绑定列表、会话和邀请码状态刷新。
 
 验收：无用户会话时可绑定并在会话列表看到数字 ID；绑定后 /usage、/subscription 等可使用；与原绑定流程交叉冲突均拒绝；重复提交不重复入队通知；失败不消耗邀请码；管理员鉴权及节点令牌隔离；前端有效性校验、服务端错误展示及成功刷新。
+
+## 删除会话与单条消息
+
+仅删除面板数据库中的本地记录，不调用 Telegram Bot API 撤回已发出消息，不解除既有 `telegram_bindings` 绑定关系，也不删除或取消状态为 `pending` 或 `sending` 的待发/发送中消息。管理接口沿用管理员鉴权与 CSRF，`ApiScopeNodeSync` 节点同步令牌禁止访问。
+
+- **删除单条消息**（`POST /panel/api/telegram/messages/:id/delete`）：仅允许删除前端可见会话流中的消息（`delivery_bot <> 'admin'`）且状态不得为 `pending` 或 `sending`。删除主消息行时同步清理其对应的已完成/失败管理员转发副本（`delivery_bot = 'admin' AND reply_id = id AND status NOT IN ('pending','sending')`）及 `telegram_admin_relays`（`user_message_id = id`），并按剩余可见消息重新计算并更新 `telegram_conversations.last_message_at`（无剩余可见消息时置为 0）；保留 `telegram_conversations` 会话条目并记录 `message.deleted.admin` 日志。试图删除 `pending`/`sending`、`delivery_bot = 'admin'` 或不存在的消息时明确返回错误。
+- **删除/清空会话消息**（`POST /panel/api/telegram/conversations/:tgId/delete`）：在会话列表及右侧会话卡片头部均提供确认删除入口。在事务中先校验 `telegram_conversations` 存在，再删除该 `tg_id` 下所有非 `pending`/`sending` 的 `telegram_messages`，并清理已失效的 `telegram_admin_relays`。若该 `tg_id` 下已无任何剩余消息，则同步删除 `telegram_conversations` 记录（`conversationDeleted: true`），从左侧「会话列表」移除，同时保留 `telegram_bindings` 并记录 `conversation.deleted.admin`；若仍有 `pending`/`sending` 消息保留，则保留会话条目并刷新 `last_message_at`（`conversationDeleted: false`，返回保留数量 `preservedPending`），记录 `conversation.cleared.admin`。
+- **已绑定用户的后续发送与重建**：删除会话条目后，若后续收到用户新消息或管理员从网页向已绑定 `tg_id` 发起文本/附件发送（`QueueText` / `Upload` 校验 `telegram_conversations` 或 `telegram_bindings` 其一存在即允许发送），`recordMessage` 自动重建 `telegram_conversations` 条目使其重新出现在会话列表中。
+- **前端交互**：单条消息删除按钮对 `pending`/`sending` 禁用，删空非首页自动回退上一页并清空对应引用回复状态；会话列表中删除图标按钮与选中按钮同级互斥避免嵌套交互，删除当前选中且已被移除的会话后清空右侧选中态恢复「请选择会话查看消息」空状态。
