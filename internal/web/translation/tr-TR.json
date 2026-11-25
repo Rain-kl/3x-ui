@@ -932,6 +932,8 @@
       "happLinkDisclosure": "Bağlantı yerel olarak oluşturulur. Bu bağlantıya sahip olan herkes abonelik URL’sini geri elde edebilir veya paylaşabilir.",
       "happLinkOptionLabel": "Happ şifreli bağlantısı",
       "link": "Bağlantı",
+      "resetSubscription": "Abonelik bağlantısını yenile",
+      "resetSubscriptionConfirm": "Yenilemeden sonra eski abonelik bağlantısı bu istemcinin yapılandırmasını alamaz. Eski proxy kimlik bilgileriyle yeni bağlantı kurulamaz.",
       "resetNotPossible": "Önce bu kullanıcıyı bir gelen bağlantıya bağlayın.",
       "resetAllTraffics": "Tüm Kullanıcıların Trafiğini Sıfırla",
       "resetAllTrafficsTitle": "Tüm Kullanıcıların Trafiği Sıfırlansın Mı?",
@@ -1035,6 +1037,7 @@
       "ipLimit": "IP Limiti",
       "toasts": {
         "deleted": "Kullanıcı silindi",
+        "subscriptionReset": "Abonelik bağlantısı yenilendi",
         "trafficReset": "Trafik sıfırlandı",
         "allTrafficsReset": "Tüm kullanıcıların trafiği sıfırlandı",
         "bulkDeleted": "{count} kullanıcı silindi",

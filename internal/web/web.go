@@ -214,7 +214,11 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	// The bundles are served below from a gzip copy made once per file: compressing them
 	// per request lets every stalled download pin its own compressor until WriteTimeout.
 	// FORK(panel-ai): Streaming responses need their original flush and deadline support.
-	engine.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{assetsBasePath}), gzip.WithExcludedPathsRegexs([]string{`/panel/api/ai/runs/[^/]+/events$`, `/panel/ai/opencode/api/`})))
+	engine.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{assetsBasePath}), gzip.WithExcludedPathsRegexs([]string{
+		`/panel/api/ai/runs/[^/]+/events$`, `/panel/ai/opencode/api/`,
+		// FORK(telegram-reset-revoke): Keep deadline control until remote credential confirmation completes.
+		`/panel/api/clients/resetSubscription$`,
+	})))
 
 	store := cookie.NewStore(secret)
 	// Configure default session cookie options, including expiration (MaxAge)

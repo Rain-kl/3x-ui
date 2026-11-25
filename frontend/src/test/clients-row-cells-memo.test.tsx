@@ -92,6 +92,7 @@ describe('clients table row cells', () => {
 
   it('keeps the row actions wired to the right client across re-renders', async () => {
     const onShowQr = vi.fn();
+    const onResetSubscription = vi.fn();
     const onEdit = vi.fn();
     const noop = vi.fn();
     let bump: () => void = () => {};
@@ -106,6 +107,7 @@ describe('clients table row cells', () => {
               onShowQr={onShowQr}
               onShowInfo={noop}
               onResetTraffic={noop}
+              onResetSubscription={onResetSubscription}
               onEdit={onEdit}
               onDelete={noop}
             />
@@ -118,15 +120,12 @@ describe('clients table row cells', () => {
       for (let i = 0; i < 3; i++) bump();
     });
 
-    // Queried by position rather than label: the suite loads the real en-US
-    // bundle, so the aria-labels are translated strings, not keys. Order is
-    // QR, info, reset traffic, edit, delete.
-    const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(5);
-    await userEvent.click(buttons[0]);
-    await userEvent.click(buttons[3]);
+    await userEvent.click(screen.getByRole('button', { name: 'QR Code' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Rotate subscription link' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
 
     expect(onShowQr).toHaveBeenCalledExactlyOnceWith('alice@x');
+    expect(onResetSubscription).toHaveBeenCalledExactlyOnceWith('alice@x');
     expect(onEdit).toHaveBeenCalledExactlyOnceWith('alice@x');
   });
 });

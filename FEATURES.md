@@ -254,6 +254,10 @@
 - **文件与标记**：客户端重置与运行态确认服务、Bot 订阅接口/提示、订阅凭据投影，使用 `FORK(telegram-reset-revoke)`。
 - **设计与实现**：[规格](docs/specs/telegram-user-bot.md)、[说明](.agents/notes/telegram-reset-revoke.md)。
 
+### 管理端轮换订阅链接
+
+- 管理员可在客户端列表确认轮换订阅并撤销旧代理凭据，复用 Bot `/reset` 的客户端服务和运行态确认，操作后从二维码窗口复制新链接。客户端控制器、Web 中间件、桌面行操作、移动端菜单、查询缓存与 API 路由登记使用 `FORK(telegram-reset-revoke)`。语言包和生成的 OpenAPI 文档同步更新。
+
 ## 订阅访问审计与泄露风控（subscription-access-guard）
 
 - **背景与功能**：记录有效订阅的客户端、来源 IP、UTC 时间、方法、格式和状态；管理员在日志审计中分页筛选、查看风险/通知错误及清理访问日志。所有订阅输出统一保护，未知随机订阅不落库。

@@ -64,6 +64,8 @@ func (a *ClientController) initRouter(g *gin.RouterGroup) {
 
 	g.POST("/add", a.create)
 	g.POST("/renewalPreview", a.renewalPreview)
+	// FORK(telegram-reset-revoke): Administrators need to revoke the same credentials as the Bot.
+	g.POST("/resetSubscription", a.resetSubscription)
 	g.POST("/update", a.update)
 	g.POST("/update/:email", a.update)
 	g.POST("/del", a.delete)

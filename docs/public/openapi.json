@@ -17392,6 +17392,48 @@
         }
       }
     },
+    "/panel/api/clients/resetSubscription": {
+      "post": {
+        "tags": [
+          "Clients"
+        ],
+        "summary": "Rotate a client subscription link and revoke the previous proxy credentials.",
+        "operationId": "post_panel_api_clients_resetSubscription",
+        "description": "Requires an administrator session or admin API token. Uses the same credential reset as the Telegram /reset command, including confirmation from attached child nodes before reporting success. A failed reset can leave changes in place or the client disabled. Read the client again after the request.",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "required": true,
+            "description": "Client email.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "msg": {
+                      "type": "string"
+                    },
+                    "obj": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/panel/api/clients/links/{email}": {
       "get": {
         "tags": [

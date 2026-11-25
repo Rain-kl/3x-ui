@@ -932,6 +932,8 @@
       "happLinkDisclosure": "Liên kết được tạo cục bộ. Bất kỳ ai có liên kết này đều có thể khôi phục hoặc chia sẻ URL đăng ký.",
       "happLinkOptionLabel": "Liên kết Happ được mã hóa",
       "link": "Liên kết",
+      "resetSubscription": "Đổi liên kết đăng ký",
+      "resetSubscriptionConfirm": "Sau khi đổi, liên kết cũ không thể lấy cấu hình của máy khách này. Thông tin xác thực proxy cũ không thể tạo kết nối mới.",
       "resetNotPossible": "Hãy gắn khách hàng này vào một inbound trước.",
       "resetAllTraffics": "Đặt lại lưu lượng của tất cả khách hàng",
       "resetAllTrafficsTitle": "Đặt lại lưu lượng của tất cả khách hàng?",
@@ -1035,6 +1037,7 @@
       "ipLimit": "Giới hạn IP",
       "toasts": {
         "deleted": "Đã xóa khách hàng",
+        "subscriptionReset": "Đã đổi liên kết đăng ký",
         "trafficReset": "Đã đặt lại lưu lượng",
         "allTrafficsReset": "Đã đặt lại lưu lượng của tất cả khách hàng",
         "bulkDeleted": "Đã xóa {count} khách hàng",

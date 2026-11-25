@@ -932,6 +932,8 @@
       "happLinkDisclosure": "Tautan dibuat secara lokal. Siapa pun yang memiliki tautan ini mungkin dapat memulihkan atau membagikan URL langganan.",
       "happLinkOptionLabel": "Tautan terenkripsi Happ",
       "link": "Tautan",
+      "resetSubscription": "Rotasi tautan langganan",
+      "resetSubscriptionConfirm": "Setelah rotasi, tautan lama tidak dapat mengambil konfigurasi klien ini. Kredensial proksi lama tidak dapat membuat koneksi baru.",
       "resetNotPossible": "Lampirkan klien ini ke inbound terlebih dahulu.",
       "resetAllTraffics": "Reset lalu lintas semua klien",
       "resetAllTrafficsTitle": "Reset lalu lintas semua klien?",
@@ -1035,6 +1037,7 @@
       "ipLimit": "Batas IP",
       "toasts": {
         "deleted": "Klien dihapus",
+        "subscriptionReset": "Tautan langganan telah dirotasi",
         "trafficReset": "Lalu lintas direset",
         "allTrafficsReset": "Lalu lintas semua klien direset",
         "bulkDeleted": "{count} klien dihapus",

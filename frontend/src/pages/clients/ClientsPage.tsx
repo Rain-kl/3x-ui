@@ -46,6 +46,7 @@ import {
   SearchOutlined,
   SortAscendingOutlined,
   StopOutlined,
+  SyncOutlined, // FORK(telegram-reset-revoke): Distinguish link rotation from traffic reset.
   TagsOutlined,
   TeamOutlined,
   UploadOutlined,
@@ -362,6 +363,8 @@ export default function ClientsPage() {
     detach,
     bulkDetach,
     resetTraffic,
+    // FORK(telegram-reset-revoke): Route panel rotation through the shared service.
+    resetSubscription,
     resetAllTraffics,
     delDepleted,
     delOrphans,
@@ -783,6 +786,24 @@ export default function ClientsPage() {
     [hydrate],
   );
 
+  // FORK-BEGIN(telegram-reset-revoke): Require confirmation before revoking imported credentials.
+  const onResetSubscription = useCallback(
+    (email: string) => {
+      modal.confirm({
+        title: `${t('pages.clients.resetSubscription')} — ${email}`,
+        content: t('pages.clients.resetSubscriptionConfirm'),
+        okText: t('pages.clients.resetSubscription'),
+        okType: 'danger',
+        cancelText: t('cancel'),
+        onOk: async () => {
+          await resetSubscription(email);
+        },
+      });
+    },
+    [modal, t, resetSubscription],
+  );
+  // FORK-END(telegram-reset-revoke)
+
   const onShowQr = useCallback(
     async (email: string) => {
       const row = rowsByEmail.current.get(email);
@@ -1080,13 +1101,15 @@ export default function ClientsPage() {
       {
         title: t('pages.clients.actions'),
         key: 'actions',
-        width: 200,
+        width: 220, // FORK(telegram-reset-revoke): Fit the subscription rotation action.
         render: (_v, record) => (
           <ClientRowActions
             email={record.email}
             onShowQr={onShowQr}
             onShowInfo={onShowInfo}
             onResetTraffic={onResetTraffic}
+            // FORK(telegram-reset-revoke): Expose revocation next to the existing QR action.
+            onResetSubscription={onResetSubscription}
             onEdit={onEdit}
             onDelete={onDelete}
           />
@@ -1296,6 +1319,8 @@ export default function ClientsPage() {
       datepicker,
       trafficDiff,
       clientSpeed,
+      // FORK(telegram-reset-revoke): Keep the rotation confirmation callback current.
+      onResetSubscription,
     ],
   );
 
@@ -1926,6 +1951,15 @@ export default function ClientsPage() {
                                               ),
                                               onClick: () => onShowQr(row.email),
                                             },
+                                            // FORK-BEGIN(telegram-reset-revoke): Mobile cards also need the revocation action.
+                                            {
+                                              key: 'reset-subscription',
+                                              icon: <SyncOutlined aria-hidden />,
+                                              label: t('pages.clients.resetSubscription'),
+                                              danger: true,
+                                              onClick: () => onResetSubscription(row.email),
+                                            },
+                                            // FORK-END(telegram-reset-revoke)
                                             {
                                               key: 'reset',
                                               label: (

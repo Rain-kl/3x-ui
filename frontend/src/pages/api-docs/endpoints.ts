@@ -2597,6 +2597,16 @@ export const sections: readonly Section[] = [
         params: [{ name: 'id', in: 'path', type: 'integer', desc: 'Stable client record ID.' }],
         responseSchema: 'HappLinkResult',
       },
+      // FORK-BEGIN(telegram-reset-revoke)
+      {
+        method: 'POST',
+        path: '/panel/api/clients/resetSubscription',
+        summary: 'Rotate a client subscription link and revoke the previous proxy credentials.',
+        description:
+          'Requires an administrator session or admin API token. Uses the same credential reset as the Telegram /reset command, including confirmation from attached child nodes before reporting success. A failed reset can leave changes in place or the client disabled. Read the client again after the request.',
+        params: [{ name: 'email', in: 'query', type: 'string', desc: 'Client email.' }],
+      },
+      // FORK-END(telegram-reset-revoke)
       {
         method: 'GET',
         path: '/panel/api/clients/links/:email',

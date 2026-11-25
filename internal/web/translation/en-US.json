@@ -932,6 +932,8 @@
       "happLinkDisclosure": "Generated locally. Anyone with this link may be able to recover or share the subscription URL.",
       "happLinkOptionLabel": "Happ Encrypted Link",
       "link": "Link",
+      "resetSubscription": "Rotate subscription link",
+      "resetSubscriptionConfirm": "After rotation, the old subscription link can no longer retrieve this client’s configuration. Old proxy credentials cannot establish new connections.",
       "resetNotPossible": "Attach this client to an inbound first.",
       "resetAllTraffics": "Reset all client traffic",
       "resetAllTrafficsTitle": "Reset all client traffic?",
@@ -1035,6 +1037,7 @@
       "ipLimit": "IP limit",
       "toasts": {
         "deleted": "Client deleted",
+        "subscriptionReset": "Subscription link rotated",
         "trafficReset": "Traffic reset",
         "allTrafficsReset": "All client traffic reset",
         "bulkDeleted": "{count} clients deleted",

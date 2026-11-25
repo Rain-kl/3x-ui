@@ -932,6 +932,8 @@
       "happLinkDisclosure": "Vytvorené miestne. Každý, kto má tento odkaz, môže získať alebo zdieľať URL odberu konfigurácií.",
       "happLinkOptionLabel": "Šifrovaný odkaz Happ",
       "link": "Odkaz",
+      "resetSubscription": "Vymeniť odkaz na odber",
+      "resetSubscriptionConfirm": "Po výmene starý odkaz už neposkytne konfiguráciu tohto klienta a staré prihlasovacie údaje proxy neumožnia nové pripojenia.",
       "resetNotPossible": "Najprv klienta priraďte k vstupu.",
       "resetAllTraffics": "Vynulovať spotrebu všetkých klientov",
       "resetAllTrafficsTitle": "Vynulovať spotrebu všetkých klientov?",
@@ -1035,6 +1037,7 @@
       "ipLimit": "Limit IP adries",
       "toasts": {
         "deleted": "Klient bol odstránený",
+        "subscriptionReset": "Odkaz na odber bol vymenený",
         "trafficReset": "Spotreba bola vynulovaná",
         "allTrafficsReset": "Spotreba všetkých klientov bola vynulovaná",
         "bulkDeleted": "Odstránení klienti: {count}",

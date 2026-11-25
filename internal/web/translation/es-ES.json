@@ -932,6 +932,8 @@
       "happLinkDisclosure": "El enlace se genera localmente. Cualquiera que lo tenga podría recuperar o compartir la URL de suscripción.",
       "happLinkOptionLabel": "Enlace cifrado de Happ",
       "link": "Enlace",
+      "resetSubscription": "Rotar enlace de suscripción",
+      "resetSubscriptionConfirm": "Tras la rotación, el enlace anterior ya no podrá obtener la configuración de este cliente y las credenciales anteriores del proxy no podrán iniciar nuevas conexiones.",
       "resetNotPossible": "Asocia primero este cliente a un inbound.",
       "resetAllTraffics": "Restablecer tráfico de todos los clientes",
       "resetAllTrafficsTitle": "¿Restablecer tráfico de todos los clientes?",
@@ -1035,6 +1037,7 @@
       "ipLimit": "Límite de IP",
       "toasts": {
         "deleted": "Cliente eliminado",
+        "subscriptionReset": "Enlace de suscripción rotado",
         "trafficReset": "Tráfico restablecido",
         "allTrafficsReset": "Tráfico de todos los clientes restablecido",
         "bulkDeleted": "{count} clientes eliminados",

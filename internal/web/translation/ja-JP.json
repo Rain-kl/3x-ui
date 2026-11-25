@@ -932,6 +932,8 @@
       "happLinkDisclosure": "リンクはローカルで生成されます。このリンクを持つ人は、サブスクリプション URL を復元したり共有したりできる可能性があります。",
       "happLinkOptionLabel": "Happ 暗号化リンク",
       "link": "リンク",
+      "resetSubscription": "購読リンクを更新",
+      "resetSubscriptionConfirm": "更新後、古い購読リンクではこのクライアントの設定を取得できず、古いプロキシ認証情報では新規接続できません。",
       "resetNotPossible": "まずこのクライアントをインバウンドに関連付けてください。",
       "resetAllTraffics": "すべてのクライアントのトラフィックをリセット",
       "resetAllTrafficsTitle": "すべてのクライアントのトラフィックをリセットしますか?",
@@ -1035,6 +1037,7 @@
       "ipLimit": "IP 制限",
       "toasts": {
         "deleted": "クライアントを削除しました",
+        "subscriptionReset": "購読リンクを更新しました",
         "trafficReset": "トラフィックをリセットしました",
         "allTrafficsReset": "すべてのクライアントのトラフィックをリセットしました",
         "bulkDeleted": "{count} 件のクライアントを削除しました",

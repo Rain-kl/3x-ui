@@ -7,6 +7,7 @@ import {
   InfoCircleOutlined,
   QrcodeOutlined,
   RetweetOutlined,
+  SyncOutlined, // FORK(telegram-reset-revoke): Distinguish link rotation from traffic reset.
 } from '@ant-design/icons';
 
 import { formatInboundLabel } from '@/lib/inbounds/label';
@@ -19,20 +20,21 @@ interface ClientRowActionsProps {
   onShowQr: (email: string) => void;
   onShowInfo: (email: string) => void;
   onResetTraffic: (email: string) => void;
+  // FORK(telegram-reset-revoke): Include credential revocation in the row actions.
+  onResetSubscription: (email: string) => void;
   onEdit: (email: string) => void;
   onDelete: (email: string) => void;
 }
 
-// Five Tooltip-wrapped buttons per row, none of which depend on traffic. Left
-// inline they re-ran rc-tooltip's alignment machinery for every visible row on
-// every traffic push — 125 Tooltips on a 25-row page, five seconds apart.
-// Keyed on the email rather than the row object, because a push replaces the row
-// object of every client whose counters moved; the page resolves the live row.
+// FORK(telegram-reset-revoke): Keep tooltip alignment independent of traffic updates.
+// Row actions are memoized by email because traffic updates replace row objects.
 export const ClientRowActions = memo(function ClientRowActions({
   email,
   onShowQr,
   onShowInfo,
   onResetTraffic,
+  // FORK(telegram-reset-revoke): Use the same confirmation as the mobile menu.
+  onResetSubscription,
   onEdit,
   onDelete,
 }: ClientRowActionsProps) {
@@ -49,6 +51,19 @@ export const ClientRowActions = memo(function ClientRowActions({
           onClick={() => onShowQr(email)}
         />
       </Tooltip>
+      {/* FORK-BEGIN(telegram-reset-revoke): Place revocation beside the subscription QR. */}
+      <Tooltip title={t('pages.clients.resetSubscription')}>
+        <Button
+          size="small"
+          type="text"
+          danger
+          style={ICON_BUTTON_STYLE}
+          icon={<SyncOutlined aria-hidden />}
+          aria-label={t('pages.clients.resetSubscription')}
+          onClick={() => onResetSubscription(email)}
+        />
+      </Tooltip>
+      {/* FORK-END(telegram-reset-revoke) */}
       <Tooltip title={t('pages.clients.clientInfo')}>
         <Button
           size="small"

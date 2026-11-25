@@ -932,6 +932,8 @@
       "happLinkDisclosure": "链接在本地生成。持有此链接的人可能还原或分享订阅地址。",
       "happLinkOptionLabel": "Happ 加密链接",
       "link": "链接",
+      "resetSubscription": "轮换订阅链接",
+      "resetSubscriptionConfirm": "轮换后，旧订阅链接无法再获取此客户端的配置，旧代理凭据无法建立新连接。",
       "resetNotPossible": "请先将此客户端关联到入站。",
       "resetAllTraffics": "重置所有客户端流量",
       "resetAllTrafficsTitle": "重置所有客户端流量？",
@@ -1035,6 +1037,7 @@
       "ipLimit": "IP 限制",
       "toasts": {
         "deleted": "客户端已删除",
+        "subscriptionReset": "订阅链接已轮换",
         "trafficReset": "流量已重置",
         "allTrafficsReset": "所有客户端流量已重置",
         "bulkDeleted": "已删除 {count} 个客户端",

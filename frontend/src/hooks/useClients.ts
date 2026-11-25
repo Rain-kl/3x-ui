@@ -525,6 +525,14 @@ export function useClients(options: UseClientsOptions = {}) {
     },
   });
 
+  // FORK-BEGIN(telegram-reset-revoke): A failed reset can still persist credential or status changes.
+  const { mutateAsync: resetSubscription } = useMutation({
+    mutationFn: (email: string) =>
+      HttpUtil.post('/panel/api/clients/resetSubscription', undefined, { params: { email } }),
+    onSettled: invalidateAll,
+  });
+  // FORK-END(telegram-reset-revoke)
+
   const resetAllTrafficsMut = useMutation({
     mutationFn: () => HttpUtil.post('/panel/api/clients/resetAllTraffics'),
     onSuccess: (msg) => {
@@ -898,6 +906,8 @@ export function useClients(options: UseClientsOptions = {}) {
     detach,
     bulkDetach,
     resetTraffic,
+    // FORK(telegram-reset-revoke): Expose server-side credential revocation to the panel.
+    resetSubscription,
     resetAllTraffics,
     delDepleted,
     delOrphans,
